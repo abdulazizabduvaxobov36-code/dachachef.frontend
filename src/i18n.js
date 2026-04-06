@@ -1,0 +1,378 @@
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+
+const uz = {
+    entrance: {
+        title: "OSHPAZ.UZ",
+        oldAccount: "Eski akk bilan kirish",
+        subtitle: "Lazzatli sarguzashtlar boshlanishi",
+        platform: "Platformaga kirish",
+        userBtn: "Foydalanuvchi sifatida",
+        chefBtn: "Oshpaz sifatida"
+    },
+    customer: {
+        welcome: "Xush kelibsiz!",
+        enterInfo: "Tizimga kirish uchun ma'lumotlarni kiriting.",
+        phone: "Telefon raqami", sms: "SMS kodi", continue: "Davom etish",
+        firstName: "Ism", lastName: "Familiya",
+        firstNameError: "Iltimos, ismingizni kiriting!",
+        lastNameError: "Iltimos, familiyangizni kiriting!",
+        phoneError: "Iltimos, telefon raqamini kiriting!",
+        smsError: "Iltimos, SMS kodini kiriting!",
+        smsSent: "raqamiga SMS kod yuborildi",
+        back: "Orqaga"
+    },
+    chef: {
+        pageTitle: "Oshpaz sifatida ro'yxatdan o'tish",
+        profilePhoto: "Profil rasmi",
+        personalInfo: "Shaxsiy ma'lumotlar",
+        firstName: "Ism", lastName: "Familiya",
+        phoneNumber: "Telefon raqami",
+        workExp: "Ish tajribasi (yil)",
+        createProfile: "Profil yaratish"
+    },
+    errors: {
+        onlyLetters: "Faqat harflar kiritilsin",
+        minLength: "Kamida 2 ta harf",
+        phoneLength: "Telefon 9 ta raqam bo'lishi kerak",
+        smsLength: "SMS kod 4 ta raqam bo'lishi kerak",
+        expRange: "1 dan 60 gacha bo'lishi kerak",
+        expRequired: "Tajriba kiritilmadi",
+        fillAll: "Barcha maydonlarni to'g'ri to'ldiring"
+    },
+    glabal: {
+        logo: "Oshpaz.uz",
+        findChef: "Oshpaz topish",
+        enterName: "Ism kiriting",
+        all: "Barchasi",
+        noChefs: "Hali hech qanday oshpaz ro'yxatdan o'tmagan",
+        notFound: "Hech narsa topilmadi",
+        chefs: "Oshpazlar",
+        searchResults: "Qidiruv natijalari",
+        newMsg: "yangi",
+        noNotif: "Yangi xabar yo'q",
+        notifTitle: "Xabarlar",
+        replyBtn: "Javob berish"
+    },
+    footer: { home: "ASOSIY", orders: "BUYURTMALAR", like: "LIKE", profile: "PROFIL" },
+    orders: {
+        title: "Buyurtmalar",
+        placeholder: "Xabar yozing...",
+        noChats: "Hali suhbat yo'q",
+        noMsg: "Hali xabar yo'q"
+    },
+    chefProfile: {
+        about: "Oshpaz haqida",
+        aboutText: "Men milliy taomlar bo'yicha mutaxassisman. Mening asosiy maqsadim — an'anaviy lazzatlarni zamonaviy ko'rinishda taqdim etish.",
+        call: "Qo'ng'iroq qilish",
+        sms: "SMS yozish",
+        notFound: "Oshpaz topilmadi",
+        experience: "Tajriba"
+    },
+    like: {
+        title: "Sevimli oshpazlar",
+        noLikes: "Hozircha sevimli oshpazlar yo'q",
+        search: "Oshpaz qidirish...",
+        notFound: "Hech narsa topilmadi"
+    },
+    profile: {
+        title: "Profil", editText: "Profilni tahrirlash",
+        language: "Til", logout: "Akkountdan chiqish"
+    },
+    chefHome: {
+        title: "So'rovlar",
+        empty: "Hali hech kim xabar yubormagan",
+        messages: "ta xabar",
+        newMsg: "yangi",
+        posts: "Postlar",
+        noPost: "Hali post yo'q",
+        newPost: "Yangi post",
+        cancel: "Bekor",
+        publish: "Joylashtirish",
+        loading: "Yuklanmoqda...",
+        selectImage: "Rasm tanlash",
+        dishName: "Taom nomi",
+        dishPlaceholder: "Masalan: Osh, Manti...",
+        accept: "Qabul qilish",
+        moreMsg: "ta xabar...",
+        replyBtn: "Javob berish"
+    },
+    chefMessages: {
+        title: "Xabarlar",
+        online: "Online",
+        offline: "Offline",
+        placeholder: "Xabar yozing...",
+        noChats: "Hali sizga xabar yuborgan mijoz yo'q",
+        noMsg: "Hali xabar yo'q",
+        typing: "yozmoqda...",
+        customer: "Mijoz"
+    },
+    chefProfileOwn: {
+        editBtn: "Profilni tahrirlash",
+        gallery: "Taomlar galereyasi",
+        noPost: "Hali post yo'q. Asosiy sahifadan post joylang!",
+        language: "Til", logout: "Akkountdan chiqish",
+        expSuffix: "yillik tajriba",
+        defaultName: "Oshpaz"
+    },
+    chefEditProfile: {
+        title: "Profilni tahrirlash",
+        firstNameLabel: "Ism", lastNameLabel: "Familiya",
+        phoneLabel: "Telefon raqami",
+        expLabel: "Ish tajribasi (yil)",
+        expPlaceholder: "Masalan: 5",
+        saveBtn: "Saqlash"
+    },
+    nav: { home: "ASOSIY", messages: "XABARLAR", profile: "PROFIL" },
+    editProfile: {
+        title: "Profilni tahrirlash",
+        firstName: "Ism", lastName: "Familiya",
+        phone: "Telefon raqami", saveBtn: "Saqlash"
+    },
+    order: {
+        addBtn: "Buyurtma qo'shish (naqd to'lov)",
+        addTitle: "Yangi buyurtma",
+        addDesc: "Mijoz naqd to'lagandan keyin kiriting",
+        customerName: "Mijoz ismi (ixtiyoriy)",
+        customerPlaceholder: "Masalan: Jasur",
+        dishName: "Taom nomi (ixtiyoriy)",
+        dishPlaceholder: "Masalan: Osh, Manti...",
+        amount: "Mijoz to'lagan summa (so'm)",
+        amountError: "Iltimos summani kiriting",
+        totalLabel: "Jami:",
+        commissionLabel: "Komissiya (10%):",
+        netLabel: "Sizga qoladi:",
+        saveBtn: "Saqlash",
+        success: "Buyurtma saqlandi!",
+        saveError: "Saqlashda xato",
+        serverError: "Server bilan aloqa yo'q",
+        defaultDish: "Buyurtma"
+    },
+    review: {
+        title: "Mijozlar baholari",
+        addBtn: "+ Baho qo'shish",
+        editBtn: "Bahoni o'zgartirish",
+        modalTitle: "Oshpazni baholang",
+        ratingLabel: "Baho (1-5 yulduz)",
+        ratingRequired: "Iltimos yulduz tanlang",
+        commentLabel: "Izoh (ixtiyoriy)",
+        commentPlaceholder: "Oshpaz haqida fikringizni yozing...",
+        saveBtn: "Saqlash",
+        success: "Bahoyingiz saqlandi!",
+        saveError: "Saqlashda xato",
+        serverError: "Server bilan aloqa yo'q",
+        noReviews: "Hali baho yo'q"
+    },
+    chefsPage: {
+        title: "Barcha oshpazlar",
+        search: "Oshpaz qidirish...",
+        noChefs: "Hali hech qanday oshpaz ro'yxatdan o'tmagan",
+        notFound: "Hech narsa topilmadi"
+    },
+    common: {
+        online: "Online", offline: "Offline",
+        typing: "yozmoqda...",
+        experience: "yillik tajriba",
+        experience2: "Tajriba",
+        rating: "Reyting",
+        orders: "Buyurtma",
+        defaultChef: "Oshpaz",
+        years: "yil",
+        moreMsg: "ta xabar..."
+    }
+};
+
+const ru = {
+    entrance: {
+        oldAccount: "Войти в старый аккаунт",
+        title: "OSHPAZ.UZ",
+        oldAccount: "Eski akk bilan kirish",
+        subtitle: "Начало вкусных приключений",
+        platform: "Вход на платформу",
+        userBtn: "Как пользователь",
+        chefBtn: "Как повар"
+    },
+    customer: {
+        welcome: "Добро пожаловать!",
+        enterInfo: "Введите данные для входа.",
+        phone: "Номер телефона", sms: "СМС код", continue: "Продолжить",
+        firstName: "Имя", lastName: "Фамилия",
+        firstNameError: "Пожалуйста, введите имя!",
+        lastNameError: "Пожалуйста, введите фамилию!",
+        phoneError: "Пожалуйста, введите номер телефона!",
+        smsError: "Пожалуйста, введите СМС код!",
+        smsSent: "отправлен СМС код",
+        back: "Назад"
+    },
+    chef: {
+        pageTitle: "Регистрация как повар",
+        profilePhoto: "Фото профиля",
+        personalInfo: "Личные данные",
+        firstName: "Имя", lastName: "Фамилия",
+        phoneNumber: "Номер телефона",
+        workExp: "Опыт работы (лет)",
+        createProfile: "Создать профиль"
+    },
+    errors: {
+        onlyLetters: "Только буквы",
+        minLength: "Минимум 2 буквы",
+        phoneLength: "Телефон должен быть 9 цифр",
+        smsLength: "СМС код должен быть 4 цифры",
+        expRange: "От 1 до 60",
+        expRequired: "Введите опыт работы",
+        fillAll: "Заполните все поля правильно"
+    },
+    glabal: {
+        logo: "Oshpaz.uz",
+        findChef: "Найти повара",
+        enterName: "Введите имя",
+        all: "Все",
+        noChefs: "Пока ни один повар не зарегистрирован",
+        notFound: "Ничего не найдено",
+        chefs: "Повара",
+        searchResults: "Результаты поиска",
+        newMsg: "новых",
+        noNotif: "Нет новых сообщений",
+        notifTitle: "Сообщения",
+        replyBtn: "Ответить"
+    },
+    footer: { home: "ГЛАВНАЯ", orders: "ЗАКАЗЫ", like: "LIKE", profile: "ПРОФИЛЬ" },
+    orders: {
+        title: "Заказы",
+        placeholder: "Напишите сообщение...",
+        noChats: "Чатов пока нет",
+        noMsg: "Сообщений нет"
+    },
+    chefProfile: {
+        about: "О поваре",
+        aboutText: "Я специалист по национальной кухне. Моя цель — представлять традиционные вкусы в современном формате.",
+        call: "Позвонить",
+        sms: "Написать SMS",
+        notFound: "Повар не найден",
+        experience: "Опыт"
+    },
+    like: {
+        title: "Любимые повара",
+        noLikes: "Пока нет любимых поваров",
+        search: "Поиск повара...",
+        notFound: "Ничего не найдено"
+    },
+    profile: {
+        title: "Профиль", editText: "Редактировать профиль",
+        language: "Язык", logout: "Выйти из аккаунта"
+    },
+    chefHome: {
+        title: "Заявки",
+        empty: "Пока никто не написал",
+        messages: "сообщений",
+        newMsg: "новых",
+        posts: "Посты",
+        noPost: "Постов пока нет",
+        newPost: "Новый пост",
+        cancel: "Отмена",
+        publish: "Опубликовать",
+        loading: "Загрузка...",
+        selectImage: "Выбрать фото",
+        dishName: "Название блюда",
+        dishPlaceholder: "Например: Плов, Манты...",
+        accept: "Принять",
+        moreMsg: "сообщений...",
+        replyBtn: "Ответить"
+    },
+    chefMessages: {
+        title: "Сообщения",
+        online: "Онлайн",
+        offline: "Офлайн",
+        placeholder: "Напишите сообщение...",
+        noChats: "Пока вам никто не написал",
+        noMsg: "Сообщений нет",
+        typing: "печатает...",
+        customer: "Клиент"
+    },
+    chefProfileOwn: {
+        editBtn: "Редактировать профиль",
+        gallery: "Галерея блюд",
+        noPost: "Постов пока нет. Добавьте пост с главной страницы!",
+        language: "Язык", logout: "Выйти из аккаунта",
+        expSuffix: "лет опыта",
+        defaultName: "Повар"
+    },
+    chefEditProfile: {
+        title: "Редактировать профиль",
+        firstNameLabel: "Имя", lastNameLabel: "Фамилия",
+        phoneLabel: "Номер телефона",
+        expLabel: "Опыт работы (лет)",
+        expPlaceholder: "Например: 5",
+        saveBtn: "Сохранить"
+    },
+    nav: { home: "ГЛАВНАЯ", messages: "СООБЩЕНИЯ", profile: "ПРОФИЛЬ" },
+    editProfile: {
+        title: "Редактировать профиль",
+        firstName: "Имя", lastName: "Фамилия",
+        phone: "Номер телефона", saveBtn: "Сохранить"
+    },
+    order: {
+        addBtn: "Добавить заказ (наличная оплата)",
+        addTitle: "Новый заказ",
+        addDesc: "Введите после получения наличных от клиента",
+        customerName: "Имя клиента (необязательно)",
+        customerPlaceholder: "Например: Jasur",
+        dishName: "Название блюда (необязательно)",
+        dishPlaceholder: "Например: Плов, Манты...",
+        amount: "Сумма оплаты клиента (сум)",
+        amountError: "Пожалуйста, введите сумму",
+        totalLabel: "Итого:",
+        commissionLabel: "Комиссия (10%):",
+        netLabel: "Вам остаётся:",
+        saveBtn: "Сохранить",
+        success: "Заказ сохранён!",
+        saveError: "Ошибка при сохранении",
+        serverError: "Нет связи с сервером",
+        defaultDish: "Заказ"
+    },
+    review: {
+        title: "Оценки клиентов",
+        addBtn: "+ Оставить оценку",
+        editBtn: "Изменить оценку",
+        modalTitle: "Оцените повара",
+        ratingLabel: "Оценка (1-5 звёзд)",
+        ratingRequired: "Пожалуйста, выберите звёзды",
+        commentLabel: "Комментарий (необязательно)",
+        commentPlaceholder: "Напишите ваше мнение о поваре...",
+        saveBtn: "Сохранить",
+        success: "Ваша оценка сохранена!",
+        saveError: "Ошибка при сохранении",
+        serverError: "Нет связи с сервером",
+        noReviews: "Оценок пока нет"
+    },
+    chefsPage: {
+        title: "Все повара",
+        search: "Поиск повара...",
+        noChefs: "Пока ни один повар не зарегистрирован",
+        notFound: "Ничего не найдено"
+    },
+    common: {
+        online: "Онлайн", offline: "Офлайн",
+        typing: "печатает...",
+        experience: "лет опыта",
+        experience2: "Опыт",
+        rating: "Рейтинг",
+        orders: "Заказы",
+        defaultChef: "Повар",
+        years: "лет",
+        moreMsg: "сообщений..."
+    }
+};
+
+i18n.use(initReactI18next).init({
+    resources: { uz: { translation: uz }, ru: { translation: ru } },
+    lng: localStorage.getItem("appLang") || "uz",
+    fallbackLng: "uz",
+    interpolation: { escapeValue: false }
+});
+
+i18n.on("languageChanged", (lang) => {
+    localStorage.setItem("appLang", lang);
+});
+
+export default i18n;

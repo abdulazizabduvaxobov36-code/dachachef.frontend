@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Panel — DachaChef</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #FFF5F0;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            padding: 16px 20px;
+            box-shadow: 0 1px 0 #EBEBEB;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1C110D;
+        }
+
+        .badge {
+            background: #C03F0C;
+            color: white;
+            border-radius: 20px;
+            padding: 3px 10px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        .summary-card .label {
+            font-size: 12px;
+            color: #9B614B;
+            margin-bottom: 6px;
+        }
+
+        .summary-card .value {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1C110D;
+        }
+
+        .summary-card.green .value {
+            color: #22C55E;
+        }
+
+        .summary-card.red .value {
+            color: #C03F0C;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 800;
+            color: #1C110D;
+            margin-bottom: 12px;
+        }
+
+        .chef-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        .chef-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .chef-name {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1C110D;
+        }
+
+        .chef-phone {
+            font-size: 12px;
+            color: #9B614B;
+        }
+
+        .chef-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .stat {
+            text-align: center;
+            background: #FFF5F0;
+            border-radius: 10px;
+            padding: 8px;
+        }
+
+        .stat .s-label {
+            font-size: 10px;
+            color: #9B614B;
+            margin-bottom: 3px;
+        }
+
+        .stat .s-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1C110D;
+        }
+
+        .stat.commission .s-value {
+            color: #C03F0C;
+        }
+
+        .stat.net .s-value {
+            color: #22C55E;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+        }
+
+        th {
+            background: #FFF0EC;
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            color: #9B614B;
+            font-weight: 700;
+        }
+
+        td {
+            padding: 12px;
+            font-size: 13px;
+            color: #1C110D;
+            border-bottom: 1px solid #F5F5F5;
+        }
+
+        .status {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .status.done {
+            background: #F0FFF4;
+            color: #22C55E;
+        }
+
+        .status.new {
+            background: #FFF0EC;
+            color: #C03F0C;
+        }
+
+        .status.accepted {
+            background: #EFF6FF;
+            color: #3B82F6;
+        }
+
+        .status.cancelled {
+            background: #FFF5F5;
+            color: #EF4444;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #9B614B;
+        }
+
+        .error {
+            background: #FFF5F5;
+            border: 1px solid #FECACA;
+            border-radius: 12px;
+            padding: 12px;
+            color: #C53030;
+            margin-bottom: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1.5px solid #F0E6E0;
+            background: white;
+            color: #9B614B;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .tab.active {
+            background: #C03F0C;
+            color: white;
+            border-color: #C03F0C;
+        }
+
+        .refresh-btn {
+            margin-left: auto;
+            padding: 8px 16px;
+            border-radius: 20px;
+            background: #FFF0EC;
+            color: #C03F0C;
+            border: 1.5px solid #F5C5B0;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .grand-total {
+            background: #C03F0C;
+            color: white;
+            border-radius: 16px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .grand-total .label {
+            font-size: 13px;
+            opacity: 0.85;
+        }
+
+        .grand-total .value {
+            font-size: 22px;
+            font-weight: 800;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <div>🍽️</div>
+        <h1>Admin Panel</h1>
+        <span class="badge">DachaChef</span>
+    </div>
+
+    <div class="container">
+        <div id="error-box" class="error" style="display:none"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('commissions')">💰 Komissiyalar</button>
+            <button class="tab" onclick="showTab('orders')">📋 Buyurtmalar</button>
+            <button class="refresh-btn" onclick="loadAll()">🔄 Yangilash</button>
+        </div>
+
+        <!-- KOMISSIYALAR -->
+        <div id="tab-commissions">
+            <div id="grand-total-box"></div>
+            <div id="summary-box" class="summary-grid"></div>
+            <div class="section-title">Oshpazlar bo'yicha hisob</div>
+            <div id="chefs-box">
+                <div class="loading">Yuklanmoqda...</div>
+            </div>
+        </div>
+
+        <!-- BUYURTMALAR -->
+        <div id="tab-orders" style="display:none">
+            <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center">
+                <span style="font-size:13px; color:#9B614B">Filtr:</span>
+                <select id="status-filter" onchange="loadOrders()"
+                    style="padding:6px 12px; border-radius:10px; border:1.5px solid #F0E6E0; font-size:13px; color:#1C110D">
+                    <option value="">Barchasi</option>
+                    <option value="new">Yangi</option>
+                    <option value="accepted">Qabul qilingan</option>
+                    <option value="done">Bajarilgan</option>
+                    <option value="cancelled">Bekor qilingan</option>
+                </select>
+            </div>
+            <div id="orders-box">
+                <div class="loading">Yuklanmoqda...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BASE = 'http://localhost:5000';
+
+        function showTab(name) {
+            document.getElementById('tab-commissions').style.display = name === 'commissions' ? '' : 'none';
+            document.getElementById('tab-orders').style.display = name === 'orders' ? '' : 'none';
+            document.querySelectorAll('.tab').forEach((t, i) => {
+                t.classList.toggle('active', (i === 0 && name === 'commissions') || (i === 1 && name === 'orders'));
+            });
+            if (name === 'orders') loadOrders();
+        }
+
+        function formatMoney(n) {
+            return Number(n || 0).toLocaleString('uz') + " so'm";
+        }
+
+        async function loadCommissions() {
+            try {
+                const res = await fetch(`${BASE}/orders/admin/commissions`);
+                const data = await res.json();
+
+                // Grand total
+                document.getElementById('grand-total-box').innerHTML = `
+          <div class="grand-total">
+            <div>
+              <div class="label">Jami komissiya (barcha oshpazlar)</div>
+              <div class="value">${formatMoney(data.grandTotalCommission)}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="label">Foiz</div>
+              <div class="value">${data.commissionRate}</div>
+            </div>
+          </div>`;
+
+                // Summary cards
+                const totalOrders = data.chefs.reduce((s, c) => s + c.ordersCount, 0);
+                const totalEarned = data.chefs.reduce((s, c) => s + c.totalEarned, 0);
+                document.getElementById('summary-box').innerHTML = `
+          <div class="summary-card"><div class="label">Jami oshpazlar</div><div class="value">${data.chefs.length}</div></div>
+          <div class="summary-card"><div class="label">Jami buyurtmalar</div><div class="value">${totalOrders}</div></div>
+          <div class="summary-card green"><div class="label">Jami aylanma</div><div class="value">${formatMoney(totalEarned)}</div></div>
+          <div class="summary-card red"><div class="label">Jami komissiya</div><div class="value">${formatMoney(data.grandTotalCommission)}</div></div>`;
+
+                // Chefs
+                if (data.chefs.length === 0) {
+                    document.getElementById('chefs-box').innerHTML = '<div class="loading">Hali bajarilgan buyurtma yo\'q</div>';
+                    return;
+                }
+                document.getElementById('chefs-box').innerHTML = data.chefs.map(c => `
+          <div class="chef-card">
+            <div class="chef-header">
+              <div>
+                <div class="chef-name">${c.chefName || 'Noma\'lum oshpaz'}</div>
+                <div class="chef-phone">📞 +998${c.chefPhone}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:20px;font-weight:800;color:#C03F0C">${formatMoney(c.totalCommission)}</div>
+                <div style="font-size:11px;color:#9B614B">qarzdor</div>
+              </div>
+            </div>
+            <div class="chef-stats">
+              <div class="stat"><div class="s-label">Buyurtmalar</div><div class="s-value">${c.ordersCount}</div></div>
+              <div class="stat"><div class="s-label">Jami tushum</div><div class="s-value">${formatMoney(c.totalEarned)}</div></div>
+              <div class="stat commission"><div class="s-label">Komissiya</div><div class="s-value commission">${formatMoney(c.totalCommission)}</div></div>
+              <div class="stat net"><div class="s-label">Oshpazga</div><div class="s-value net">${formatMoney(c.totalNet)}</div></div>
+            </div>
+          </div>`).join('');
+            } catch (e) {
+                showError('Kommissiyalarni yuklab bo\'lmadi: ' + e.message);
+            }
+        }
+
+        async function loadOrders() {
+            const status = document.getElementById('status-filter').value;
+            const url = `${BASE}/orders/admin/orders${status ? '?status=' + status : ''}`;
+            try {
+                document.getElementById('orders-box').innerHTML = '<div class="loading">Yuklanmoqda...</div>';
+                const res = await fetch(url);
+                const orders = await res.json();
+                if (orders.length === 0) {
+                    document.getElementById('orders-box').innerHTML = '<div class="loading">Buyurtmalar yo\'q</div>';
+                    return;
+                }
+                document.getElementById('orders-box').innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Sana</th>
+                <th>Oshpaz</th>
+                <th>Mijoz</th>
+                <th>Taom</th>
+                <th>Summa</th>
+                <th>Komissiya</th>
+                <th>Holat</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orders.map(o => `
+                <tr>
+                  <td>${new Date(o.createdAt).toLocaleDateString('uz-UZ')}</td>
+                  <td>${o.chefName || o.chefPhone}</td>
+                  <td>${o.customerName || o.customerPhone}</td>
+                  <td>${o.dishName}</td>
+                  <td>${formatMoney(o.amount)}</td>
+                  <td style="color:#C03F0C;font-weight:700">${formatMoney(o.commission)}</td>
+                  <td><span class="status ${o.status}">${statusLabel(o.status)}</span></td>
+                </tr>`).join('')}
+            </tbody>
+          </table>`;
+            } catch (e) {
+                showError('Buyurtmalarni yuklab bo\'lmadi: ' + e.message);
+            }
+        }
+
+        function statusLabel(s) {
+            return { new: 'Yangi', accepted: 'Qabul qilingan', done: 'Bajarildi', cancelled: 'Bekor' }[s] || s;
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('error-box');
+            el.textContent = '❌ ' + msg;
+            el.style.display = '';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        function loadAll() { loadCommissions(); }
+
+        loadAll();
+    </script>
+</body>
+</html>
