@@ -3,7 +3,7 @@ import { FaHome, FaCommentDots, FaUser, FaEdit, FaStar, FaSignOutAlt, FaGlobe, F
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
-import HeroHeader from '../Images/Hero Header.png';
+import HeroHeader from '/images/Hero Header.png';
 import Store from '../store';
 
 const ChefProfileOwnPage = () => {

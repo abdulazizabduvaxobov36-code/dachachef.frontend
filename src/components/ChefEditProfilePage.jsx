@@ -65,11 +65,17 @@ const ChefEditProfilePage = () => {
             const merged = { ...oldData, name, surname, phone, exp, image };
             // localStorage ga saqlaymiz
             localStorage.setItem('chefProfile', JSON.stringify(merged));
-            // Session yangilaymiz
             Store.setSession('chef', merged);
-            // registeredChefs ni yangilaymiz
             await Store.updateChef(oldPhone || phone, merged);
-            // Barcha tablar yangilansin
+            // Backend ga ham yangilash
+            try {
+                const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+                await fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(merged),
+                });
+            } catch { }
             window.dispatchEvent(new Event('chefs-updated'));
             navigate('/chef-profile');
         }

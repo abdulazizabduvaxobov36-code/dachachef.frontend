@@ -47,7 +47,7 @@ const Customer = () => {
     setTouched({ firstName: true, lastName: true, phone: true });
     if (!Object.keys(e).length) setStep(2);
   };
-  const step2 = () => {
+  const step2 = async () => {
     const e = validate2(); setErrors(e);
     setTouched(p => ({ ...p, smsCode: true }));
     if (!Object.keys(e).length) {
@@ -56,6 +56,15 @@ const Customer = () => {
       Store.setSession("customer", { phone, firstName, lastName });
       Store.startHeartbeat("customer", phone);
       Store.saveCustomerInfo(phone, { firstName, lastName, image: null });
+      // Backend ga ham saqlash
+      try {
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+        await fetch(`${AUTH_BASE}/customers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, firstName, lastName }),
+        });
+      } catch { }
       navigate("/glabal");
     }
   };

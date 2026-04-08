@@ -119,7 +119,7 @@ const GlabalPage = () => {
         <Box bgColor="white" px="16px" pt="14px" pb="12px" boxShadow="0 1px 0 #EBEBEB">
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Box display="flex" alignItems="center" gap="8px">
-              <img src="src/Images/icons8-restaurant-48.png" alt="" style={{ width: '30px', height: '30px' }} />
+              <img src="/images/icons8-restaurant-48.png" alt="" style={{ width: '30px', height: '30px' }} />
               <Text fontWeight="800" color="#1C110D" style={{ fontSize: '18px', letterSpacing: '-0.3px' }}>
                 {t('glabal.logo')}
               </Text>

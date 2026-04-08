@@ -28,7 +28,7 @@ const Entrance = () => {
 
     return (
         <Box minH="100dvh" position="relative" overflow="hidden"
-            bgImage="url(src/Images/Image.png)" bgSize="cover" bgPosition="center">
+            bgImage="url(/images/Image.png)" bgSize="cover" bgPosition="center">
             <Box position="absolute" inset="0" bgColor="rgba(20,10,5,0.55)" />
 
             <Box position="relative" zIndex={1} minH="100dvh" display="flex" flexDir="column"
@@ -39,7 +39,7 @@ const Entrance = () => {
                     <Box w="64px" h="64px" borderRadius="20px" bgColor="#C03F0C"
                         display="flex" alignItems="center" justifyContent="center" mb="12px"
                         boxShadow="0 8px 24px rgba(192,63,12,0.4)">
-                        <img src="src/Images/icons8-restaurant-48.png" alt="" style={{ width: "38px", height: "38px" }} />
+                        <img src="/images/icons8-restaurant-48.png" alt="" style={{ width: "38px", height: "38px" }} />
                     </Box>
                     <Text fontWeight="800" color="white" style={{ fontSize: "28px", letterSpacing: "1px" }}>
                         {t("entrance.title")}

@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { FaHome, FaClipboardList, FaHeart, FaUser, FaSignOutAlt, FaGlobe, FaChevronRight } from "react-icons/fa";
 import Store from "../store";
-import HeroHeader from "../Images/Hero Header.png";
+import HeroHeader from "/images/Hero Header.png";
 
 const ProfilePage = () => {
     const { t, i18n } = useTranslation();

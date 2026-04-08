@@ -1,13 +1,13 @@
 import { Box, Button, Text } from '@chakra-ui/react';
-import { FaArrowLeft, FaCommentDots, FaPhone } from 'react-icons/fa';
-import HeroHeader from '../Images/Hero Header.png';
-import Container10 from '../Images/Container 10.png';
-import Image2 from '../Images/Image 2.png';
-import Image3 from '../Images/Image 3.png';
-import Image4 from '../Images/Image 4.png';
-import Image5 from '../Images/Image 5.png';
-import Image6 from '../Images/Image 6.png';
-import Image7 from '../Images/Image 7.png';
+import { FaArrowLeft, FaCommentDots } from 'react-icons/fa';
+import HeroHeader from '/images/Hero Header.png';
+import Container10 from '/images/Container 10.png';
+import Image2 from '/images/Image 2.png';
+import Image3 from '/images/Image 3.png';
+import Image4 from '/images/Image 4.png';
+import Image5 from '/images/Image 5.png';
+import Image6 from '/images/Image 6.png';
+import Image7 from '/images/Image 7.png';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -29,7 +29,7 @@ const ChefProfileFamous = () => {
     return (
         <Box minH="100vh" bgColor="#FFF5F0" display="flex" flexDirection="column" alignItems="center" p={{ base: 2, sm: 4 }}>
 
-            <Box display="flex" alignItems="center" justifyContent="space-between" w="100%" maxW="430px" w="100%" mb={6}>
+            <Box display="flex" alignItems="center" justifyContent="space-between" w="100%" maxW="430px" mb={6}>
                 <Button
                     style={{ width: "clamp(32px, 9vw, 40px)", height: "clamp(32px, 9vw, 40px)" }}
                     bgColor="white"

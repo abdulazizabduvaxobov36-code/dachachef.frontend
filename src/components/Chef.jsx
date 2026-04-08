@@ -45,6 +45,15 @@ const Chef = () => {
       Store.setSession("chef", d);
       Store.startHeartbeat("chef", phone);
       await Store.addChef(d);
+      // Backend ga ham saqlash
+      try {
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+        await fetch(`${AUTH_BASE}/chefs`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, surname, phone, exp, image }),
+        });
+      } catch { }
       navigate("/chef-home");
     }
   };
@@ -99,9 +108,9 @@ const Chef = () => {
               {image
                 ? <img src={image} alt="" style={{ width: "90px", height: "90px", borderRadius: "50%", objectFit: "cover", border: "3px solid #C03F0C" }} />
                 : <Box w="90px" h="90px" borderRadius="full" bgColor="#FFF0EC" border="3px solid #F5C5B0"
-                    display="flex" alignItems="center" justifyContent="center">
-                    <FaUser style={{ fontSize: "36px", color: "#C03F0C" }} />
-                  </Box>
+                  display="flex" alignItems="center" justifyContent="center">
+                  <FaUser style={{ fontSize: "36px", color: "#C03F0C" }} />
+                </Box>
               }
               <Box position="absolute" bottom="0" right="0" w="28px" h="28px" borderRadius="full"
                 bgColor="#C03F0C" display="flex" alignItems="center" justifyContent="center"

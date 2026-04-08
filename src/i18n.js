@@ -62,12 +62,14 @@ const uz = {
         noMsg: "Hali xabar yo'q"
     },
     chefProfile: {
+        title: "Oshpaz profili",
         about: "Oshpaz haqida",
         aboutText: "Men milliy taomlar bo'yicha mutaxassisman. Mening asosiy maqsadim — an'anaviy lazzatlarni zamonaviy ko'rinishda taqdim etish.",
         call: "Qo'ng'iroq qilish",
-        sms: "SMS yozish",
+        sms: "Xabar yozish",
         notFound: "Oshpaz topilmadi",
-        experience: "Tajriba"
+        experience: "Tajriba",
+        gallery: "Taomlar galereyasi"
     },
     like: {
         title: "Sevimli oshpazlar",
@@ -117,7 +119,8 @@ const uz = {
     },
     chefEditProfile: {
         title: "Profilni tahrirlash",
-        firstNameLabel: "Ism", lastNameLabel: "Familiya",
+        firstNameLabel: "Ism",
+        lastNameLabel: "Familiya",
         phoneLabel: "Telefon raqami",
         expLabel: "Ish tajribasi (yil)",
         expPlaceholder: "Masalan: 5",
@@ -170,7 +173,8 @@ const uz = {
         notFound: "Hech narsa topilmadi"
     },
     common: {
-        online: "Online", offline: "Offline",
+        online: "Online",
+        offline: "Offline",
         typing: "yozmoqda...",
         experience: "yillik tajriba",
         experience2: "Tajriba",
@@ -244,12 +248,14 @@ const ru = {
         noMsg: "Сообщений нет"
     },
     chefProfile: {
+        title: "Профиль повара",
         about: "О поваре",
         aboutText: "Я специалист по национальной кухне. Моя цель — представлять традиционные вкусы в современном формате.",
         call: "Позвонить",
-        sms: "Написать SMS",
+        sms: "Написать сообщение",
         notFound: "Повар не найден",
-        experience: "Опыт"
+        experience: "Опыт",
+        gallery: "Галерея блюд"
     },
     like: {
         title: "Любимые повара",
@@ -299,7 +305,8 @@ const ru = {
     },
     chefEditProfile: {
         title: "Редактировать профиль",
-        firstNameLabel: "Имя", lastNameLabel: "Фамилия",
+        firstNameLabel: "Имя",
+        lastNameLabel: "Фамилия",
         phoneLabel: "Номер телефона",
         expLabel: "Опыт работы (лет)",
         expPlaceholder: "Например: 5",

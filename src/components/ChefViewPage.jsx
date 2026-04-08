@@ -1,6 +1,6 @@
 import { Box, Button, Text } from '@chakra-ui/react';
 import { FaArrowLeft, FaCommentDots, FaStar, FaUser, FaTimes } from 'react-icons/fa';
-import HeroHeader from '../Images/Hero Header.png';
+import HeroHeader from '/images/Hero Header.png';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';

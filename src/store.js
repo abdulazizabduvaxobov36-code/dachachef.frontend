@@ -16,7 +16,7 @@ const broadcast = (type, key) => { try { bc?.postMessage({ type, key }); } catch
 // Server API — xato bo'lsa null qaytaradi, dastur ishlashda davom etadi
 // Production da VITE_API_URL dan foydalanadi
 // Dev da Vite /api proxy mavjud bo'lsa, shu yo'l ishlaydi; aks holda 3001 to'g'ridan-to'g'ri chaqiradi.
-const DEFAULT_BACKEND = `${window.location.protocol}//${window.location.hostname}:5000`;
+const DEFAULT_BACKEND = `${window.location.protocol}//${window.location.hostname}:3001`;
 const BASE = import.meta.env.VITE_API_URL ||
   (window.location.port === '5173' ? DEFAULT_BACKEND : `${window.location.origin}/api`);
 

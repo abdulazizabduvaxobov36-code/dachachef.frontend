@@ -73,7 +73,7 @@ const LikePage = () => {
           px={{ base: "14px", sm: "18px" }} py={{ base: "12px", sm: "14px" }}
           bgColor="white" boxShadow="0 2px 12px rgba(192,63,12,0.07)">
           <Box display="flex" alignItems="center" gap={{ base: "8px", sm: "10px" }}>
-            <img src="src/Images/icons8-restaurant-48.png" alt=""
+            <img src="/images/icons8-restaurant-48.png" alt=""
               style={{ width: "clamp(26px, 7vw, 34px)", height: "clamp(26px, 7vw, 34px)" }} />
             <Text fontWeight="bold" color="#1C110D" style={{ fontSize: "clamp(16px, 4.5vw, 20px)" }}>
               {t("glabal.logo")}
