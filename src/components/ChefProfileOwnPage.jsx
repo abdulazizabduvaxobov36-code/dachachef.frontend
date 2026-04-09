@@ -12,6 +12,8 @@ const ChefProfileOwnPage = () => {
     const { t, i18n } = useTranslation();
     const [chefProfile, setChefProfile] = useState({});
     const [posts, setPosts] = useState([]);
+    const [ratings, setRatings] = useState([]);
+    const [averageRating, setAverageRating] = useState(0);
 
     useEffect(() => {
         const raw = JSON.parse(localStorage.getItem("chefProfile") || "null");
@@ -33,6 +35,34 @@ const ChefProfileOwnPage = () => {
         window.addEventListener("chefs-updated", onUpdate);
         return () => { window.removeEventListener("chefs-updated", onUpdate); unsub?.(); };
     }, []);
+
+    // Baholarni olish
+    const fetchRatings = async () => {
+        if (!chefProfile.phone) return;
+        try {
+            const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${AUTH_BASE}/orders/chef/${chefProfile.phone}/ratings`);
+            if (response.ok) {
+                const ratingsData = await response.json();
+                setRatings(ratingsData);
+                
+                // O'rtacha reytingni hisoblash
+                if (ratingsData.length > 0) {
+                    const sum = ratingsData.reduce((acc, r) => acc + r.rating, 0);
+                    const avg = (sum / ratingsData.length).toFixed(1);
+                    setAverageRating(avg);
+                } else {
+                    setAverageRating(0);
+                }
+            }
+        } catch (error) {
+            console.error('Baholarni olishda xatolik:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchRatings();
+    }, [chefProfile.phone]);
 
     const fullName = chefProfile.name ? `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim() : t("chefProfileOwn.defaultName");
     const exp = chefProfile.exp ? String(chefProfile.exp) : '';
@@ -65,8 +95,8 @@ const ChefProfileOwnPage = () => {
                 {/* Stats row */}
                 <Box display="flex" justifyContent="center" gap="32px" mt="16px">
                     {[
-                        { value: "5.0", label: t("common.rating"), icon: "⭐" },
-                        { value: "0", label: t("common.orders"), icon: "📦" },
+                        { value: averageRating > 0 ? averageRating : "–", label: t("common.rating"), icon: "⭐" },
+                        { value: ratings.length, label: t("common.orders"), icon: "📦" },
                         { value: exp || "–", label: t("common.experience2"), icon: "⏱" },
                     ].map((s, i) => (
                         <Box key={i} textAlign="center">

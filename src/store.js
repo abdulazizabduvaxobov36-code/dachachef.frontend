@@ -396,7 +396,41 @@ Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
   } catch { return null; }
 };
 
-// ─── AUTH (Backend API) ─────────────────────────────────────
+// Baho va izoh qoldirish
+Store.updateOrderRating = async (orderId, rating, review) => {
+  try {
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const r = await fetch(`${AUTH_BASE}/orders/${orderId}/rating`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating, review }),
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+};
+
+// Oshpazning barcha baholari
+Store.getChefRatings = async (chefPhone) => {
+  try {
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const r = await fetch(`${AUTH_BASE}/orders/chef/${chefPhone}/ratings`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+};
+
+// Mijoz qoldirgan barcha baholar
+Store.getCustomerRatings = async (customerPhone) => {
+  try {
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/ratings`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+};
+
+// --- AUTH (Backend API) ---─────────────────────────────────────
 Store.authRegister = async ({ name, email, password, role }) => {
   try {
     const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';

@@ -18,10 +18,21 @@ const Entrance = () => {
     }, []);
 
     const login = (acc) => {
+        // Oldingi sessiyani tozalash
+        Store.clearSession();
+        localStorage.removeItem("customerData");
+        localStorage.removeItem("chefProfile");
+        
+        // Yangi sessiyani o'rnatish
         Store.setSession(acc.role, acc.data);
         Store.startHeartbeat(acc.role, acc.data.phone);
-        if (acc.role === "customer") { localStorage.setItem("customerData", JSON.stringify(acc.data)); navigate("/glabal"); }
-        else { localStorage.setItem("chefProfile", JSON.stringify(acc.data)); navigate("/chef-home"); }
+        if (acc.role === "customer") { 
+            localStorage.setItem("customerData", JSON.stringify(acc.data)); 
+            navigate("/glabal"); 
+        } else { 
+            localStorage.setItem("chefProfile", JSON.stringify(acc.data)); 
+            navigate("/chef-home"); 
+        }
     };
 
     const remove = (e, key) => { e.stopPropagation(); Store.removeSavedAccount(key); setSaved(Store.getSavedAccounts()); };

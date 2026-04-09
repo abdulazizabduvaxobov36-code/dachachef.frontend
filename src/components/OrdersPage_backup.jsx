@@ -44,7 +44,7 @@ const OrdersPage = () => {
   const [typingTimeout, setTypingTimeout] = useState(null);
   const [chefTyping, setChefTyping] = useState(false);
   const [newMsgChatId, setNewMsgChatId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null); // Instagram highlight
   const [orders, setOrders] = useState([]);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -70,7 +70,9 @@ const OrdersPage = () => {
     try {
       const result = await Store.updateOrderRating(orderId, rating, review);
       if (result) {
+        // Buyurtmalarni yangilash
         await fetchOrders();
+        // Xabar yuborish (ixtiyoriy)
         const order = orders.find(o => o._id === orderId);
         if (order && selectedChat) {
           const ratingText = `${rating} yulduz${review ? ': ' + review : ''}`;
@@ -86,73 +88,57 @@ const OrdersPage = () => {
   const getChats = useCallback(() => {
     const activeChefs = Store.getChefs();
     const activePhones = new Set(activeChefs.map(c => c.phone));
+    // Faqat aktiv (o'chirilmagan) oshpazlar bilan chatlarni ko'rsatish
     return activeChefs.map(c => {
       const chatId = Store.makeChatId(myPhone, c.phone);
       const msgs = Store.getMessages(chatId);
       if (msgs.length === 0) return null;
       const last = msgs[msgs.length - 1];
       return {
-        chatId,
-        customerPhone: myPhone,
-        chefPhone: c.phone,
+        id: chatId,
         chefName: `${c.name} ${c.surname}`,
+        chefPhone: c.phone,
         chefImage: c.image || null,
-        msgs,
-        preview: msgs.slice(-4),
+        lastMsg: last.text,
+        time: last.ts,
         unread: Store.getUnread(chatId, myPhone),
-        lastMsg: last,
+        lastSender: last.sender,
       };
-    }).filter(Boolean);
+    }).filter(Boolean).sort((a, b) => b.unread - a.unread);
   }, [myPhone]);
 
-  const [chats, setChats] = useState(getChats());
-  const [notifications, setNotifications] = useState([]);
+  const [chats, setChats] = useState(getChats);
+  const totalUnread = chats.reduce((s, c) => s + (c.unread || 0), 0);
 
-  const refreshNotifs = () => setNotifications(Store.getChefNotifications(myPhone));
-  const isOnline = (phone) => Store.isOnline(phone);
-  const getMessages = () => {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('chat_') && k.includes(myPhone));
-    return keys.map(k => {
-      const chatId = k.replace("chat_", "");
-      if (localStorage.getItem(`accepted_${chatId}`)) return null;
-      const msgs = Store.getMessages(chatId);
-      if (msgs.length === 0) return null;
-      const customerPhone = chatId.replace(`_${myPhone}`, "");
-      const preview = msgs.slice(-4);
-      const unread = Store.getUnread(chatId, myPhone);
-      return { chatId, customerPhone, msgs, preview, unread, lastMsg: msgs[msgs.length - 1] };
-    }).filter(Boolean);
-  };
-  const [ordersNotif, setOrders] = useState(getOrders());
-
-  const handleTyping = (val) => {
-    setMessage(val);
-    if (selectedChat) {
-      if (typingTimeout) clearTimeout(typingTimeout);
-      setTypingTimeout(setTimeout(() => Store.sendTyping(selectedChat.id, myPhone), 500));
-    }
-  };
-
-  const sendMsg = () => {
-    if (!message.trim() || !selectedChat) return;
-    Store.sendMessage(selectedChat.id, myPhone, message.trim(), 'customer');
-    setMessage('');
-  };
-
-  const confirmDelete = (chatId) => setDeletingId(chatId);
-  const doDelete = (chatId) => {
-    Store.deleteChat(chatId);
-    setChats(getChats());
-    if (selectedChat?.id === chatId) setSelectedChat(null);
-    setDeletingId(null);
-  };
+  // Yangi xabar tinglash
+  useEffect(() => {
+    const onMsg = (e) => {
+      setChats(getChats());
+      const cid = e.detail?.chatId;
+      if (cid && cid !== selectedChat?.id) {
+        setNewMsgChatId(cid);
+        setTimeout(() => setNewMsgChatId(null), 3000);
+      }
+    };
+    const onStorage = (e) => {
+      if (e.key?.startsWith('chat_') || e.key === 'registeredChefs') setChats(getChats());
+    };
+    window.addEventListener('message-received', onMsg);
+    window.addEventListener('storage', onStorage);
+    const poll = setInterval(() => setChats(getChats()), 1000);
+    return () => {
+      window.removeEventListener('message-received', onMsg);
+      window.removeEventListener('storage', onStorage);
+      clearInterval(poll);
+    };
+  }, [selectedChat?.id, getChats]);
 
   useEffect(() => {
     const onMsg = () => { setMessages(getMessages()); refreshNotifs(); };
     window.addEventListener("message-received", onMsg);
     if (myPhone) {
       refreshNotifs();
-      fetchOrders();
+      fetchOrders(); // Buyurtmalarni yuklash
       const cleanup = Store.startHeartbeat("customer", myPhone);
       let lastOrdersKey = JSON.stringify(getOrders().map(o => o.chatId + o.msgs.length + o.unread));
       const interval = setInterval(() => {
@@ -167,6 +153,7 @@ const OrdersPage = () => {
     }
   }, [myPhone, getOrders, getMessages]);
 
+  // Tanlangan chat xabarlari
   useEffect(() => {
     if (!selectedChat) return;
     const fresh = Store.getMessages(selectedChat.id);
@@ -177,59 +164,98 @@ const OrdersPage = () => {
       Store.clearUnread(selectedChat.id, myPhone);
       setChats(getChats());
     });
-    const unsubTyping = Store.listenTyping(selectedChat.id, isTyping => setChefTyping(isTyping));
-    return () => { unsub && unsub(); unsubTyping && unsubTyping(); };
-  }, [selectedChat?.id, getChats]);
-
-  useEffect(() => {
-    const onMsg = () => setChats(getChats());
-    const onStorage = () => setChats(getChats());
-    window.addEventListener('message-received', onMsg);
-    window.addEventListener('storage', onStorage);
-    const poll = setInterval(() => setChats(getChats()), 1000);
-    return () => {
-      window.removeEventListener('message-received', onMsg);
-      window.removeEventListener('storage', onStorage);
-      clearInterval(poll);
+    const onStorage = e => {
+      if (e.key === `chat_${selectedChat.id}`) {
+        const msgs = Store.getMessages(selectedChat.id);
+        setMessages(prev => ({ ...prev, [selectedChat.id]: msgs }));
+        Store.clearUnread(selectedChat.id, myPhone);
+        setChats(getChats());
+      }
     };
-  }, [selectedChat?.id, getChats]);
+    window.addEventListener('storage', onStorage);
+    return () => { unsub?.(); window.removeEventListener('storage', onStorage); };
+  }, [selectedChat?.id]);
 
+  // Typing indicator
   useEffect(() => {
-    if (newMsgChatId && newMsgChatId !== selectedChat?.id) {
-      const chat = chats.find(c => c.chatId === newMsgChatId);
-      if (chat) setSelectedChat(chat);
-      setNewMsgChatId(null);
-    }
-  }, [newMsgChatId, selectedChat?.id, chats]);
+    if (!selectedChat) return;
+    const id = setInterval(() => {
+      const ts = localStorage.getItem(`typing_${selectedChat.id}_chef`);
+      setChefTyping(ts ? Date.now() - Number(ts) < 3000 : false);
+    }, 300);
+    return () => clearInterval(id);
+  }, [selectedChat?.id]);
 
-  useEffect(() => {
-    if (!endRef.current) return;
-    endRef.current.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, selectedChat?.id]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, selectedChat, chefTyping]);
 
-  const Avatar = ({ image, name, size }) => (
-    <Box w={size} h={size} borderRadius="full" overflow="hidden" bgColor="#F0E6E0" display="flex" alignItems="center" justifyContent="center">
-      {image ? <img src={image} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Text color="#9B614B" style={{ fontSize: size / 3 }}>{name?.[0] || '?'}</Text>}
-    </Box>
-  );
+  const sendMsg = () => {
+    if (!message.trim() || !selectedChat) return;
+    localStorage.removeItem(`typing_${selectedChat.id}_customer`);
+    Store.sendMessage(selectedChat.id, { text: message, sender: 'customer', from: myPhone, to: selectedChat.chefPhone });
+    setMessages(prev => ({ ...prev, [selectedChat.id]: Store.getMessages(selectedChat.id) }));
+    setMessage('');
+    setChats(getChats());
+  };
+
+  const handleTyping = val => {
+    setMessage(val);
+    if (!selectedChat) return;
+    localStorage.setItem(`typing_${selectedChat.id}_customer`, Date.now().toString());
+    if (typingTimeout) clearTimeout(typingTimeout);
+    setTypingTimeout(setTimeout(() => localStorage.removeItem(`typing_${selectedChat.id}_customer`), 3000));
+  };
+
+  const confirmDelete = (chatId) => { setDeletingId(chatId); setTimeout(() => setDeletingId(null), 3000); };
+  const doDelete = (chatId) => { localStorage.removeItem(`chat_${chatId}`); setChats(getChats()); setDeletingId(null); if (selectedChat?.id === chatId) setSelectedChat(null); };
+
+  const isOnline = phone => phone ? Store.isOnline('chef', phone) : false;
+
+  // Avatar komponenti
+  const Avatar = ({ image, name, size = 48 }) => {
+    const letter = name?.charAt(0)?.toUpperCase() || '?';
+    return image
+      ? <img src={image} alt="" style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+      : <Box w={`${size}px`} h={`${size}px`} borderRadius="full" bgColor="#C03F0C" flexShrink={0}
+        display="flex" alignItems="center" justifyContent="center" color="white" fontWeight="700"
+        style={{ fontSize: `${Math.round(size * 0.35)}px` }}>
+        {letter}
+      </Box>;
+  };
 
   const NavBar = () => (
-    <Box position="fixed" bottom="0" left="0" right="0" bgColor="white" borderTop="1px solid #EBEBEB" px="20px" py="12px" zIndex={100}>
-      <Box display="flex" justifyContent="space-around" alignItems="center">
-        <Box cursor="pointer" onClick={() => navigate('/')}><FaHome size={20} color="#C03F0C" /></Box>
-        <Box cursor="pointer" onClick={() => navigate('/orders')}><FaClipboardList size={20} color="#C03F0C" /></Box>
-        <Box cursor="pointer" onClick={() => navigate('/like')}><FaHeart size={20} color="#C03F0C" /></Box>
-        <Box cursor="pointer" onClick={() => navigate('/profile')}><FaUser size={20} color="#C03F0C" /></Box>
-      </Box>
+    <Box className="fixed-bottom" borderTop="1px solid #F0EBE6"
+      display="flex" justifyContent="space-around" alignItems="center" py="10px">
+      {[
+        { icon: FaHome, route: '/glabal', label: t('footer.home'), badge: 0 },
+        { icon: FaClipboardList, route: '/orderspage', label: t('footer.orders'), badge: totalUnread },
+        { icon: FaHeart, route: '/like', label: t('footer.like'), badge: 0 },
+        { icon: FaUser, route: '/profile', label: t('footer.profile'), badge: 0 },
+      ].map(tab => (
+        <Box key={tab.route} display="flex" flexDir="column" alignItems="center" gap="3px"
+          cursor="pointer" px="14px" onClick={() => navigate(tab.route)}>
+          <Box position="relative" display="inline-block">
+            <tab.icon style={{ fontSize: '22px', color: location.pathname === tab.route ? '#C03F0C' : '#B0A8A4' }} />
+            {tab.badge > 0 && (
+              <Box position="absolute" top="-6px" right="-8px" minW="17px" h="17px" px="3px"
+                bgColor="#C03F0C" borderRadius="full" display="flex" alignItems="center"
+                justifyContent="center" color="white" fontWeight="800" style={{ fontSize: '9px' }}>
+                {tab.badge > 9 ? '9+' : tab.badge}
+              </Box>
+            )}
+          </Box>
+          <Text fontWeight="700" style={{ fontSize: '10px', color: location.pathname === tab.route ? '#C03F0C' : '#B0A8A4' }}>{tab.label}</Text>
+        </Box>
+      ))}
     </Box>
   );
 
-  // === CHAT QISMI ===
+  // === CHAT OYNASI ===
   if (selectedChat) {
     const chatMsgs = messages[selectedChat.id] || [];
     return (
-      <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column">
-        <Box bgColor="white" px="16px" py="12px"
+      <Box h="100dvh" display="flex" flexDir="column" bgColor="#FFF5F0">
+        {/* Header */}
+        <Box bgColor="white" px="16px" pt="14px" pb="12px"
           display="flex" alignItems="center" gap="12px"
           boxShadow="0 1px 0 #F0EBE6" flexShrink={0}>
           <Box cursor="pointer" onClick={() => { setSelectedChat(null); setChats(getChats()); }}
@@ -237,6 +263,7 @@ const OrdersPage = () => {
             display="flex" alignItems="center" justifyContent="center" flexShrink={0}>
             <FaArrowLeft style={{ fontSize: '14px', color: '#C03F0C' }} />
           </Box>
+          {/* Oshpaz rasmiga bossak profil sahifasiga o'tish */}
           <Box cursor="pointer" flexShrink={0}
             onClick={() => {
               const chefs = Store.getChefs();
@@ -255,22 +282,24 @@ const OrdersPage = () => {
               {selectedChat.chefName}
             </Text>
             <Text style={{ fontSize: '11px', color: chefTyping ? '#C03F0C' : isOnline(selectedChat.chefPhone) ? '#22C55E' : '#B0A8A4' }}>
-              {chefTyping ? `typing...` : isOnline(selectedChat.chefPhone) ? 'online' : 'offline'}
+              {chefTyping ? `✍️ ${t('common.typing')}` : isOnline(selectedChat.chefPhone) ? t('common.online') : t('common.offline')}
             </Text>
           </Box>
         </Box>
 
+        {/* Xabarlar */}
         <Box flex="1" overflowY="auto" px="16px" py="14px"
           display="flex" flexDir="column" gap="8px" style={{ paddingBottom: '80px' }}>
           {chatMsgs.length === 0 && (
             <Box textAlign="center" py="40px">
-              <Text color="#B0A8A4" style={{ fontSize: '13px' }}>No messages</Text>
+              <Text color="#B0A8A4" style={{ fontSize: '13px' }}>{t('orders.noMsg')}</Text>
             </Box>
           )}
           {chatMsgs.map((msg, i) => (
             <Box key={i} display="flex"
               justifyContent={msg.sender === 'customer' ? 'flex-end' : 'flex-start'}
               alignItems="flex-end" gap="6px">
+              {/* FAQAT oshpaz xabarida — oshpaz rasmi chap tomonda */}
               {msg.sender !== 'customer' && (
                 <Avatar image={selectedChat.chefImage} name={selectedChat.chefName} size={28} />
               )}
@@ -285,6 +314,7 @@ const OrdersPage = () => {
                   {msg.ts}
                 </Text>
               </Box>
+              {/* Mijoz o'z rasmini KO'RMAYDI */}
             </Box>
           ))}
           {chefTyping && (
@@ -340,7 +370,7 @@ const OrdersPage = () => {
                         )}
                       </Box>
                       {!order.rating && (
-                        <button
+                        <Button
                           onClick={() => {
                             setSelectedOrder(order);
                             setShowRatingModal(true);
@@ -357,7 +387,7 @@ const OrdersPage = () => {
                           }}
                         >
                           Baho berish
-                        </button>
+                        </Button>
                       )}
                     </Box>
                   </Box>
@@ -366,10 +396,11 @@ const OrdersPage = () => {
           )}
         </Box>
 
+        {/* Input */}
         <Box className="chat-input-area">
           <Box flex="1" display="flex" alignItems="center" bgColor="#F5F3F1"
             borderRadius="25px" px="16px" style={{ height: '44px' }}>
-            <input placeholder="Message..." value={message}
+            <input placeholder={t('orders.placeholder')} value={message}
               onChange={e => handleTyping(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendMsg()}
               style={{ width: '100%', border: 'none', outline: 'none', fontSize: '15px', background: 'transparent', color: '#1C110D' }} />
@@ -388,61 +419,91 @@ const OrdersPage = () => {
 
   // === CHAT RO'YXATI ===
   return (
-    <>
-      <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column">
-        <Box bgColor="white" px="20px" py="16px" boxShadow="0 1px 0 #EBEBEB">
-          <Text fontWeight="800" color="#1C110D" style={{ fontSize: "20px" }}>Orders</Text>
-        </Box>
-        <Box flex="1" px="20px" py="12px">
-          {chats.length === 0 ? (
-            <Box textAlign="center" py="60px">
-              <Text color="#B0A8A4" style={{ fontSize: "14px" }}>No orders yet</Text>
-            </Box>
-          ) : (
-            chats.map(chat => (
-              <Box key={chat.chatId} p="16px" bgColor="white" borderRadius="16px"
-                mb="12px" boxShadow="0 2px 8px rgba(0,0,0,0.06)"
-                display="flex" alignItems="center" gap="12px"
-                onClick={() => setSelectedChat(chat)}
-                style={{ cursor: 'pointer' }}>
-                <Avatar image={chat.chefImage} name={chat.chefName} size={48} />
-                <Box flex="1" minW={0}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb="4px">
-                    <Text fontWeight="700" color="#1C110D" noOfLines={1} style={{ fontSize: "15px" }}>
-                      {chat.chefName}
-                    </Text>
-                    <Text style={{ fontSize: "10px", flexShrink: 0, marginLeft: "8px", color: "#B0A8A4" }}>
-                      {chat.lastMsg?.ts}
-                    </Text>
-                  </Box>
-                  <Text noOfLines={1} color="#9B614B" style={{ fontSize: "13px" }}>
-                    {chat.unread > 0 && <span style={{ color: "#C03F0C", fontWeight: "600" }}>{chat.unread} new messages</span>}
-                    {chat.lastMsg?.text}
+    <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column">
+      <Box bgColor="white" px="16px" pt="14px" pb="12px" boxShadow="0 1px 0 #F0EBE6">
+        <Text fontWeight="800" color="#1C110D" style={{ fontSize: '18px' }}>{t('orders.title')}</Text>
+      </Box>
+
+      <Box flex="1" pb="80px" pt="14px" px="16px" display="flex" flexDir="column" gap="10px">
+        {chats.length === 0 && (
+          <Box textAlign="center" py="60px">
+            <Text color="#B0A8A4" style={{ fontSize: '14px' }}>{t('orders.noChats')}</Text>
+          </Box>
+        )}
+        {chats.map(chat => {
+          const isNew = chat.unread > 0;
+          const isHighlight = newMsgChatId === chat.id;
+          return (
+            <Box key={chat.id}
+              bgColor={isHighlight ? "#FFF0EC" : isNew ? "#FFFAF8" : "white"}
+              borderRadius="18px" p="14px"
+              display="flex" alignItems="center" gap="12px" cursor="pointer"
+              boxShadow={isHighlight ? "0 4px 16px rgba(192,63,12,0.2)" : isNew ? "0 2px 12px rgba(192,63,12,0.1)" : "0 2px 10px rgba(0,0,0,0.06)"}
+              border={isHighlight ? "1.5px solid #F5C5B0" : isNew ? "1px solid #FFE8DC" : "1px solid transparent"}
+              transition="all 0.3s"
+              onClick={() => {
+                setSelectedChat(chat);
+                Store.clearUnread(chat.id, myPhone);
+                setChats(getChats());
+              }}>
+              {/* Avatar */}
+              <Box position="relative" flexShrink={0}>
+                <Avatar image={chat.chefImage} name={chat.chefName} size={50} />
+                <Box position="absolute" bottom="0" right="0" w="12px" h="12px" borderRadius="full"
+                  bgColor={isOnline(chat.chefPhone) ? '#22C55E' : '#D1D5DB'} border="2px solid white" />
+              </Box>
+
+              {/* Info */}
+              <Box flex="1" minW={0}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb="3px">
+                  <Text fontWeight={isNew ? "800" : "700"} color="#1C110D" noOfLines={1}
+                    style={{ fontSize: '15px' }}>
+                    {chat.chefName}
+                  </Text>
+                  <Text fontWeight={isNew ? "700" : "400"}
+                    style={{ fontSize: '11px', color: isNew ? '#C03F0C' : '#B0A8A4', flexShrink: 0, marginLeft: '8px' }}>
+                    {chat.time}
                   </Text>
                 </Box>
-                {chat.unread > 0 && (
-                  <Box w="20px" h="20px" bgColor="#C03F0C" borderRadius="full"
-                    display="flex" alignItems="center" justifyContent="center"
-                    style={{ fontSize: '10px', flexShrink: 0, marginLeft: '8px' }}>
-                    {chat.unread > 9 ? '9+' : chat.unread}
-                  </Box>
-                )}
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                  <Text noOfLines={1}
+                    style={{
+                      fontSize: '13px', flex: 1,
+                      color: isNew && chat.lastSender !== 'customer' ? '#C03F0C' : '#9B8E8A',
+                      fontWeight: isNew && chat.lastSender !== 'customer' ? '600' : '400'
+                    }}>
+                    {chat.lastMsg}
+                  </Text>
+                  {isNew && (
+                    <Box bgColor="#C03F0C" color="white" borderRadius="full" fontWeight="700"
+                      minW="20px" h="20px" px="4px" display="flex" alignItems="center" justifyContent="center"
+                      style={{ fontSize: '10px', flexShrink: 0, marginLeft: '8px' }}>
+                      {chat.unread > 9 ? '9+' : chat.unread}
+                    </Box>
+                  )}
+                </Box>
               </Box>
-            ))
-          )}
-        </Box>
-        <NavBar />
-      </Box>
-      <RatingModal
-        isOpen={showRatingModal}
-        onClose={() => {
-          setShowRatingModal(false);
-          setSelectedOrder(null);
-        }}
-        order={selectedOrder}
-        onSubmitRating={handleRatingSubmit}
-      />
-    </>
+
+              {/* O'chirish */}
+              <Box flexShrink={0}
+                onClick={e => { e.stopPropagation(); if (deletingId === chat.id) { doDelete(chat.id); } else { confirmDelete(chat.id); } }}
+                px="10px" py="6px" borderRadius="12px"
+                bgColor={deletingId === chat.id ? "#FEE2E2" : "#F8F8F8"}
+                border={deletingId === chat.id ? "1px solid #FECACA" : "1px solid #E2E8F0"}
+                transition="all 0.2s" title={deletingId === chat.id ? "Tasdiqlash uchun yana bosing" : "O'chirish"}>
+                <Text style={{
+                  fontSize: deletingId === chat.id ? '10px' : '13px',
+                  color: deletingId === chat.id ? '#C53030' : '#6B7280',
+                  fontWeight: deletingId === chat.id ? '700' : '600', whiteSpace: 'nowrap'
+                }}>
+    </Box>
+  </Box>
+);
+
+// yangi qo'shilgan kodlar
+const renderContent = () => {
+  return (
+    // ... (qolgan kodlar)
   );
 };
 

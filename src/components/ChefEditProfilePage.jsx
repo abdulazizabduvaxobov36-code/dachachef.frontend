@@ -60,24 +60,47 @@ const ChefEditProfilePage = () => {
         setErrors(e);
         setTouched({ name: true, surname: true, exp: true });
         if (Object.keys(e).length === 0) {
-            // Eski ma'lumotlarni saqlab yangilarini ustiga yozamiz
-            const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
-            const merged = { ...oldData, name, surname, phone, exp, image };
-            // localStorage ga saqlaymiz
-            localStorage.setItem('chefProfile', JSON.stringify(merged));
-            Store.setSession('chef', merged);
-            await Store.updateChef(oldPhone || phone, merged);
-            // Backend ga ham yangilash
+            // Loading state
+            const saveButton = document.querySelector('[data-save-button]');
+            if (saveButton) {
+                saveButton.disabled = true;
+                saveButton.textContent = 'Saqlanmoqda...';
+            }
+            
             try {
+                // Eski ma'lumotlarni saqlab yangilarini ustiga yozamiz
+                const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
+                const merged = { ...oldData, name, surname, phone, exp, image };
+                
+                // Backend ga yangilash
                 const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
-                await fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
+                const response = await fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(merged),
                 });
-            } catch { }
-            window.dispatchEvent(new Event('chefs-updated'));
-            navigate('/chef-profile');
+                
+                if (!response.ok) {
+                    throw new Error('Backend ga saqlashda xatolik');
+                }
+                
+                // localStorage ga saqlaymiz
+                localStorage.setItem('chefProfile', JSON.stringify(merged));
+                Store.setSession('chef', merged);
+                await Store.updateChef(oldPhone || phone, merged);
+                
+                window.dispatchEvent(new Event('chefs-updated'));
+                navigate('/chef-profile');
+            } catch (error) {
+                console.error('Profil saqlashda xatolik:', error);
+                alert('Profil saqlashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.');
+                
+                // Buttonni qayta faollashtirish
+                if (saveButton) {
+                    saveButton.disabled = false;
+                    saveButton.textContent = 'Saqlash';
+                }
+            }
         }
     };
     const hasErr = (key) => errors[key] && touched[key];
@@ -166,6 +189,7 @@ const ChefEditProfilePage = () => {
             <Box className="fixed-bottom" px={{ base: "14px", sm: "16px" }} py={{ base: "12px", sm: "14px" }}
                 bgColor="white" borderTop="1px solid #F0F0F0" zIndex={10}>
                 <Button w="100%" bgColor="#C03F0C" color="white" fontWeight="bold"
+                    data-save-button
                     style={{ height: "clamp(46px, 13vw, 54px)", borderRadius: "18px", fontSize: "clamp(14px, 3.8vw, 15px)" }}
                     _hover={{ bgColor: "#a0300a", transform: "scale(1.02)" }} transition="all 0.2s"
                     leftIcon={<FaCheck size={13} />} onClick={handleSave}>
