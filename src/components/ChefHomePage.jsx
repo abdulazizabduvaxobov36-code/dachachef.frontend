@@ -35,7 +35,7 @@ const ChefHomePage = () => {
     // ─── BUYURTMA MODAL ───────────────────────────────────────
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [orderCustomerName, setOrderCustomerName] = useState('');
-    const [orderDishName, setOrderDishName] = useState('');
+    const [orderDishName, setOrderDishName] = useState(''); // Olib tashlandi, chunki oshpaz bir nechta taom tayyorlaydi
     const [orderAmount, setOrderAmount] = useState('');
     const [orderNote, setOrderNote] = useState('');
     const [orderLoading, setOrderLoading] = useState(false);
@@ -59,7 +59,6 @@ const ChefHomePage = () => {
                     customerName: orderCustomerName,
                     chefPhone: myPhone,
                     chefName: `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim(),
-                    dishName: orderDishName || t('order.defaultDish') || 'Buyurtma',
                     amount: Number(orderAmount),
                     note: orderNote,
                 }),
@@ -70,7 +69,6 @@ const ChefHomePage = () => {
                     setShowOrderModal(false);
                     setOrderSuccess(false);
                     setOrderCustomerName('');
-                    setOrderDishName('');
                     setOrderAmount('');
                     setOrderNote('');
                 }, 1500);
@@ -443,19 +441,7 @@ const ChefHomePage = () => {
                             </Box>
                         </Box>
 
-                        {/* Taom nomi */}
-                        <Box mb="12px">
-                            <Text fontWeight="600" color="#9B614B" mb="6px" style={{ fontSize: "12px" }}>
-                                {t('order.dishName') || "Taom nomi (ixtiyoriy)"}
-                            </Text>
-                            <Box display="flex" alignItems="center" bgColor="#FFF5F0" borderRadius="14px"
-                                px="14px" border="1.5px solid #F0E6E0" style={{ height: "48px" }}>
-                                <input value={orderDishName} onChange={e => setOrderDishName(e.target.value)}
-                                    placeholder={t('order.dishPlaceholder') || "Masalan: Osh, Manti..."}
-                                    style={{ width: "100%", border: "none", outline: "none", fontSize: "15px", color: "#1C110D", background: "transparent" }} />
-                            </Box>
-                        </Box>
-
+                        
                         {/* Summa — MAJBURIY */}
                         <Box mb="12px">
                             <Text fontWeight="600" color="#9B614B" mb="6px" style={{ fontSize: "12px" }}>
