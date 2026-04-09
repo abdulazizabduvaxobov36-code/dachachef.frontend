@@ -378,6 +378,24 @@ export const Store = {
 
 export default Store;
 
+Store.getCustomerAllOrders = async (customerPhone) => {
+  try {
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/all`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+};
+
+Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
+  try {
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/chef/${chefPhone}`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+};
+
 // ─── AUTH (Backend API) ─────────────────────────────────────
 Store.authRegister = async ({ name, email, password, role }) => {
   try {

@@ -41,6 +41,50 @@ const ChefHomePage = () => {
     const [orderLoading, setOrderLoading] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [orderError, setOrderError] = useState('');
+    const [customerOrderCount, setCustomerOrderCount] = useState(0); // Mijozning oldingi buyurtmalari soni
+    const [chefTotalEarned, setChefTotalEarned] = useState(0); // Oshpazning jami pul yig'ishi
+    const [chefTotalCommission, setChefTotalCommission] = useState(0); // Oshpazning jami komissiyasi
+
+    // Oshpazning jami pul yig'ishini olish
+    const fetchChefTotalEarned = async () => {
+        if (!myPhone) return;
+        const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const r = await fetch(`${AUTH_BASE}/orders/chef/${myPhone}`);
+        if (!r.ok) return;
+        const data = await r.json();
+        if (data && data.summary) {
+            setChefTotalEarned(data.summary.totalNet || 0); // Oshpazga qolgan pul
+            setChefTotalCommission(data.summary.totalCommission || 0); // Oshpazning jami komissiyasi
+        }
+    };
+
+    // Mijozning barcha buyurtmalarini olish
+    const fetchCustomerAllOrders = async (customerPhone) => {
+        if (!customerPhone) return;
+        const data = await Store.getCustomerAllOrders(customerPhone);
+        if (data) {
+            setCustomerOrderCount(data.totalOrders || 0);
+        }
+    };
+
+    // Mijozning oldingi buyurtmalar sonini olish
+    const fetchCustomerOrderCount = async (customerPhone) => {
+        if (!customerPhone || !myPhone) return;
+        const data = await Store.getCustomerOrdersForChef(customerPhone, myPhone);
+        if (data) {
+            setCustomerOrderCount(data.ordersCount || 0);
+        }
+    };
+
+    // Mijoz ismi o'zgarganda buyurtmalar sonini yangilash
+    const handleCustomerNameChange = (value) => {
+        setOrderCustomerName(value);
+        if (value && value.trim()) {
+            fetchCustomerOrderCount(value); // Endi faqat o'sha oshpazga berilganlar
+        } else {
+            setCustomerOrderCount(0);
+        }
+    };
 
     const handleAddOrder = async () => {
         if (!orderAmount.trim() || Number(orderAmount) <= 0) {
@@ -112,6 +156,10 @@ const ChefHomePage = () => {
         });
         window.addEventListener('posts-updated', refresh);
         refresh();
+        
+        // Oshpazning jami pul yig'ishini yuklash
+        fetchChefTotalEarned();
+        
         return () => { unsub && unsub(); window.removeEventListener('posts-updated', refresh); };
     }, [myPhone]);
 
@@ -427,6 +475,20 @@ const ChefHomePage = () => {
                         <Text color="#9B614B" mb="16px" style={{ fontSize: "13px" }}>
                             {t('order.addDesc') || "Mijoz naqd to'lagandan keyin kiriting"}
                         </Text>
+                        
+                        {/* Oshpazning jami pul yig'ishi */}
+                        {chefTotalEarned > 0 && (
+                            <Box mb="12px" p="8px" bgColor="#F0FFF4" borderRadius="12px" border="1px solid #BBF7D0">
+                                <Text fontWeight="600" color="#22C55E" style={{ fontSize: "12px" }}>
+                                    Sizning jami daromadingiz: {chefTotalEarned.toLocaleString()} so'm
+                                </Text>
+                                {chefTotalCommission > 0 && (
+                                    <Text fontWeight="600" color="#C03F0C" style={{ fontSize: "11px", marginTop: "4px" }}>
+                                        Komissiya: {chefTotalCommission.toLocaleString()} so'm
+                                    </Text>
+                                )}
+                            </Box>
+                        )}
 
                         {/* Mijoz ismi */}
                         <Box mb="12px">
@@ -435,9 +497,14 @@ const ChefHomePage = () => {
                             </Text>
                             <Box display="flex" alignItems="center" bgColor="#FFF5F0" borderRadius="14px"
                                 px="14px" border="1.5px solid #F0E6E0" style={{ height: "48px" }}>
-                                <input value={orderCustomerName} onChange={e => setOrderCustomerName(e.target.value)}
+                                <input value={orderCustomerName} onChange={e => handleCustomerNameChange(e.target.value)}
                                     placeholder={t('order.customerPlaceholder') || "Masalan: Jasur"}
                                     style={{ width: "100%", border: "none", outline: "none", fontSize: "15px", color: "#1C110D", background: "transparent" }} />
+                                {customerOrderCount > 0 && (
+                                    <Text color="#C03F0C" fontWeight="600" style={{ fontSize: "11px", whiteSpace: "nowrap", marginLeft: "8px" }}>
+                                        ({customerOrderCount} ta buyurtma)
+                                    </Text>
+                                )}
                             </Box>
                         </Box>
 

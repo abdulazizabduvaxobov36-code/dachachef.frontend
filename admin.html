@@ -284,6 +284,7 @@
 
         <div class="tabs">
             <button class="tab active" onclick="showTab('commissions')">💰 Komissiyalar</button>
+            <button class="tab" onclick="showTab('pairs')">👥 Mijoz-Oshpaz Juftliklari</button>
             <button class="tab" onclick="showTab('orders')">📋 Buyurtmalar</button>
             <button class="refresh-btn" onclick="loadAll()">🔄 Yangilash</button>
         </div>
@@ -298,7 +299,15 @@
             </div>
         </div>
 
-        <!-- BUYURTMALAR -->
+        <!-- MIJOZ-OSHPAZ JUFTLIKLARI -->
+        <div id="tab-pairs" style="display:none">
+            <div id="pairs-grand-total-box"></div>
+            <div id="pairs-summary-box" class="summary-grid"></div>
+            <div class="section-title">Mijoz-Oshpaz Juftliklari</div>
+            <div id="pairs-box">
+                <div class="loading">Yuklanmoqda...</div>
+            </div>
+        </div>
         <div id="tab-orders" style="display:none">
             <div style="margin-bottom:12px; display:flex; gap:8px; align-items:center">
                 <span style="font-size:13px; color:#9B614B">Filtr:</span>
@@ -322,10 +331,13 @@
 
         function showTab(name) {
             document.getElementById('tab-commissions').style.display = name === 'commissions' ? '' : 'none';
+            document.getElementById('tab-pairs').style.display = name === 'pairs' ? '' : 'none';
             document.getElementById('tab-orders').style.display = name === 'orders' ? '' : 'none';
             document.querySelectorAll('.tab').forEach((t, i) => {
-                t.classList.toggle('active', (i === 0 && name === 'commissions') || (i === 1 && name === 'orders'));
+                t.classList.toggle('active', (i === 0 && name === 'commissions') || (i === 1 && name === 'pairs') || (i === 2 && name === 'orders'));
             });
+            if (name === 'commissions') loadCommissions();
+            if (name === 'pairs') loadPairs();
             if (name === 'orders') loadOrders();
         }
 
@@ -386,6 +398,59 @@
           </div>`).join('');
             } catch (e) {
                 showError('Kommissiyalarni yuklab bo\'lmadi: ' + e.message);
+            }
+        }
+
+        async function loadPairs() {
+            try {
+                const res = await fetch(`${BASE}/orders/customer-chef-pairs`);
+                const data = await res.json();
+
+                // Grand total
+                document.getElementById('pairs-grand-total-box').innerHTML = `
+          <div class="grand-total">
+            <div>
+              <div class="label">Jami juftliklar (mijoz-oshpaz)</div>
+              <div class="value">${data.totalPairs}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="label">Jami komissiya</div>
+              <div class="value">${formatMoney(data.grandTotalCommission)}</div>
+            </div>
+          </div>`;
+
+                // Summary cards
+                document.getElementById('pairs-summary-box').innerHTML = `
+          <div class="summary-card"><div class="label">Jami juftliklar</div><div class="value">${data.totalPairs}</div></div>
+          <div class="summary-card green"><div class="label">Jami aylanma</div><div class="value">${formatMoney(data.grandTotalNet + data.grandTotalCommission)}</div></div>
+          <div class="summary-card red"><div class="label">Jami komissiya</div><div class="value">${formatMoney(data.grandTotalCommission)}</div></div>`;
+
+                // Pairs
+                if (data.pairs.length === 0) {
+                    document.getElementById('pairs-box').innerHTML = '<div class="loading">Hali bajarilgan buyurtma yo\'q</div>';
+                    return;
+                }
+                document.getElementById('pairs-box').innerHTML = data.pairs.map(p => `
+          <div class="chef-card">
+            <div class="chef-header">
+              <div>
+                <div class="chef-name">${p.customerName || 'Noma\'lum mijoz'} → ${p.chefName || 'Noma\'lum oshpaz'}</div>
+                <div class="chef-phone">👤 ${p.customerPhone} → 📞 ${p.chefPhone}</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:20px;font-weight:800;color:#22C55E">${formatMoney(p.totalNet)}</div>
+                <div style="font-size:11px;color:#9B614B">oshpazga</div>
+              </div>
+            </div>
+            <div class="chef-stats">
+              <div class="stat"><div class="s-label">Buyurtmalar</div><div class="s-value">${p.ordersCount}</div></div>
+              <div class="stat"><div class="s-label">Jami tushum</div><div class="s-value">${formatMoney(p.totalEarned)}</div></div>
+              <div class="stat commission"><div class="s-label">Komissiya</div><div class="s-value commission">${formatMoney(p.totalCommission)}</div></div>
+              <div class="stat net"><div class="s-label">Oshpazga</div><div class="s-value net">${formatMoney(p.totalNet)}</div></div>
+            </div>
+          </div>`).join('');
+            } catch (e) {
+                showError('Mijoz-oshpaz juftliklarini yuklab bo\'lmadi: ' + e.message);
             }
         }
 
