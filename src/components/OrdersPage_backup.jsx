@@ -33,8 +33,8 @@ const OrdersPage = () => {
 
   const findInitial = () => {
     const chefs = Store.getChefs();
-    if (navChefPhone) { const c = chefs.find(c => c.phone === navChefPhone); if (c) return buildChat(c); }
-    if (navChefName) { const c = chefs.find(c => `${c.name} ${c.surname}` === navChefName); if (c) return buildChat(c); }
+    if (navChefPhone) { const chef = chefs.find(c => c.phone === navChefPhone); if (chef) return buildChat(chef); }
+    if (navChefName) { const chef = chefs.find(c => `${c.name} ${c.surname}` === navChefName); if (chef) return buildChat(chef); }
     return null;
   };
 
@@ -191,7 +191,7 @@ const OrdersPage = () => {
   const sendMsg = () => {
     if (!message.trim() || !selectedChat) return;
     localStorage.removeItem(`typing_${selectedChat.id}_customer`);
-    Store.sendMessage(selectedChat.id, { text: message, sender: 'customer', from: myPhone, to: selectedChat.chefPhone });
+    Store.sendMessage(selectedChat.id, myPhone, message.trim(), 'customer');
     setMessages(prev => ({ ...prev, [selectedChat.id]: Store.getMessages(selectedChat.id) }));
     setMessage('');
     setChats(getChats());
@@ -496,14 +496,15 @@ const OrdersPage = () => {
                   color: deletingId === chat.id ? '#C53030' : '#6B7280',
                   fontWeight: deletingId === chat.id ? '700' : '600', whiteSpace: 'nowrap'
                 }}>
+                  {deletingId === chat.id ? "O'chirish" : "×"}
+                </Text>
+              </Box>
+            </Box>
+          );
+        })}
+      </Box>
+      <NavBar />
     </Box>
-  </Box>
-);
-
-// yangi qo'shilgan kodlar
-const renderContent = () => {
-  return (
-    // ... (qolgan kodlar)
   );
 };
 
