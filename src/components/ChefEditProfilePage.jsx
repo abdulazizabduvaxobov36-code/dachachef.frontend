@@ -64,9 +64,15 @@ const ChefEditProfilePage = () => {
                 const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
                 const merged = { ...oldData, name, surname, phone, exp, image };
 
-                // Avval localStorage ga saqlaymiz — backend xato bo'lsa ham ishlaydi
+                // Avval localStorage ga saqlaymiz - backend xato bo'lsa ham ishlaydi
                 localStorage.setItem('chefProfile', JSON.stringify(merged));
                 Store.setSession('chef', merged);
+                
+                // Store.updateChef ni chaqiramiz - bu localStorage dagi oshpazlar ro'yxatini yangilaydi
+                await Store.updateChef(oldPhone || phone, merged);
+                
+                // Event yuboramiz - barcha sahifalar yangilansin
+                window.dispatchEvent(new Event('chefs-updated'));
                 
                 // Backendga ham yuboramiz (xato bo'lsa ham navigate qilamiz)
                 try {
@@ -81,8 +87,6 @@ const ChefEditProfilePage = () => {
                         throw new Error(`Server xatolik: ${response.status}`);
                     }
                     
-                    await Store.updateChef(oldPhone || phone, merged);
-                    window.dispatchEvent(new Event('chefs-updated'));
                     navigate('/chef-profile');
                 } catch (error) {
                     console.error('Profil saqlashda xatolik:', error);
