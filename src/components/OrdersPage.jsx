@@ -21,6 +21,20 @@ const OrdersPage = () => {
   const customerData = getCD();
   const myPhone = customerData.phone || 'guest';
 
+  // Mijoz ma'lumotlarini tekshirish va yangilash
+  useEffect(() => {
+    if (myPhone === 'guest') {
+      // Agar mijoz ma'lumotlari bo'lmasa, qayta tekshirish
+      const timer = setTimeout(() => {
+        const updatedData = getCD();
+        if (updatedData.phone !== 'guest') {
+          window.location.reload(); // Sahifani qayta yuklash
+        }
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [myPhone]);
+
   const navChefPhone = location.state?.chefPhone;
   const navChefName = location.state?.chefName;
 
@@ -52,16 +66,26 @@ const OrdersPage = () => {
 
   // Buyurtmalarni olish
   const fetchOrders = async () => {
-    if (!myPhone || myPhone === 'guest') return;
+    if (!myPhone || myPhone === 'guest') {
+      console.log('Mijoz telefon raqami topilmadi:', myPhone);
+      setOrders([]); // Bo'sh array qo'yish
+      return;
+    }
     try {
       const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      console.log('Buyurtmalarni olish uchun so\'rov:', `${AUTH_BASE}/orders/customer/${myPhone}/all`);
       const response = await fetch(`${AUTH_BASE}/orders/customer/${myPhone}/all`);
       if (response.ok) {
         const data = await response.json();
+        console.log('Olingan buyurtmalar:', data);
         setOrders(data.orders || []);
+      } else {
+        console.error('Buyurtmalarni olishda xatolik:', response.status);
+        setOrders([]);
       }
     } catch (error) {
       console.error('Buyurtmalarni olishda xatolik:', error);
+      setOrders([]);
     }
   };
 
@@ -393,7 +417,14 @@ const OrdersPage = () => {
           <Text fontWeight="800" color="#1C110D" style={{ fontSize: "20px" }}>Orders</Text>
         </Box>
         <Box flex="1" px="20px" py="12px">
-          {chats.length === 0 ? (
+          {myPhone === 'guest' ? (
+            <Box textAlign="center" py="60px">
+              <Text color="#B0A8A4" style={{ fontSize: "14px" }}>Iltimos, avval akkauntingizni yarating</Text>
+              <Text color="#C03F0C" style={{ fontSize: "12px", marginTop: "8px" }}>
+                Mijoz sifatida ro'yxatdan o'ting
+              </Text>
+            </Box>
+          ) : chats.length === 0 ? (
             <Box textAlign="center" py="60px">
               <Text color="#B0A8A4" style={{ fontSize: "14px" }}>No orders yet</Text>
             </Box>
