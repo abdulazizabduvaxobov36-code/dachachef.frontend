@@ -31,6 +31,7 @@ const GlabalPage = () => {
 
   const refreshAll = () => {
     const latest = Store.getChefs();
+    console.log('GlabalPage refreshAll - chefs updated:', latest.length);
     setChefs([...latest]);
     setNotifs(Store.getCustomerNotifications(myPhone, latest));
   };

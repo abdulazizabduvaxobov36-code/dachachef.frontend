@@ -103,7 +103,20 @@ const OrdersPage = () => {
         const order = orders.find(o => o._id === orderId);
         if (order && selectedChat) {
           const ratingText = `${rating} yulduz${review ? ': ' + review : ''}`;
+          // Mijozga SMS yuborish
           Store.sendMessage(selectedChat.id, { text: `Sizga ${ratingText} baho berdim!`, sender: 'customer', from: myPhone, to: selectedChat.chefPhone });
+          
+          // Oshpazga notification yuborish
+          const customerData = getCD();
+          await Store.sendChefNotification(selectedChat.chefPhone, {
+            type: 'rating',
+            customerName: customerData.firstName ? `${customerData.firstName} ${customerData.lastName}` : 'Mijoz',
+            customerPhone: myPhone,
+            rating: rating,
+            review: review,
+            orderAmount: order.amount,
+            timestamp: new Date().toISOString()
+          });
         }
       }
     } catch (error) {

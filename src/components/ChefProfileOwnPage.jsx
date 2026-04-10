@@ -159,8 +159,21 @@ const ChefProfileOwnPage = () => {
                 <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 1px 6px rgba(0,0,0,0.05)">
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb="12px">
                         <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>Mijozlar baholari</Text>
-                        <Box bgColor="#FFF0EC" borderRadius="10px" px="8px" py="3px">
-                            <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>{ratings.length} ta</Text>
+                        <Box display="flex" alignItems="center" gap="8px">
+                            <Box bgColor="#FFF0EC" borderRadius="10px" px="8px" py="3px">
+                                <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>{ratings.length} ta</Text>
+                            </Box>
+                            {ratings.length > 3 && (
+                                <Button
+                                    h="28px" px="12px" borderRadius="12px"
+                                    bgColor="#C03F0C" color="white" fontWeight="600"
+                                    style={{ fontSize: "11px" }}
+                                    _hover={{ bgColor: "#a0300a" }}
+                                    onClick={() => navigate('/chef-all-reviews', { state: { chefProfile, ratings } })}
+                                >
+                                    Hammasi
+                                </Button>
+                            )}
                         </Box>
                     </Box>
                     {ratings.length === 0 ? (

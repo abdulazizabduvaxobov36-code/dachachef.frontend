@@ -400,14 +400,22 @@ Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
 Store.updateOrderRating = async (orderId, rating, review) => {
   try {
     const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    console.log('Rating API call:', `${AUTH_BASE}/orders/${orderId}/rating`, { rating, review });
     const r = await fetch(`${AUTH_BASE}/orders/${orderId}/rating`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rating, review }),
     });
-    if (!r.ok) return null;
+    console.log('Rating API response:', r.status, r.ok);
+    if (!r.ok) {
+      console.error('Rating API error:', await r.text());
+      return null;
+    }
     return await r.json();
-  } catch { return null; }
+  } catch (error) {
+    console.error('Rating API exception:', error);
+    return null;
+  }
 };
 
 // Oshpazning barcha baholari
@@ -425,6 +433,20 @@ Store.getCustomerRatings = async (customerPhone) => {
   try {
     const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/ratings`);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+};
+
+// Oshpazga notification yuborish (baho va izoh uchun)
+Store.sendChefNotification = async (chefPhone, notification) => {
+  try {
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const r = await fetch(`${AUTH_BASE}/notifications/chef`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chefPhone, ...notification }),
+    });
     if (!r.ok) return null;
     return await r.json();
   } catch { return null; }

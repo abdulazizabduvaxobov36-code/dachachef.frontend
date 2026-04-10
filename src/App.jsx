@@ -16,6 +16,7 @@ import ChefProfileOwnPage from "./components/ChefProfileOwnPage";
 import ChefMessagesPage from "./components/ChefMessagesPage";
 import ChefEditProfilePage from "./components/ChefEditProfilePage";
 import ChefViewPage from "./components/ChefViewPage";
+import ChefAllReviewsPage from "./components/ChefAllReviewsPage";
 
 const App = () => {
   // App birinchi ochilganda eski offline cheflarni tozalash
@@ -41,6 +42,7 @@ const App = () => {
       <Route path="/chef-messages" element={<ChefMessagesPage />} />
       <Route path="/chef-edit-profile" element={<ChefEditProfilePage />} />
       <Route path="/chef-view/:id" element={<ChefViewPage />} />
+      <Route path="/chef-all-reviews" element={<ChefAllReviewsPage />} />
     </Routes>
   );
 };

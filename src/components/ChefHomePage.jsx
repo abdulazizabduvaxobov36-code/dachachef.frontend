@@ -95,18 +95,25 @@ const ChefHomePage = () => {
         setOrderError('');
         try {
             const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            console.log('Creating order API:', `${AUTH_BASE}/orders`);
+            const orderData = {
+                customerPhone: orderCustomerName || 'noma\'lum',
+                customerName: orderCustomerName,
+                chefPhone: myPhone,
+                chefName: `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim(),
+                amount: Number(orderAmount),
+                note: orderNote,
+            };
+            console.log('Order data:', orderData);
+            
             const res = await fetch(`${AUTH_BASE}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    customerPhone: orderCustomerName || 'noma\'lum',
-                    customerName: orderCustomerName,
-                    chefPhone: myPhone,
-                    chefName: `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim(),
-                    amount: Number(orderAmount),
-                    note: orderNote,
-                }),
+                body: JSON.stringify(orderData),
             });
+            
+            console.log('Order API response:', res.status, res.ok);
+            
             if (res.ok) {
                 setOrderSuccess(true);
                 setTimeout(() => {
@@ -117,10 +124,13 @@ const ChefHomePage = () => {
                     setOrderNote('');
                 }, 1500);
             } else {
-                setOrderError(t('order.saveError') || "Saqlashda xato");
+                const errorText = await res.text();
+                console.error('Order API error:', errorText);
+                setOrderError(t('order.saveError') || `Xato: ${errorText}`);
             }
-        } catch {
-            setOrderError(t('order.serverError') || "Server bilan aloqa yo'q");
+        } catch (error) {
+            console.error('Order API exception:', error);
+            setOrderError(t('order.serverError') || `Server xatosi: ${error.message}`);
         }
         setOrderLoading(false);
     };
