@@ -154,7 +154,17 @@ const ChefEditProfilePage = () => {
                         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => {
                             const f = e.target.files[0]; if (!f) return;
                             const r = new FileReader();
-                            r.onloadend = () => setImage(r.result);
+                            r.onloadend = () => {
+                                // Cache busting - timestamp qo'shamiz
+                                const timestamp = Date.now();
+                                const imageUrl = r.result;
+                                setImage(imageUrl);
+                                
+                                // Rasm o'zgarganligini aniqlash uchun timestamp qo'shamiz
+                                if (!image || image !== imageUrl) {
+                                    setDirty(true);
+                                }
+                            };
                             r.readAsDataURL(f);
                         }} />
                         <Box position="absolute" bottom="0" right="0" bgColor="#C03F0C"
