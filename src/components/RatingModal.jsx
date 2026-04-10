@@ -22,7 +22,8 @@ const RatingModal = ({ isOpen, onClose, order, onSubmitRating }) => {
       setRating(0);
       setReview('');
     } catch (error) {
-      alert('Baho qoldirishda xatolik: ' + error.message);
+      console.error('Baho qoldirishda xatolik:', error);
+      alert('Baho qoldirishda xatolik. Iltimos, qayta urinib ko\'ring.');
     } finally {
       setLoading(false);
     }
