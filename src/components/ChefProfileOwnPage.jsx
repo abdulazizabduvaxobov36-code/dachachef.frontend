@@ -47,6 +47,7 @@ const ChefProfileOwnPage = () => {
                 const reviewsList = data.reviews || [];
                 setRatings(reviewsList);
                 setAverageRating(data.avgRating || 0);
+                setAverageRating(data.avgRating || 0);
             }
         } catch (error) {
             console.error('Baholarni olishda xatolik:', error);
@@ -88,7 +89,7 @@ const ChefProfileOwnPage = () => {
                 {/* Stats row */}
                 <Box display="flex" justifyContent="center" gap="32px" mt="16px">
                     {[
-                        { value: averageRating > 0 ? averageRating : "–", label: t("common.rating"), icon: "⭐" },
+                        { value: averageRating > 0 ? Number(averageRating).toFixed(1) : "–", label: t("common.rating"), icon: "⭐" },
                         { value: ratings.length, label: t("common.orders"), icon: "📦" },
                         { value: exp || "–", label: t("common.experience2"), icon: "⏱" },
                     ].map((s, i) => (

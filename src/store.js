@@ -81,15 +81,15 @@ export const Store = {
     if (i >= 0) {
       const oldPhone = all[i].phone;
       const newPhone = updates.phone;
-      
+
       // Telefon raqami o'zgargan bo'lsa, eski ma'lumotlarni tozalash
       if (oldPhone && newPhone && oldPhone !== newPhone) {
         console.log('Chef phone changed from', oldPhone, 'to', newPhone);
-        
+
         // Eski telefon raqami bilan bog'liq ma'lumotlarni tozalash
         Object.keys(localStorage)
-          .filter(key => 
-            key.startsWith(`saved_chef_${oldPhone}`) || 
+          .filter(key =>
+            key.startsWith(`saved_chef_${oldPhone}`) ||
             key.startsWith(`chef_${oldPhone}`) ||
             key.startsWith(`chat_`) && key.endsWith(`_${oldPhone}`) ||
             key.startsWith(`unread_`) && key.includes(`_${oldPhone}`)
@@ -98,7 +98,7 @@ export const Store = {
             console.log('Removing old key:', key);
             localStorage.removeItem(key);
           });
-        
+
         // Eski oshpazni ro'yxatdan o'chirib, yangisini qo'shish
         all.splice(i, 1);
         const newChef = { ...updates, registeredAt: Date.now() };
@@ -411,7 +411,7 @@ export default Store;
 
 Store.getCustomerAllOrders = async (customerPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/all`);
     if (!r.ok) return null;
     return await r.json();
@@ -420,7 +420,7 @@ Store.getCustomerAllOrders = async (customerPhone) => {
 
 Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/chef/${chefPhone}`);
     if (!r.ok) return null;
     return await r.json();
@@ -432,7 +432,6 @@ Store.updateOrderRating = async (orderId, rating, review) => {
   try {
     const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     console.log('Rating API call:', `${AUTH_BASE}/orders/${orderId}/rating`, { rating, review });
-    
     const r = await fetch(`${AUTH_BASE}/orders/${orderId}/rating`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },

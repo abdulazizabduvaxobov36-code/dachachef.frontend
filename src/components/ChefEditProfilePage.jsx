@@ -58,11 +58,11 @@ const ChefEditProfilePage = () => {
         navigate(-1);
     };
     const handleSave = async () => {
-        if (imageLoading) {
-            alert(t('chefEditProfile.waitImage') || 'Iltimos, rasm yuklanishini kuting.');
-            return;
-        }
         if (saving) return;
+        // Rasm hali yuklanayotgan bo'lsa, biroz kutamiz
+        if (imageLoading) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
         const e = validate();
         setErrors(e);
         setTouched({ name: true, surname: true, exp: true });
@@ -74,7 +74,7 @@ const ChefEditProfilePage = () => {
 
                 // Avval localStorage ga saqlaymiz - backend xato bo'lsa ham ishlaydi
                 localStorage.setItem('chefProfile', JSON.stringify(merged));
-                
+
                 // Telefon raqami o'zgargan bo'lsa, eski sessionni tozalash
                 if (oldPhone && oldPhone !== phone) {
                     // Eski telefon raqami bilan saqlangan sessionlarni tozalash
@@ -82,16 +82,16 @@ const ChefEditProfilePage = () => {
                     localStorage.removeItem(`chef_${oldPhone}`);
                     sessionStorage.removeItem('session');
                 }
-                
+
                 // Yangi sessionni saqlash
                 Store.setSession('chef', merged);
-                
+
                 // Store.updateChef ni chaqiramiz - bu localStorage dagi oshpazlar ro'yxatini yangilaydi
                 await Store.updateChef(oldPhone || phone, merged);
-                
+
                 // Event yuboramiz - barcha sahifalar yangilansin
                 window.dispatchEvent(new Event('chefs-updated'));
-                
+
                 // Backendga ham yuboramiz (xato bo'lsa ham navigate qilamiz)
                 try {
                     const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
@@ -100,11 +100,11 @@ const ChefEditProfilePage = () => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(merged),
                     });
-                    
+
                     if (!response.ok) {
                         throw new Error(`Server xatolik: ${response.status}`);
                     }
-                    
+
                     navigate('/chef-profile');
                 } catch (error) {
                     console.error('Profil saqlashda xatolik:', error);

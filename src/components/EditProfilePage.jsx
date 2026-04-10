@@ -53,7 +53,8 @@ const EditProfilePage = () => {
             localStorage.setItem("customerData", JSON.stringify(updated));
             Store.setSession("customer", updated);
             Store.saveCustomerInfo(phone, { firstName, lastName, image });
-            // Backend ga ham yangilash
+            window.dispatchEvent(new Event("customerData-updated"));
+            // Backend ga ham yangilash (xato bo'lsa ham navigate qilamiz)
             try {
                 const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
                 await fetch(`${AUTH_BASE}/customers/${phone}`, {
@@ -62,7 +63,6 @@ const EditProfilePage = () => {
                     body: JSON.stringify({ firstName, lastName, phone, image }),
                 });
             } catch { }
-            window.dispatchEvent(new Event("customerData-updated"));
             navigate("/profile");
         }
     };

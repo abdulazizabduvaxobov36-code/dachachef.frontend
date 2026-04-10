@@ -44,19 +44,38 @@ const ChefViewPage = () => {
     const [reviewError, setReviewError] = useState('');
     const [myExistingReview, setMyExistingReview] = useState(null);
 
-    const session = Store.getSession();
-    const isCustomer = session?.role === 'customer';
-    const customerPhone = session?.data?.phone || '';
-    const customerName = session?.data?.firstName || session?.data?.name || '';
     const [hasDoneOrder, setHasDoneOrder] = useState(false);
+    const [currentCustomerPhone, setCurrentCustomerPhone] = useState('');
+    const [currentCustomerName, setCurrentCustomerName] = useState('');
+    const [isCustomer, setIsCustomer] = useState(false);
 
-    // Akk almashinishida baho formani tozalash
+    // Session ni har doim yangilab turish - akk almashinishida ishlaydi
     useEffect(() => {
-        setMyRating(0);
-        setMyComment('');
-        setMyExistingReview(null);
-        setShowReviewModal(false);
-    }, [customerPhone]);
+        const updateSession = () => {
+            const session = Store.getSession();
+            const phone = session?.role === 'customer' ? (session?.data?.phone || '') : '';
+            const name = session?.data?.firstName || session?.data?.name || '';
+            const wasCustomer = isCustomer;
+            const oldPhone = currentCustomerPhone;
+            setIsCustomer(session?.role === 'customer');
+            setCurrentCustomerPhone(phone);
+            setCurrentCustomerName(name);
+            // Akk o'zgarganda formani tozalaymiz
+            if (oldPhone !== phone) {
+                setMyRating(0);
+                setMyComment('');
+                setMyExistingReview(null);
+                setShowReviewModal(false);
+                setHasDoneOrder(false);
+            }
+        };
+        updateSession();
+        window.addEventListener('storage', updateSession);
+        return () => window.removeEventListener('storage', updateSession);
+    }, []);
+
+    const customerPhone = currentCustomerPhone;
+    const customerName = currentCustomerName;
 
     useEffect(() => {
         const refresh = () => setChef(Store.getChefs()[Number(id)] || null);
@@ -101,12 +120,17 @@ const ChefViewPage = () => {
     };
 
     const loadMyReview = async () => {
+        if (!customerPhone) return;
         try {
-            const res = await fetch(`${AUTH_BASE}/reviews/${chef.phone}/customer/${customerPhone}`);
+            const res = await fetch(`${AUTH_BASE}/reviews/${chef.phone}`);
             const data = await res.json();
-            // Faqat mavjud baholar sonini ko'rsatish uchun — formni to'ldirmaymiz
-            if (Array.isArray(data) && data.length > 0) {
-                setMyExistingReview(data[0]); // oxirgi baho
+            const reviews = data.reviews || [];
+            // Bu mijozning baholari
+            const myReviews = reviews.filter(r => r.customerPhone === customerPhone);
+            if (myReviews.length > 0) {
+                setMyExistingReview(myReviews[0]);
+            } else {
+                setMyExistingReview(null);
             }
         } catch { }
     };
