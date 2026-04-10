@@ -54,11 +54,9 @@ const OrdersPage = () => {
   const fetchOrders = async () => {
     if (!myPhone || myPhone === 'guest') return;
     try {
-      const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${AUTH_BASE}/orders/customer/${myPhone}/all`);
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(data.orders || []);
+      const data = await Store.getCustomerAllOrders(myPhone);
+      if (data && data.orders) {
+        setOrders(data.orders);
       }
     } catch (error) {
       console.error('Buyurtmalarni olishda xatolik:', error);
@@ -125,8 +123,13 @@ const OrdersPage = () => {
   };
 
   const getOrders = useCallback(() => {
-    return getChats();
-  }, [getChats]);
+    // Buyurtmalarni olish (chatlardan emas)
+    const orderKeys = Object.keys(localStorage).filter(k => k.startsWith('order_') && k.includes(myPhone));
+    return orderKeys.map(k => {
+      const orderData = JSON.parse(localStorage.getItem(k) || '{}');
+      return orderData;
+    }).filter(Boolean);
+  }, [myPhone]);
 
   const handleTyping = (val) => {
     setMessage(val);
