@@ -60,46 +60,30 @@ const ChefEditProfilePage = () => {
         setErrors(e);
         setTouched({ name: true, surname: true, exp: true });
         if (Object.keys(e).length === 0) {
-            // Loading state
-            const saveButton = document.querySelector('[data-save-button]');
-            if (saveButton) {
-                saveButton.disabled = true;
-                saveButton.textContent = 'Saqlanmoqda...';
-            }
-            
             try {
-                // Eski ma'lumotlarni saqlab yangilarini ustiga yozamiz
                 const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
                 const merged = { ...oldData, name, surname, phone, exp, image };
-                
-                // Backend ga yangilash
-                const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
-                const response = await fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(merged),
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Backend ga saqlashda xatolik');
-                }
-                
-                // localStorage ga saqlaymiz
+
+                // Avval localStorage ga saqlaymiz — backend xato bo'lsa ham ishlaydi
                 localStorage.setItem('chefProfile', JSON.stringify(merged));
                 Store.setSession('chef', merged);
                 await Store.updateChef(oldPhone || phone, merged);
-                
                 window.dispatchEvent(new Event('chefs-updated'));
+
+                // Backendga ham yuboramiz (xato bo'lsa ham navigate qilamiz)
+                try {
+                    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+                    await fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(merged),
+                    });
+                } catch { /* backend xato bo'lsa ham davom etamiz */ }
+
                 navigate('/chef-profile');
             } catch (error) {
                 console.error('Profil saqlashda xatolik:', error);
-                alert('Profil saqlashda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.');
-                
-                // Buttonni qayta faollashtirish
-                if (saveButton) {
-                    saveButton.disabled = false;
-                    saveButton.textContent = 'Saqlash';
-                }
+                navigate('/chef-profile');
             }
         }
     };

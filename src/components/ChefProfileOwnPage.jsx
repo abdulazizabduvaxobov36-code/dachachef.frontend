@@ -41,19 +41,12 @@ const ChefProfileOwnPage = () => {
         if (!chefProfile.phone) return;
         try {
             const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            const response = await fetch(`${AUTH_BASE}/orders/chef/${chefProfile.phone}/ratings`);
+            const response = await fetch(`${AUTH_BASE}/reviews/${chefProfile.phone}`);
             if (response.ok) {
-                const ratingsData = await response.json();
-                setRatings(ratingsData);
-                
-                // O'rtacha reytingni hisoblash
-                if (ratingsData.length > 0) {
-                    const sum = ratingsData.reduce((acc, r) => acc + r.rating, 0);
-                    const avg = (sum / ratingsData.length).toFixed(1);
-                    setAverageRating(avg);
-                } else {
-                    setAverageRating(0);
-                }
+                const data = await response.json();
+                const reviewsList = data.reviews || [];
+                setRatings(reviewsList);
+                setAverageRating(data.avgRating || 0);
             }
         } catch (error) {
             console.error('Baholarni olishda xatolik:', error);
@@ -82,7 +75,7 @@ const ChefProfileOwnPage = () => {
                             border="4px solid white" boxShadow="0 4px 16px rgba(0,0,0,0.15)"
                             display="flex" alignItems="center" justifyContent="center">
                             <FaUser size={32} color="white" />
-                          </Box>
+                        </Box>
                     }
                 </Box>
             </Box>
@@ -132,14 +125,14 @@ const ChefProfileOwnPage = () => {
                         ? <Box textAlign="center" py="24px">
                             <FaImage style={{ fontSize: "32px", color: "#E0DAD7", margin: "0 auto 8px", display: "block" }} />
                             <Text color="#B0A8A4" style={{ fontSize: "13px" }}>{t("chefProfileOwn.noPost")}</Text>
-                          </Box>
+                        </Box>
                         : <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="6px">
                             {posts.map((p, i) => (
                                 <Box key={i} borderRadius="10px" overflow="hidden">
                                     <img src={p.image} alt={p.dishName} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
                                 </Box>
                             ))}
-                          </Box>
+                        </Box>
                     }
                 </Box>
 
@@ -150,16 +143,63 @@ const ChefProfileOwnPage = () => {
                         <Text fontWeight="700" color="#1C110D" style={{ fontSize: "14px" }}>{t("chefProfileOwn.language")}</Text>
                     </Box>
                     <Box display="flex" gap="8px">
-                        {[{code:"uz",label:"🇺🇿 O'zbek"},{code:"ru",label:"🇷🇺 Русский"}].map(lg => (
+                        {[{ code: "uz", label: "🇺🇿 O'zbek" }, { code: "ru", label: "🇷🇺 Русский" }].map(lg => (
                             <Box key={lg.code} flex="1" cursor="pointer" borderRadius="12px" py="10px" textAlign="center"
-                                bgColor={i18n.language===lg.code?"#C03F0C":"#F5F3F1"}
-                                border={`1.5px solid ${i18n.language===lg.code?"#C03F0C":"#E8E8E8"}`}
+                                bgColor={i18n.language === lg.code ? "#C03F0C" : "#F5F3F1"}
+                                border={`1.5px solid ${i18n.language === lg.code ? "#C03F0C" : "#E8E8E8"}`}
                                 transition="all 0.2s"
                                 onClick={() => { i18n.changeLanguage(lg.code); localStorage.setItem("appLang", lg.code); }}>
-                                <Text fontWeight="700" color={i18n.language===lg.code?"white":"#555"} style={{fontSize:"13px"}}>{lg.label}</Text>
+                                <Text fontWeight="700" color={i18n.language === lg.code ? "white" : "#555"} style={{ fontSize: "13px" }}>{lg.label}</Text>
                             </Box>
                         ))}
                     </Box>
+                </Box>
+
+                {/* Baholar */}
+                <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 1px 6px rgba(0,0,0,0.05)">
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb="12px">
+                        <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>Mijozlar baholari</Text>
+                        <Box bgColor="#FFF0EC" borderRadius="10px" px="8px" py="3px">
+                            <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>{ratings.length} ta</Text>
+                        </Box>
+                    </Box>
+                    {ratings.length === 0 ? (
+                        <Box textAlign="center" py="20px">
+                            <Text color="#B0A8A4" style={{ fontSize: "13px" }}>Hali baho yo'q</Text>
+                        </Box>
+                    ) : (
+                        <Box display="flex" flexDir="column" gap="10px">
+                            {ratings.slice(0, 5).map((r, i) => (
+                                <Box key={r._id || i} bgColor="#FFF5F0" borderRadius="14px" p="12px">
+                                    <Box display="flex" alignItems="center" gap="10px" mb="6px">
+                                        <Box w="34px" h="34px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
+                                            display="flex" alignItems="center" justifyContent="center"
+                                            color="white" fontWeight="700" style={{ fontSize: "14px" }}>
+                                            {r.customerName?.charAt(0) || 'M'}
+                                        </Box>
+                                        <Box flex="1">
+                                            <Text fontWeight="700" color="#1C110D" style={{ fontSize: "13px" }}>
+                                                {r.customerName || 'Mijoz'}
+                                            </Text>
+                                            <Box display="flex" gap="2px">
+                                                {[1, 2, 3, 4, 5].map(s => (
+                                                    <FaStar key={s} color={s <= r.rating ? '#F4B400' : '#E0DAD7'} style={{ fontSize: "10px" }} />
+                                                ))}
+                                            </Box>
+                                        </Box>
+                                        <Text color="#B0A8A4" style={{ fontSize: "10px" }}>
+                                            {new Date(r.createdAt).toLocaleDateString('uz-UZ')}
+                                        </Text>
+                                    </Box>
+                                    {r.comment && (
+                                        <Text color="#6B6560" style={{ fontSize: "12px", lineHeight: "1.5" }}>
+                                            {r.comment}
+                                        </Text>
+                                    )}
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
                 </Box>
 
                 {/* Logout */}

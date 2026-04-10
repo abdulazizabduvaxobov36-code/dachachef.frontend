@@ -50,6 +50,14 @@ const ChefViewPage = () => {
     const customerName = session?.data?.firstName || session?.data?.name || '';
     const [hasDoneOrder, setHasDoneOrder] = useState(false);
 
+    // Akk almashinishida baho formani tozalash
+    useEffect(() => {
+        setMyRating(0);
+        setMyComment('');
+        setMyExistingReview(null);
+        setShowReviewModal(false);
+    }, [customerPhone]);
+
     useEffect(() => {
         const refresh = () => setChef(Store.getChefs()[Number(id)] || null);
         window.addEventListener("chefs-updated", refresh);
@@ -96,10 +104,9 @@ const ChefViewPage = () => {
         try {
             const res = await fetch(`${AUTH_BASE}/reviews/${chef.phone}/customer/${customerPhone}`);
             const data = await res.json();
-            if (data) {
-                setMyExistingReview(data);
-                setMyRating(data.rating);
-                setMyComment(data.comment || '');
+            // Faqat mavjud baholar sonini ko'rsatish uchun — formni to'ldirmaymiz
+            if (Array.isArray(data) && data.length > 0) {
+                setMyExistingReview(data[0]); // oxirgi baho
             }
         } catch { }
     };
@@ -123,7 +130,11 @@ const ChefViewPage = () => {
             });
             if (res.ok) {
                 setReviewSuccess(true);
+                // Formni tozalash
+                setMyRating(0);
+                setMyComment('');
                 loadReviews();
+                loadMyReview();
                 setTimeout(() => {
                     setShowReviewModal(false);
                     setReviewSuccess(false);
@@ -265,9 +276,7 @@ const ChefViewPage = () => {
                             border="1.5px solid #F5C5B0"
                             onClick={() => setShowReviewModal(true)}>
                             <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>
-                                {myExistingReview
-                                    ? (t('review.editBtn') || 'Bahoni o\'zgartirish')
-                                    : (t('review.addBtn') || '+ Baho qo\'shish')}
+                                {t('review.addBtn') || '+ Baho qo\'shish'}
                             </Text>
                         </Box>
                     )}

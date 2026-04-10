@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Text, Button, Textarea, StarIcon } from '@chakra-ui/react';
+import { Box, Text, Button, Textarea } from '@chakra-ui/react';
+import { FaStar } from 'react-icons/fa';
 
 const RatingModal = ({ isOpen, onClose, order, onSubmitRating }) => {
   const [rating, setRating] = useState(0);
@@ -39,7 +40,7 @@ const RatingModal = ({ isOpen, onClose, order, onSubmitRating }) => {
         color: filled ? '#FFD700' : '#E0E0E0',
       }}
     >
-      {filled ? 'filled' : 'o'}
+      <FaStar size={32} color={filled ? '#FFD700' : '#E0E0E0'} />
     </button>
   );
 

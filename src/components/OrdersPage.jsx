@@ -33,8 +33,8 @@ const OrdersPage = () => {
 
   const findInitial = () => {
     const chefs = Store.getChefs();
-    if (navChefPhone) { const c = chefs.find(c => c.phone === navChefPhone); if (c) return buildChat(c); }
-    if (navChefName) { const c = chefs.find(c => `${c.name} ${c.surname}` === navChefName); if (c) return buildChat(c); }
+    if (navChefPhone) { const chef = chefs.find(c => c.phone === navChefPhone); if (chef) return buildChat(chef); }
+    if (navChefName) { const chef = chefs.find(c => `${c.name} ${c.surname}` === navChefName); if (chef) return buildChat(chef); }
     return null;
   };
 
@@ -123,8 +123,7 @@ const OrdersPage = () => {
       return { chatId, customerPhone, msgs, preview, unread, lastMsg: msgs[msgs.length - 1] };
     }).filter(Boolean);
   };
-  const [ordersNotif, setOrders] = useState(getOrders());
-
+  
   const handleTyping = (val) => {
     setMessage(val);
     if (selectedChat) {
@@ -369,7 +368,7 @@ const OrdersPage = () => {
         <Box className="chat-input-area">
           <Box flex="1" display="flex" alignItems="center" bgColor="#F5F3F1"
             borderRadius="25px" px="16px" style={{ height: '44px' }}>
-            <input placeholder="Message..." value={message}
+            <input placeholder={t('orders.placeholder')} value={message}
               onChange={e => handleTyping(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && sendMsg()}
               style={{ width: '100%', border: 'none', outline: 'none', fontSize: '15px', background: 'transparent', color: '#1C110D' }} />
