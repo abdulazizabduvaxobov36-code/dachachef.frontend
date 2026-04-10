@@ -430,78 +430,60 @@ const OrdersPage = () => {
               <Text color="#B0A8A4" style={{ fontSize: '14px' }}>{t('orders.noChats')}</Text>
             </Box>
           ) : (
-            chats.map(chat => {
-              const isNew = chat.unread > 0;
-              const isHighlight = newMsgChatId === chat.chatId;
-              return (
-                <Box key={chat.chatId}
-                  bgColor={isHighlight ? "#FFF0EC" : isNew ? "#FFFAF8" : "white"}
-                  borderRadius="18px" p="14px"
-                  display="flex" alignItems="center" gap="12px" cursor="pointer"
-                  boxShadow={isHighlight ? "0 4px 16px rgba(192,63,12,0.2)" : isNew ? "0 2px 12px rgba(192,63,12,0.1)" : "0 2px 10px rgba(0,0,0,0.06)"}
-                  border={isHighlight ? "1.5px solid #F5C5B0" : isNew ? "1px solid #FFE8DC" : "1px solid transparent"}
-                  transition="all 0.3s"
-                  onClick={() => {
-                    setSelectedChat(chat);
-                    Store.clearUnread(chat.chatId, myPhone);
-                    setChats(getChats());
-                  }}>
-                  {/* Avatar */}
-                  <Box position="relative" flexShrink={0}>
-                    <Avatar image={chat.chefImage} name={chat.chefName} size={50} />
-                    <Box position="absolute" bottom="0" right="0" w="12px" h="12px" borderRadius="full"
-                      bgColor={isOnline(chat.chefPhone) ? '#22C55E' : '#D1D5DB'} border="2px solid white" />
-                  </Box>
+            chats.map(chat => (
+              <Box key={chat.chatId}
+                bgColor="white"
+                borderRadius="12px"
+                p="12px"
+                display="flex"
+                alignItems="center"
+                gap="12px"
+                cursor="pointer"
+                boxShadow="0 2px 8px rgba(0,0,0,0.08)"
+                onClick={() => {
+                  setSelectedChat(chat);
+                  Store.clearUnread(chat.chatId, myPhone);
+                  setChats(getChats());
+                }}>
+                {/* Avatar */}
+                <Box position="relative" flexShrink={0}>
+                  <Avatar image={chat.chefImage} name={chat.chefName} size={48} />
+                  <Box position="absolute" bottom="0" right="0" w="10px" h="10px" borderRadius="full"
+                    bgColor={isOnline(chat.chefPhone) ? '#22C55E' : '#D1D5DB'} border="2px solid white" />
+                </Box>
 
-                  {/* Info */}
-                  <Box flex="1" minW={0}>
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb="3px">
-                      <Text fontWeight={isNew ? "800" : "700"} color="#1C110D" noOfLines={1}
-                        style={{ fontSize: '15px' }}>
-                        {chat.chefName}
-                      </Text>
-                      <Text fontWeight={isNew ? "700" : "400"}
-                        style={{ fontSize: '11px', color: isNew ? '#C03F0C' : '#B0A8A4', flexShrink: 0, marginLeft: '8px' }}>
-                        {chat.lastMsg?.ts}
-                      </Text>
-                    </Box>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Text noOfLines={1}
-                        style={{
-                          fontSize: '13px', flex: 1,
-                          color: isNew && chat.lastMsg?.sender !== 'customer' ? '#C03F0C' : '#9B8E8A',
-                          fontWeight: isNew && chat.lastMsg?.sender !== 'customer' ? '600' : '400'
-                        }}>
-                        {chat.lastMsg?.text}
-                      </Text>
-                      {isNew && (
-                        <Box bgColor="#C03F0C" color="white" borderRadius="full" fontWeight="700"
-                          minW="20px" h="20px" px="4px" display="flex" alignItems="center" justifyContent="center"
-                          style={{ fontSize: '10px', flexShrink: 0, marginLeft: '8px' }}>
-                          {chat.unread > 9 ? '9+' : chat.unread}
-                        </Box>
-                      )}
-                    </Box>
-                  </Box>
-
-                  {/* O'chirish */}
-                  <Box flexShrink={0}
-                    onClick={e => { e.stopPropagation(); if (deletingId === chat.chatId) { doDelete(chat.chatId); } else { confirmDelete(chat.chatId); } }}
-                    px="10px" py="6px" borderRadius="12px"
-                    bgColor={deletingId === chat.chatId ? "#FEE2E2" : "#F8F8F8"}
-                    border={deletingId === chat.chatId ? "1px solid #FECACA" : "1px solid #E2E8F0"}
-                    transition="all 0.2s" title={deletingId === chat.chatId ? "Tasdiqlash uchun yana bosing" : "O'chirish"}>
-                    <Text style={{
-                      fontSize: deletingId === chat.chatId ? '10px' : '13px',
-                      color: deletingId === chat.chatId ? '#C53030' : '#6B7280',
-                      fontWeight: deletingId === chat.chatId ? '700' : '600', whiteSpace: 'nowrap'
-                    }}>
-                      {deletingId === chat.chatId ? "O'chirish" : "×"}
+                {/* Info */}
+                <Box flex="1" minW={0}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb="2px">
+                    <Text fontWeight="600" color="#1C110D" noOfLines={1}
+                      style={{ fontSize: '15px' }}>
+                      {chat.chefName}
+                    </Text>
+                    <Text fontWeight="400"
+                      style={{ fontSize: '11px', color: '#B0A8A4', flexShrink: 0, marginLeft: '8px' }}>
+                      {chat.lastMsg?.ts}
                     </Text>
                   </Box>
+                  <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Text noOfLines={1}
+                      style={{
+                        fontSize: '13px', flex: 1,
+                        color: '#6B7280',
+                        fontWeight: '400'
+                      }}>
+                      {chat.lastMsg?.text}
+                    </Text>
+                    {chat.unread > 0 && (
+                      <Box bgColor="#C03F0C" color="white" borderRadius="full" fontWeight="600"
+                        minW="18px" h="18px" px="3px" display="flex" alignItems="center" justifyContent="center"
+                        style={{ fontSize: '9px', flexShrink: 0, marginLeft: '8px' }}>
+                        {chat.unread > 9 ? '9+' : chat.unread}
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
-              );
-            })
+              </Box>
+            ))
           )}
         </Box>
         <NavBar />
