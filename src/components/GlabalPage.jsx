@@ -157,7 +157,7 @@ const GlabalPage = () => {
                         _hover={{ bgColor: '#FFF9F7' }}
                         onClick={() => { setShowNotif(false); Store.clearUnread(n.chatId, myPhone); navigate('/orderspage', { state: { chefPhone: n.chefPhone, chefName: n.chefName } }); }}>
                         {n.chefImage
-                          ? <img src={`${n.chefImage}?t=${Date.now()}`} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                          ? <img src={n.chefImage} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                           : <Box w="40px" h="40px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
                             display="flex" alignItems="center" justifyContent="center" color="white" fontWeight="700" style={{ fontSize: '16px' }}>
                             {n.chefName?.charAt(0)}
@@ -236,12 +236,21 @@ const GlabalPage = () => {
                   cursor="pointer" onClick={() => navigate(`/chef-view/${realIdx}`)}>
                   <Box position="relative" flexShrink={0}>
                     {chef.image
-                      ? <img src={`${chef.image}?t=${Date.now()}`} alt="" style={{ width: '60px', height: '60px', borderRadius: '14px', objectFit: 'cover' }} />
-                      : <Box w="60px" h="60px" borderRadius="14px" bgColor="#F0E6E0"
-                        display="flex" alignItems="center" justifyContent="center">
-                        <Text fontWeight="800" color="#C03F0C" style={{ fontSize: '22px' }}>{chef.name?.charAt(0)}</Text>
-                      </Box>
-                    }
+                      ? <img 
+                          src={`${chef.image}?v=${Date.now()}`} 
+                          alt="" 
+                          style={{ width: '60px', height: '60px', borderRadius: '14px', objectFit: 'cover' }}
+                          onError={(e) => {
+                            console.log('Image load error:', chef.image, e);
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      : null}
+                    <Box w="60px" h="60px" borderRadius="14px" bgColor="#F0E6E0"
+                      display={chef.image ? 'none' : 'flex'} alignItems="center" justifyContent="center">
+                      <Text fontWeight="800" color="#C03F0C" style={{ fontSize: '22px' }}>{chef.name?.charAt(0)}</Text>
+                    </Box>
                     <Box position="absolute" bottom="2px" right="2px" w="11px" h="11px"
                       borderRadius="full" border="2px solid white" bgColor={isOnline ? '#22C55E' : '#D1D5DB'} />
                   </Box>

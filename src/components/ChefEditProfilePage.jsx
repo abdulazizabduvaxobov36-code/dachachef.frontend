@@ -23,6 +23,8 @@ const ChefEditProfilePage = () => {
     const [image, setImage] = useState(stored.image || null);
     const initialValues = { name: stored.name || '', surname: stored.surname || '', phone: stored.phone || '', exp: stored.exp || '', image: stored.image || null };
     const [dirty, setDirty] = useState(false);
+    const [imageLoading, setImageLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
     const fileRef = useRef();
     const [errors, setErrors] = useState({});
     const [touched, setTouched] = useState({});
@@ -56,10 +58,16 @@ const ChefEditProfilePage = () => {
         navigate(-1);
     };
     const handleSave = async () => {
+        if (imageLoading) {
+            alert(t('chefEditProfile.waitImage') || 'Iltimos, rasm yuklanishini kuting.');
+            return;
+        }
+        if (saving) return;
         const e = validate();
         setErrors(e);
         setTouched({ name: true, surname: true, exp: true });
         if (Object.keys(e).length === 0) {
+            setSaving(true);
             try {
                 const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
                 const merged = { ...oldData, name, surname, phone, exp, image };
@@ -86,7 +94,7 @@ const ChefEditProfilePage = () => {
                 
                 // Backendga ham yuboramiz (xato bo'lsa ham navigate qilamiz)
                 try {
-                    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+                    const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
                     const response = await fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -106,6 +114,8 @@ const ChefEditProfilePage = () => {
             } catch (error) {
                 console.error('Profil saqlashda umumiy xatolik:', error);
                 navigate('/chef-profile');
+            } finally {
+                setSaving(false);
             }
         }
     };
@@ -163,17 +173,19 @@ const ChefEditProfilePage = () => {
                         )}
                         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => {
                             const f = e.target.files[0]; if (!f) return;
+                            setImageLoading(true);
                             const r = new FileReader();
                             r.onloadend = () => {
-                                // Cache busting - timestamp qo'shamiz
-                                const timestamp = Date.now();
                                 const imageUrl = r.result;
                                 setImage(imageUrl);
-                                
-                                // Rasm o'zgarganligini aniqlash uchun timestamp qo'shamiz
+                                setImageLoading(false);
                                 if (!image || image !== imageUrl) {
                                     setDirty(true);
                                 }
+                            };
+                            r.onerror = () => {
+                                console.error('Rasmni yuklashda xato');
+                                setImageLoading(false);
                             };
                             r.readAsDataURL(f);
                         }} />
@@ -208,6 +220,9 @@ const ChefEditProfilePage = () => {
                     data-save-button
                     style={{ height: "clamp(46px, 13vw, 54px)", borderRadius: "18px", fontSize: "clamp(14px, 3.8vw, 15px)" }}
                     _hover={{ bgColor: "#a0300a", transform: "scale(1.02)" }} transition="all 0.2s"
+                    isLoading={saving || imageLoading}
+                    loadingText={t('chefEditProfile.saving') || 'Saqlanmoqda'}
+                    disabled={saving || imageLoading}
                     leftIcon={<FaCheck size={13} />} onClick={handleSave}>
                     {t("chefEditProfile.saveBtn")}
                 </Button>

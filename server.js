@@ -28,6 +28,7 @@ const empty = {
   chats:       {},   // { chatId: [{id,text,sender,from,to,ts}] }
   unread:      {},   // { "chatId_phone": count }
   posts:       [],   // [{id,chefPhone,dishName,image,createdAt}]
+  orders:      [],   // [{_id, customerPhone, chefPhone, amount, status, rating, review, createdAt, completedAt}]
   online:      {},   // { "chef_phone" | "customer_phone": timestamp }
 };
 
@@ -71,6 +72,22 @@ app.post('/api/chefs', (req, res) => {
     res.json({ ok: true, chef });
   } catch (err) {
     console.error('/api/chefs POST error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.put('/api/chefs/:phone', (req, res) => {
+  try {
+    const d = read();
+    if (!Array.isArray(d.chefs)) d.chefs = [];
+    const index = d.chefs.findIndex(c => c.phone === req.params.phone);
+    if (index === -1) return res.status(404).json({ error: 'Chef not found' });
+    d.chefs[index] = { ...d.chefs[index], ...req.body, phone: req.body.phone || d.chefs[index].phone };
+    write(d);
+    io.emit('chefs-updated', d.chefs);
+    res.json({ ok: true, chef: d.chefs[index] });
+  } catch (err) {
+    console.error('/api/chefs PUT error', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -241,6 +258,59 @@ app.delete('/api/posts/:id', (req, res) => {
   write(d);
   io.emit('posts-updated', d.posts);
   res.json({ ok: true });
+});
+
+// ─── ORDERS ──────────────────────────────────────────────────
+// Buyurtma yaratish
+app.post('/api/orders', (req, res) => {
+  try {
+    const d = read();
+    const order = { ...req.body, _id: Date.now().toString(), createdAt: Date.now(), status: 'pending' };
+    d.orders = d.orders || [];
+    d.orders.push(order);
+    write(d);
+    res.json({ ok: true, order });
+  } catch (err) {
+    console.error('/api/orders POST error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Mijozning barcha buyurtmalari
+app.get('/api/orders/customer/:phone/all', (req, res) => {
+  try {
+    const d = read();
+    const orders = (d.orders || []).filter(o => o.customerPhone === req.params.phone);
+    res.json({ orders });
+  } catch (err) {
+    console.error('/api/orders/customer/:phone/all GET error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Buyurtmani baholash
+app.patch('/api/orders/:id/rating', (req, res) => {
+  try {
+    const d = read();
+    const orderId = req.params.id;
+    const { rating, review } = req.body;
+    d.orders = d.orders || [];
+    const order = d.orders.find(o => o._id === orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    order.rating = rating;
+    order.review = review;
+    order.status = 'completed';
+    order.completedAt = Date.now();
+    // Pul o'tkazish logikasi (komissiya)
+    // Oshpazdan 10% komissiya olamiz
+    const commission = Math.round(order.amount * 0.1);
+    console.log(`Order ${orderId} completed. Commission: ${commission} from chef ${order.chefPhone}`);
+    write(d);
+    res.json({ ok: true, order });
+  } catch (err) {
+    console.error('/api/orders/:id/rating PATCH error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // ─── SOCKET.IO real-time ─────────────────────────────────────

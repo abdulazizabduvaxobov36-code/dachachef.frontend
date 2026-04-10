@@ -411,7 +411,7 @@ export default Store;
 
 Store.getCustomerAllOrders = async (customerPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/all`);
     if (!r.ok) return null;
     return await r.json();
@@ -420,7 +420,7 @@ Store.getCustomerAllOrders = async (customerPhone) => {
 
 Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/chef/${chefPhone}`);
     if (!r.ok) return null;
     return await r.json();
@@ -432,6 +432,7 @@ Store.updateOrderRating = async (orderId, rating, review) => {
   try {
     const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     console.log('Rating API call:', `${AUTH_BASE}/orders/${orderId}/rating`, { rating, review });
+    
     const r = await fetch(`${AUTH_BASE}/orders/${orderId}/rating`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
