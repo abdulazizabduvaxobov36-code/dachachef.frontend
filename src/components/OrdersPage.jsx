@@ -433,13 +433,14 @@ const OrdersPage = () => {
             chats.map(chat => (
               <Box key={chat.chatId}
                 bgColor="white"
-                borderRadius="12px"
-                p="12px"
+                borderRadius="16px"
+                p="16px"
                 display="flex"
                 alignItems="center"
-                gap="12px"
+                gap="16px"
                 cursor="pointer"
-                boxShadow="0 2px 8px rgba(0,0,0,0.08)"
+                boxShadow="0 4px 12px rgba(0,0,0,0.1)"
+                border="1px solid #F0F0F0"
                 onClick={() => {
                   setSelectedChat(chat);
                   Store.clearUnread(chat.chatId, myPhone);
@@ -447,36 +448,36 @@ const OrdersPage = () => {
                 }}>
                 {/* Avatar */}
                 <Box position="relative" flexShrink={0}>
-                  <Avatar image={chat.chefImage} name={chat.chefName} size={48} />
-                  <Box position="absolute" bottom="0" right="0" w="10px" h="10px" borderRadius="full"
-                    bgColor={isOnline(chat.chefPhone) ? '#22C55E' : '#D1D5DB'} border="2px solid white" />
+                  <Avatar image={chat.chefImage} name={chat.chefName} size={56} />
+                  <Box position="absolute" bottom="2px" right="2px" w="14px" h="14px" borderRadius="full"
+                    bgColor={isOnline(chat.chefPhone) ? '#10B981' : '#9CA3AF'} border="3px solid white" />
                 </Box>
 
                 {/* Info */}
                 <Box flex="1" minW={0}>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb="2px">
-                    <Text fontWeight="600" color="#1C110D" noOfLines={1}
-                      style={{ fontSize: '15px' }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb="4px">
+                    <Text fontWeight="700" color="#1F2937" noOfLines={1}
+                      style={{ fontSize: '16px' }}>
                       {chat.chefName}
                     </Text>
-                    <Text fontWeight="400"
-                      style={{ fontSize: '11px', color: '#B0A8A4', flexShrink: 0, marginLeft: '8px' }}>
+                    <Text fontWeight="500"
+                      style={{ fontSize: '12px', color: '#9CA3AF', flexShrink: 0, marginLeft: '12px' }}>
                       {chat.lastMsg?.ts}
                     </Text>
                   </Box>
                   <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Text noOfLines={1}
                       style={{
-                        fontSize: '13px', flex: 1,
+                        fontSize: '14px', flex: 1,
                         color: '#6B7280',
                         fontWeight: '400'
                       }}>
                       {chat.lastMsg?.text}
                     </Text>
                     {chat.unread > 0 && (
-                      <Box bgColor="#C03F0C" color="white" borderRadius="full" fontWeight="600"
-                        minW="18px" h="18px" px="3px" display="flex" alignItems="center" justifyContent="center"
-                        style={{ fontSize: '9px', flexShrink: 0, marginLeft: '8px' }}>
+                      <Box bgColor="#EF4444" color="white" borderRadius="full" fontWeight="600"
+                        minW="20px" h="20px" px="4px" display="flex" alignItems="center" justifyContent="center"
+                        style={{ fontSize: '10px', flexShrink: 0, marginLeft: '12px' }}>
                         {chat.unread > 9 ? '9+' : chat.unread}
                       </Box>
                     )}
