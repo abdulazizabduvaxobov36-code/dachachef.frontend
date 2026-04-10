@@ -79,11 +79,42 @@ export const Store = {
     const all = Store.getChefs();
     const i = all.findIndex(c => c.phone === phone);
     if (i >= 0) {
-      all[i] = { ...all[i], ...updates };
-      local.set('registeredChefs', all);
-      window.dispatchEvent(new Event('chefs-updated'));
-      broadcast('chefs-updated');
-      api.post('/api/chefs', all[i]);   // server sync
+      const oldPhone = all[i].phone;
+      const newPhone = updates.phone;
+      
+      // Telefon raqami o'zgargan bo'lsa, eski ma'lumotlarni tozalash
+      if (oldPhone && newPhone && oldPhone !== newPhone) {
+        console.log('Chef phone changed from', oldPhone, 'to', newPhone);
+        
+        // Eski telefon raqami bilan bog'liq ma'lumotlarni tozalash
+        Object.keys(localStorage)
+          .filter(key => 
+            key.startsWith(`saved_chef_${oldPhone}`) || 
+            key.startsWith(`chef_${oldPhone}`) ||
+            key.startsWith(`chat_`) && key.endsWith(`_${oldPhone}`) ||
+            key.startsWith(`unread_`) && key.includes(`_${oldPhone}`)
+          )
+          .forEach(key => {
+            console.log('Removing old key:', key);
+            localStorage.removeItem(key);
+          });
+        
+        // Eski oshpazni ro'yxatdan o'chirib, yangisini qo'shish
+        all.splice(i, 1);
+        const newChef = { ...updates, registeredAt: Date.now() };
+        all.push(newChef);
+        local.set('registeredChefs', all);
+        window.dispatchEvent(new Event('chefs-updated'));
+        broadcast('chefs-updated');
+        api.post('/api/chefs', newChef);
+      } else {
+        // Telefon raqami o'zgarmagan bo'lsa, oddiy yangilash
+        all[i] = { ...all[i], ...updates };
+        local.set('registeredChefs', all);
+        window.dispatchEvent(new Event('chefs-updated'));
+        broadcast('chefs-updated');
+        api.post('/api/chefs', all[i]);   // server sync
+      }
     } else if (updates.phone) {
       const nc = { ...updates, registeredAt: Date.now() };
       all.push(nc);

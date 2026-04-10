@@ -66,6 +66,16 @@ const ChefEditProfilePage = () => {
 
                 // Avval localStorage ga saqlaymiz - backend xato bo'lsa ham ishlaydi
                 localStorage.setItem('chefProfile', JSON.stringify(merged));
+                
+                // Telefon raqami o'zgargan bo'lsa, eski sessionni tozalash
+                if (oldPhone && oldPhone !== phone) {
+                    // Eski telefon raqami bilan saqlangan sessionlarni tozalash
+                    localStorage.removeItem(`saved_chef_${oldPhone}`);
+                    localStorage.removeItem(`chef_${oldPhone}`);
+                    sessionStorage.removeItem('session');
+                }
+                
+                // Yangi sessionni saqlash
                 Store.setSession('chef', merged);
                 
                 // Store.updateChef ni chaqiramiz - bu localStorage dagi oshpazlar ro'yxatini yangilaydi
