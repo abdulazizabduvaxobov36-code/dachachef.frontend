@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState, useRef } from 'react';
 import { useTranslation } from "react-i18next";
 import { IoChevronForward } from "react-icons/io5";
-import { FaCamera, FaUser, FaPhone, FaBriefcase, FaArrowLeft } from "react-icons/fa";
+import { FaCamera, FaUser, FaArrowLeft } from "react-icons/fa";
 import Store from '../store';
 
 const Chef = () => {
@@ -14,6 +14,7 @@ const Chef = () => {
   const [surname, setSurname] = useState("");
   const [phone, setPhone] = useState("");
   const [exp, setExp] = useState("");
+  const [bio, setBio] = useState("");
   const [image, setImage] = useState(null);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -40,8 +41,12 @@ const Chef = () => {
     setErrors(e);
     setTouched({ name: true, surname: true, phone: true, exp: true });
     if (!Object.keys(e).length) {
-      const d = { name, surname, phone, exp, image, id: Date.now() };
+      const d = { name, surname, phone, exp, image, bio, id: Date.now() };
       localStorage.setItem("chefProfile", JSON.stringify(d));
+      // Eski saved_chef_* kalitlarini tozalash — bir xil qurilmada eski cardlar qolmasin
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('saved_chef_') && !k.endsWith(`_${phone}`))
+        .forEach(k => localStorage.removeItem(k));
       Store.setSession("chef", d);
       Store.startHeartbeat("chef", phone);
       await Store.addChef(d);
@@ -51,7 +56,7 @@ const Chef = () => {
         await fetch(`${AUTH_BASE}/chefs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, surname, phone, exp, image }),
+          body: JSON.stringify({ name, surname, phone, exp, image, bio }),
         });
       } catch { }
       navigate("/chef-home");
@@ -60,14 +65,14 @@ const Chef = () => {
 
   const hasErr = k => errors[k] && touched[k];
 
-  // renderField — funksiya (component emas!) → fokus saqlanadi
+  // renderField — icon parametri null bo'lsa ko'rsatilmaydi
   const renderField = (key, label, icon, value, setter, isNum, maxLen, prefix, placeholder) => (
     <Box key={key} mb="14px">
       <Text fontWeight="600" color={hasErr(key) ? "#E53E3E" : "#9B614B"} mb="6px" style={{ fontSize: "12px" }}>{label}</Text>
       <Box display="flex" alignItems="center"
         bgColor={hasErr(key) ? "#FFF5F5" : "white"} borderRadius="14px" px="14px"
         border={`1.5px solid ${hasErr(key) ? "#E53E3E" : "#F0E6E0"}`} style={{ height: "52px" }}>
-        <Box color={hasErr(key) ? "#E53E3E" : "#C03F0C"} flexShrink={0} mr="10px">{icon}</Box>
+        {icon && <Box color={hasErr(key) ? "#E53E3E" : "#C03F0C"} flexShrink={0} mr="10px">{icon}</Box>}
         {prefix && <Text flexShrink={0} mr="4px" color="#9B614B" fontWeight="600" style={{ fontSize: "14px" }}>{prefix}</Text>}
         <input
           value={value}
@@ -87,6 +92,7 @@ const Chef = () => {
 
   return (
     <Box minH="100dvh" bgColor="#FFF5F0">
+      {/* Header */}
       <Box bgColor="white" px="16px" pt="14px" pb="14px" display="flex" alignItems="center" gap="12px"
         boxShadow="0 1px 0 #F0EBE6" position="sticky" top={0} zIndex={10}>
         <Box w="36px" h="36px" borderRadius="full" bgColor="#FFF0EC" border="1px solid #F5C5B0"
@@ -96,6 +102,7 @@ const Chef = () => {
         <Text fontWeight="700" color="#1C110D" style={{ fontSize: "17px" }}>{t("chef.pageTitle")}</Text>
       </Box>
 
+      {/* Content */}
       <Box maxW="400px" mx="auto" px="20px" pt="24px" pb="100px">
         {/* Avatar */}
         <Box display="flex" flexDir="column" alignItems="center" mb="24px">
@@ -108,9 +115,9 @@ const Chef = () => {
               {image
                 ? <img src={image} alt="" style={{ width: "90px", height: "90px", borderRadius: "50%", objectFit: "cover", border: "3px solid #C03F0C" }} />
                 : <Box w="90px" h="90px" borderRadius="full" bgColor="#FFF0EC" border="3px solid #F5C5B0"
-                  display="flex" alignItems="center" justifyContent="center">
-                  <FaUser style={{ fontSize: "36px", color: "#C03F0C" }} />
-                </Box>
+                    display="flex" alignItems="center" justifyContent="center">
+                    <FaUser style={{ fontSize: "36px", color: "#C03F0C" }} />
+                  </Box>
               }
               <Box position="absolute" bottom="0" right="0" w="28px" h="28px" borderRadius="full"
                 bgColor="#C03F0C" display="flex" alignItems="center" justifyContent="center"
@@ -122,23 +129,49 @@ const Chef = () => {
           <Text fontWeight="600" color="#9B614B" mt="10px" style={{ fontSize: "13px" }}>{t("chef.profilePhoto")}</Text>
         </Box>
 
+        {/* Shaxsiy ma'lumotlar */}
         <Box bgColor="white" borderRadius="20px" p="20px" boxShadow="0 2px 12px rgba(192,63,12,0.08)" mb="12px">
           <Text fontWeight="700" color="#C03F0C" mb="16px" style={{ fontSize: "11px", letterSpacing: "0.8px" }}>
             {t("chef.personalInfo").toUpperCase()}
           </Text>
-          {renderField("name", t("chef.firstName"), <FaUser size={14} />, name, setName)}
-          {renderField("surname", t("chef.lastName"), <FaUser size={14} />, surname, setSurname)}
-          {renderField("phone", t("chef.phoneNumber"), <FaPhone size={14} />, phone, setPhone, true, 9, "+998")}
+          {renderField("name", t("chef.firstName"), null, name, setName)}
+          {renderField("surname", t("chef.lastName"), null, surname, setSurname)}
+          {renderField("phone", t("chef.phoneNumber"), null, phone, setPhone, true, 9, "+998")}
         </Box>
 
-        <Box bgColor="white" borderRadius="20px" p="20px" boxShadow="0 2px 12px rgba(192,63,12,0.08)">
+        {/* Tajriba */}
+        <Box bgColor="white" borderRadius="20px" p="20px" boxShadow="0 2px 12px rgba(192,63,12,0.08)" mb="12px">
           <Text fontWeight="700" color="#C03F0C" mb="16px" style={{ fontSize: "11px", letterSpacing: "0.8px" }}>
             {t("chef.workExp").toUpperCase()}
           </Text>
-          {renderField("exp", t("chef.workExp"), <FaBriefcase size={14} />, exp, setExp, true, 2, null, "5")}
+          {renderField("exp", t("chef.workExp"), null, exp, setExp, true, 2, null, "5")}
+        </Box>
+
+        {/* Bio */}
+        <Box bgColor="white" borderRadius="20px" p="20px" boxShadow="0 2px 12px rgba(192,63,12,0.08)">
+          <Text fontWeight="700" color="#C03F0C" mb="12px" style={{ fontSize: "11px", letterSpacing: "0.8px" }}>
+            {t("chef.bioLabel") || "O'ZI HAQIDA (IXTIYORIY)"}
+          </Text>
+          <Box bgColor="#FFF5F0" borderRadius="14px" p="12px" border="1.5px solid #F0E6E0">
+            <textarea
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              placeholder={t("chef.bioPlaceholder") || "Mutaxassislik, taomlar, tajriba haqida yozing..."}
+              rows={4}
+              style={{
+                width: "100%", border: "none", outline: "none",
+                fontSize: "15px", color: "#1C110D", background: "transparent",
+                resize: "none", fontFamily: "inherit"
+              }}
+            />
+          </Box>
+          <Text mt="8px" color="#9B8E8A" style={{ fontSize: "12px" }}>
+            {t("chef.bioHint") || "Bu mijozlar siz haqingizda qisqacha ma'lumotni ko'radi."}
+          </Text>
         </Box>
       </Box>
 
+      {/* Bottom button */}
       <Box className="fixed-bottom" px="20px" py="14px" borderTop="1px solid #F0EBE6">
         <Button w="100%" h="52px" bgColor="#C03F0C" color="white" borderRadius="26px"
           fontWeight="700" style={{ fontSize: "16px" }} _hover={{ bgColor: "#a0300a" }} onClick={submit}>

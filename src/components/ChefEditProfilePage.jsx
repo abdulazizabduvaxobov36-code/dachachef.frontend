@@ -1,5 +1,5 @@
 import { Box, Button, Text } from '@chakra-ui/react';
-import { FaArrowLeft, FaCamera, FaCheck, FaUser, FaPhone, FaBriefcase } from 'react-icons/fa';
+import { FaArrowLeft, FaCamera, FaCheck, FaUser } from 'react-icons/fa';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Store from '../store';
@@ -20,8 +20,9 @@ const ChefEditProfilePage = () => {
     const [phone, setPhone] = useState(stored.phone || '');
     const oldPhone = stored.phone || '';
     const [exp, setExp] = useState(stored.exp || '');
+    const [bio, setBio] = useState(stored.bio || '');
     const [image, setImage] = useState(stored.image || null);
-    const initialValues = { name: stored.name || '', surname: stored.surname || '', phone: stored.phone || '', exp: stored.exp || '', image: stored.image || null };
+    const initialValues = { name: stored.name || '', surname: stored.surname || '', phone: stored.phone || '', exp: stored.exp || '', bio: stored.bio || '', image: stored.image || null };
     const [dirty, setDirty] = useState(false);
     const [imageLoading, setImageLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -42,13 +43,13 @@ const ChefEditProfilePage = () => {
     };
 
     const checkDirty = () => {
-        const hasChanged = name !== initialValues.name || surname !== initialValues.surname || phone !== initialValues.phone || exp !== initialValues.exp || image !== initialValues.image;
+        const hasChanged = name !== initialValues.name || surname !== initialValues.surname || phone !== initialValues.phone || exp !== initialValues.exp || bio !== initialValues.bio || image !== initialValues.image;
         setDirty(hasChanged);
     };
 
     useEffect(() => {
         checkDirty();
-    }, [name, surname, phone, exp, image]);
+    }, [name, surname, phone, exp, image, bio]);
 
     const handleBack = () => {
         if (dirty) {
@@ -58,11 +59,11 @@ const ChefEditProfilePage = () => {
         navigate(-1);
     };
     const handleSave = async () => {
-        if (saving) return;
-        // Rasm hali yuklanayotgan bo'lsa, biroz kutamiz
         if (imageLoading) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+            alert(t('chefEditProfile.waitImage') || 'Iltimos, rasm yuklanishini kuting.');
+            return;
         }
+        if (saving) return;
         const e = validate();
         setErrors(e);
         setTouched({ name: true, surname: true, exp: true });
@@ -70,7 +71,7 @@ const ChefEditProfilePage = () => {
             setSaving(true);
             try {
                 const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
-                const merged = { ...oldData, name, surname, phone, exp, image };
+                const merged = { ...oldData, name, surname, phone, exp, bio: bio.trim(), image };
 
                 // Avval localStorage ga saqlaymiz - backend xato bo'lsa ham ishlaydi
                 localStorage.setItem('chefProfile', JSON.stringify(merged));
@@ -130,7 +131,7 @@ const ChefEditProfilePage = () => {
                 borderRadius="14px" px="14px" border="1.5px solid"
                 borderColor={hasErr(key) ? "#E53E3E" : "#FFF0EC"} transition="border-color 0.2s"
                 style={{ height: "clamp(44px, 12vw, 50px)" }}>
-                <Box color={hasErr(key) ? "#E53E3E" : "#C03F0C"} mr="8px" flexShrink={0}>{icon}</Box>
+                {icon && <Box color={hasErr(key) ? "#E53E3E" : "#C03F0C"} mr="8px" flexShrink={0}>{icon}</Box>}
                 {prefix && <Text mr="4px" flexShrink={0} style={{ fontSize: "clamp(12px, 3.2vw, 13px)", color: "#9B614B" }}>{prefix}</Text>}
                 <input value={value}
                     onChange={(e) => {
@@ -200,10 +201,27 @@ const ChefEditProfilePage = () => {
                 </Box>
                 <Box mx={{ base: "14px", sm: "16px" }} bgColor="white" borderRadius="20px"
                     p={{ base: "16px", sm: "20px" }} boxShadow="0 3px 12px rgba(0,0,0,0.07)">
-                    {renderInput("name", t("chefEditProfile.firstNameLabel"), <FaUser size={13} />, name, setName, false, null, null)}
-                    {renderInput("surname", t("chefEditProfile.lastNameLabel"), <FaUser size={13} />, surname, setSurname, false, null, null)}
-                    {renderInput("phone", t("chefEditProfile.phoneLabel"), <FaPhone size={13} />, phone, setPhone, true, 9, "+998")}
-                    {renderInput("exp", t("chefEditProfile.expLabel"), <FaBriefcase size={13} />, exp, setExp, true, 2, null, t("chefEditProfile.expPlaceholder"))}
+                    {renderInput("name", t("chefEditProfile.firstNameLabel"), null, name, setName, false, null, null)}
+                    {renderInput("surname", t("chefEditProfile.lastNameLabel"), null, surname, setSurname, false, null, null)}
+                    {renderInput("phone", t("chefEditProfile.phoneLabel"), null, phone, setPhone, true, 9, "+998")}
+                    {renderInput("exp", t("chefEditProfile.expLabel"), null, exp, setExp, true, 2, null, t("chefEditProfile.expPlaceholder"))}
+                    <Box mb="14px">
+                        <Text mb="5px" fontWeight="600" style={{ fontSize: "clamp(12px, 3.2vw, 13px)", color: "#9B614B" }}>
+                            {t("chefEditProfile.bioLabel")}
+                        </Text>
+                        <Box display="flex" alignItems="center" bgColor="#FFF5F0" borderRadius="14px" px="14px"
+                            border="1.5px solid #F0E6E0" style={{ minHeight: "110px" }}>
+                            <textarea
+                                value={bio}
+                                onChange={e => setBio(e.target.value.slice(0, 200))}
+                                placeholder={t("chefEditProfile.bioPlaceholder")}
+                                style={{ width: "100%", border: "none", outline: "none", resize: "none", background: "transparent", fontSize: "16px", color: "#1C110D", minHeight: "84px" }}
+                            />
+                        </Box>
+                        <Text mt="8px" color="#9B8E8A" style={{ fontSize: "12px" }}>
+                            {t("chefEditProfile.bioHint")}
+                        </Text>
+                    </Box>
                 </Box>
                 {Object.keys(errors).some(k => errors[k] && touched[k]) && (
                     <Box mx={{ base: "14px", sm: "16px" }} mt="10px" bgColor="#FFF5F5"

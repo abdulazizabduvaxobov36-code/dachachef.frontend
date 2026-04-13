@@ -21,7 +21,10 @@ const ChefProfileOwnPage = () => {
         const p = (raw?.phone ? raw : (sess?.role === "chef" && sess?.data?.phone ? sess.data : {}));
         if (p.phone) localStorage.setItem("chefProfile", JSON.stringify(p));
         setChefProfile(p);
-        if (p.phone) setPosts(Store.getPosts().filter(x => x.chefPhone === p.phone));
+        if (p.phone) {
+            setPosts(Store.getPosts().filter(x => x.chefPhone === p.phone));
+            fetchRatings(); // Baholarni yuklash
+        }
     }, []);
     useEffect(() => {
         const onUpdate = () => {
@@ -29,11 +32,22 @@ const ChefProfileOwnPage = () => {
             const sess2 = Store.getSession();
             const p = (raw?.phone ? raw : (sess2?.role === "chef" ? sess2.data : {}));
             setChefProfile(p);
-            if (p.phone) setPosts(Store.getPosts().filter(x => x.chefPhone === p.phone));
+            if (p.phone) {
+                setPosts(Store.getPosts().filter(x => x.chefPhone === p.phone));
+                fetchRatings(); // Baholarni yuklash
+            }
+        };
+        const onRatingsUpdate = () => {
+            fetchRatings(); // Baholarni yangilash
         };
         const unsub = Store.listenPosts(all => { const p = JSON.parse(localStorage.getItem("chefProfile")) || {}; setPosts(all.filter(x => x.chefPhone === p.phone)); });
         window.addEventListener("chefs-updated", onUpdate);
-        return () => { window.removeEventListener("chefs-updated", onUpdate); unsub?.(); };
+        window.addEventListener("ratings-updated", onRatingsUpdate);
+        return () => { 
+            window.removeEventListener("chefs-updated", onUpdate); 
+            window.removeEventListener("ratings-updated", onRatingsUpdate);
+            unsub?.(); 
+        };
     }, []);
 
     // Baholarni olish
@@ -47,7 +61,6 @@ const ChefProfileOwnPage = () => {
                 const reviewsList = data.reviews || [];
                 setRatings(reviewsList);
                 setAverageRating(data.avgRating || 0);
-                setAverageRating(data.avgRating || 0);
             }
         } catch (error) {
             console.error('Baholarni olishda xatolik:', error);
@@ -55,7 +68,10 @@ const ChefProfileOwnPage = () => {
     };
 
     useEffect(() => {
+        if (!chefProfile.phone) return;
         fetchRatings();
+        const iv = setInterval(fetchRatings, 5000);
+        return () => clearInterval(iv);
     }, [chefProfile.phone]);
 
     const fullName = chefProfile.name ? `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim() : t("chefProfileOwn.defaultName");
@@ -89,7 +105,7 @@ const ChefProfileOwnPage = () => {
                 {/* Stats row */}
                 <Box display="flex" justifyContent="center" gap="32px" mt="16px">
                     {[
-                        { value: averageRating > 0 ? Number(averageRating).toFixed(1) : "–", label: t("common.rating"), icon: "⭐" },
+                        { value: averageRating > 0 ? averageRating : "–", label: t("common.rating"), icon: "⭐" },
                         { value: ratings.length, label: t("common.orders"), icon: "📦" },
                         { value: exp || "–", label: t("common.experience2"), icon: "⏱" },
                     ].map((s, i) => (
@@ -159,23 +175,19 @@ const ChefProfileOwnPage = () => {
                 {/* Baholar */}
                 <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 1px 6px rgba(0,0,0,0.05)">
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb="12px">
-                        <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>Mijozlar baholari</Text>
                         <Box display="flex" alignItems="center" gap="8px">
+                            <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>Mijozlar izohlari</Text>
                             <Box bgColor="#FFF0EC" borderRadius="10px" px="8px" py="3px">
                                 <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>{ratings.length} ta</Text>
                             </Box>
-                            {ratings.length > 3 && (
-                                <Button
-                                    h="28px" px="12px" borderRadius="12px"
-                                    bgColor="#C03F0C" color="white" fontWeight="600"
-                                    style={{ fontSize: "11px" }}
-                                    _hover={{ bgColor: "#a0300a" }}
-                                    onClick={() => navigate('/chef-all-reviews', { state: { chefProfile, ratings } })}
-                                >
-                                    Hammasi
-                                </Button>
-                            )}
                         </Box>
+                        {ratings.length > 0 && (
+                            <Box cursor="pointer" bgColor="#FFF0EC" borderRadius="12px" px="12px" py="6px"
+                                border="1.5px solid #F5C5B0"
+                                onClick={() => navigate('/chef-all-reviews', { state: { chefPhone: chefProfile.phone, chefName: fullName } })}>
+                                <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>Hammasi →</Text>
+                            </Box>
+                        )}
                     </Box>
                     {ratings.length === 0 ? (
                         <Box textAlign="center" py="20px">
@@ -183,7 +195,7 @@ const ChefProfileOwnPage = () => {
                         </Box>
                     ) : (
                         <Box display="flex" flexDir="column" gap="10px">
-                            {ratings.slice(0, 5).map((r, i) => (
+                            {ratings.slice(0, 3).map((r, i) => (
                                 <Box key={r._id || i} bgColor="#FFF5F0" borderRadius="14px" p="12px">
                                     <Box display="flex" alignItems="center" gap="10px" mb="6px">
                                         <Box w="34px" h="34px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
@@ -195,11 +207,13 @@ const ChefProfileOwnPage = () => {
                                             <Text fontWeight="700" color="#1C110D" style={{ fontSize: "13px" }}>
                                                 {r.customerName || 'Mijoz'}
                                             </Text>
-                                            <Box display="flex" gap="2px">
-                                                {[1, 2, 3, 4, 5].map(s => (
-                                                    <FaStar key={s} color={s <= r.rating ? '#F4B400' : '#E0DAD7'} style={{ fontSize: "10px" }} />
-                                                ))}
-                                            </Box>
+                                            {r.rating > 0 && (
+                                                <Box display="flex" gap="2px">
+                                                    {[1, 2, 3, 4, 5].map(s => (
+                                                        <FaStar key={s} color={s <= r.rating ? '#F4B400' : '#E0DAD7'} style={{ fontSize: "10px" }} />
+                                                    ))}
+                                                </Box>
+                                            )}
                                         </Box>
                                         <Text color="#B0A8A4" style={{ fontSize: "10px" }}>
                                             {new Date(r.createdAt).toLocaleDateString('uz-UZ')}

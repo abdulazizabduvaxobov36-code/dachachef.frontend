@@ -22,20 +22,28 @@ const Entrance = () => {
         Store.clearSession();
         localStorage.removeItem("customerData");
         localStorage.removeItem("chefProfile");
-        
+
         // Yangi sessiyani o'rnatish
         Store.setSession(acc.role, acc.data);
         Store.startHeartbeat(acc.role, acc.data.phone);
-        if (acc.role === "customer") { 
-            localStorage.setItem("customerData", JSON.stringify(acc.data)); 
-            navigate("/glabal"); 
-        } else { 
-            localStorage.setItem("chefProfile", JSON.stringify(acc.data)); 
-            navigate("/chef-home"); 
+        if (acc.role === "customer") {
+            localStorage.setItem("customerData", JSON.stringify(acc.data));
+            navigate("/glabal");
+        } else {
+            localStorage.setItem("chefProfile", JSON.stringify(acc.data));
+            navigate("/chef-home");
         }
     };
 
-    const remove = (e, key) => { e.stopPropagation(); Store.removeSavedAccount(key); setSaved(Store.getSavedAccounts()); };
+    const remove = (e, key) => {
+        e.stopPropagation();
+        const accData = Store.getSavedAccounts().find(a => a.key === key);
+        Store.removeSavedAccount(key);
+        if (accData?.role === 'chef' && accData?.data?.phone) {
+            Store.removeChef(accData.data.phone);
+        }
+        setSaved(Store.getSavedAccounts());
+    };
 
     return (
         <Box minH="100dvh" position="relative" overflow="hidden"
@@ -97,11 +105,11 @@ const Entrance = () => {
 
                 {/* Til tugmalari — paneldan TASHQARIDA, pastda */}
                 <Box display="flex" gap="8px" w="100%" maxW="360px">
-                    {[{code:"uz",flag:"🇺🇿",l:"O'zbek"},{code:"ru",flag:"🇷🇺",l:"Русский"}].map(lg => (
+                    {[{ code: "uz", flag: "🇺🇿", l: "O'zbek" }, { code: "ru", flag: "🇷🇺", l: "Русский" }].map(lg => (
                         <Box key={lg.code} flex={1} cursor="pointer" py="9px" borderRadius="14px"
-                            bgColor={i18n.language===lg.code ? "rgba(192,63,12,0.8)" : "rgba(255,255,255,0.12)"}
+                            bgColor={i18n.language === lg.code ? "rgba(192,63,12,0.8)" : "rgba(255,255,255,0.12)"}
                             color="white" fontWeight="700" style={{ fontSize: "13px", textAlign: "center" }}
-                            border={`1.5px solid ${i18n.language===lg.code ? "#C03F0C" : "rgba(255,255,255,0.2)"}`}
+                            border={`1.5px solid ${i18n.language === lg.code ? "#C03F0C" : "rgba(255,255,255,0.2)"}`}
                             transition="all 0.2s"
                             onClick={() => { i18n.changeLanguage(lg.code); localStorage.setItem("appLang", lg.code); }}>
                             {lg.flag} {lg.l}
@@ -119,9 +127,9 @@ const Entrance = () => {
                         </Text>
                         <Box display="flex" flexDir="column" gap="8px">
                             {saved.map(acc => {
-                                const name = acc.role==="chef"
-                                    ? `${acc.data.name||""} ${acc.data.surname||""}`.trim()
-                                    : `${acc.data.firstName||""} ${acc.data.lastName||""}`.trim();
+                                const name = acc.role === "chef"
+                                    ? `${acc.data.name || ""} ${acc.data.surname || ""}`.trim()
+                                    : `${acc.data.firstName || ""} ${acc.data.lastName || ""}`.trim();
                                 const phone = acc.data.phone || "";
                                 const isChef = acc.role === "chef";
                                 return (
@@ -153,7 +161,7 @@ const Entrance = () => {
                                                 display="flex" alignItems="center" justifyContent="center"
                                                 overflow="hidden">
                                                 {acc.data.image
-                                                    ? <img src={acc.data.image} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                                                    ? <img src={acc.data.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                                                     : (isChef ? <FaUserTie size={14} color="white" /> : <FaUser size={14} color="white" />)
                                                 }
                                             </Box>

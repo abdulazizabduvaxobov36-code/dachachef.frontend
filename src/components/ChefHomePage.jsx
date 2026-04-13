@@ -1,6 +1,6 @@
 import { Box, Text, Button } from '@chakra-ui/react';
 import { FaHome, FaCommentDots, FaUser, FaBell, FaTimes, FaPhone, FaPlus, FaImage, FaCheck, FaMoneyBillWave } from 'react-icons/fa';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Store from '../store';
@@ -31,89 +31,66 @@ const ChefHomePage = () => {
     const [showNotifPanel, setShowNotifPanel] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [publishLoading, setPublishLoading] = useState(false);
+    const [reviewNotifs, setReviewNotifs] = useState([]);
 
     // ─── BUYURTMA MODAL ───────────────────────────────────────
     const [showOrderModal, setShowOrderModal] = useState(false);
     const [orderCustomerName, setOrderCustomerName] = useState('');
-    const [orderDishName, setOrderDishName] = useState(''); // Olib tashlandi, chunki oshpaz bir nechta taom tayyorlaydi
     const [orderAmount, setOrderAmount] = useState('');
     const [orderNote, setOrderNote] = useState('');
     const [orderLoading, setOrderLoading] = useState(false);
     const [orderSuccess, setOrderSuccess] = useState(false);
     const [orderError, setOrderError] = useState('');
-    const [customerOrderCount, setCustomerOrderCount] = useState(0); // Mijozning oldingi buyurtmalari soni
-    const [chefTotalEarned, setChefTotalEarned] = useState(0); // Oshpazning jami pul yig'ishi
-    const [chefTotalCommission, setChefTotalCommission] = useState(0); // Oshpazning jami komissiyasi
+    const [orderNameError, setOrderNameError] = useState('');
+    const [chefTotalEarned, setChefTotalEarned] = useState(0);
+    const [chefTotalCommission, setChefTotalCommission] = useState(0);
 
-    // Oshpazning jami pul yig'ishini olish
     const fetchChefTotalEarned = async () => {
         if (!myPhone) return;
-        const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        const r = await fetch(`${AUTH_BASE}/orders/chef/${myPhone}`);
-        if (!r.ok) return;
-        const data = await r.json();
-        if (data && data.summary) {
-            setChefTotalEarned(data.summary.totalNet || 0); // Oshpazga qolgan pul
-            setChefTotalCommission(data.summary.totalCommission || 0); // Oshpazning jami komissiyasi
-        }
-    };
-
-    // Mijozning barcha buyurtmalarini olish
-    const fetchCustomerAllOrders = async (customerPhone) => {
-        if (!customerPhone) return;
-        const data = await Store.getCustomerAllOrders(customerPhone);
-        if (data) {
-            setCustomerOrderCount(data.totalOrders || 0);
-        }
-    };
-
-    // Mijozning oldingi buyurtmalar sonini olish
-    const fetchCustomerOrderCount = async (customerPhone) => {
-        if (!customerPhone || !myPhone) return;
-        const data = await Store.getCustomerOrdersForChef(customerPhone, myPhone);
-        if (data) {
-            setCustomerOrderCount(data.ordersCount || 0);
-        }
-    };
-
-    // Mijoz ismi o'zgarganda buyurtmalar sonini yangilash
-    const handleCustomerNameChange = (value) => {
-        setOrderCustomerName(value);
-        if (value && value.trim()) {
-            fetchCustomerOrderCount(value); // Endi faqat o'sha oshpazga berilganlar
-        } else {
-            setCustomerOrderCount(0);
-        }
+        try {
+            const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const r = await fetch(`${AUTH_BASE}/orders/chef/${myPhone}`);
+            if (!r.ok) return;
+            const data = await r.json();
+            if (data?.summary) {
+                setChefTotalEarned(data.summary.totalNet || 0);
+                setChefTotalCommission(data.summary.totalCommission || 0);
+            }
+        } catch { }
     };
 
     const handleAddOrder = async () => {
+        if (!orderCustomerName.trim()) {
+            setOrderNameError(t('order.customerRequired'));
+            return;
+        }
         if (!orderAmount.trim() || Number(orderAmount) <= 0) {
-            setOrderError(t('order.amountError') || "Summa kiritilmagan");
+            setOrderError(t('order.amountError'));
             return;
         }
         setOrderLoading(true);
         setOrderError('');
+        setOrderNameError('');
         try {
             const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            console.log('Creating order API:', `${AUTH_BASE}/orders`);
+            const chefFullName = `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim();
+            // Agar 9 ta raqam kiritilgan bo'lsa — telefon, aks holda — ism
+            const input = orderCustomerName.trim();
+            const digitsOnly = input.replace(/\D/g, '');
+            const isPhone = digitsOnly.length === 9;
             const orderData = {
-                customerPhone: orderCustomerName || 'noma\'lum',
-                customerName: orderCustomerName,
+                customerPhone: isPhone ? digitsOnly : (input || 'noma\'lum'),
+                customerName: input || 'noma\'lum',
                 chefPhone: myPhone,
-                chefName: `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim(),
+                chefName: chefFullName,
                 amount: Number(orderAmount),
                 note: orderNote,
             };
-            console.log('Order data:', orderData);
-            
             const res = await fetch(`${AUTH_BASE}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderData),
             });
-            
-            console.log('Order API response:', res.status, res.ok);
-            
             if (res.ok) {
                 setOrderSuccess(true);
                 setTimeout(() => {
@@ -122,17 +99,28 @@ const ChefHomePage = () => {
                     setOrderCustomerName('');
                     setOrderAmount('');
                     setOrderNote('');
+                    setOrderNameError('');
                 }, 1500);
             } else {
-                const errorText = await res.text();
-                console.error('Order API error:', errorText);
-                setOrderError(t('order.saveError') || `Xato: ${errorText}`);
+                setOrderError(t('order.saveError') || "Saqlashda xato");
             }
-        } catch (error) {
-            console.error('Order API exception:', error);
-            setOrderError(t('order.serverError') || `Server xatosi: ${error.message}`);
+        } catch {
+            setOrderError(t('order.serverError') || "Server bilan aloqa yo'q");
         }
         setOrderLoading(false);
+    };
+
+    const fetchReviewNotifs = async () => {
+        if (!myPhone) return;
+        try {
+            const API = import.meta.env.VITE_API_URL || '';
+            const res = await fetch(`${API}/reviews/${myPhone}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            // So'nggi 5 ta yangi review
+            const newReviews = (data.reviews || []).slice(0, 5);
+            setReviewNotifs(newReviews);
+        } catch { }
     };
 
     const getOrders = () => {
@@ -169,6 +157,7 @@ const ChefHomePage = () => {
         
         // Oshpazning jami pul yig'ishini yuklash
         fetchChefTotalEarned();
+        fetchReviewNotifs();
         
         return () => { unsub && unsub(); window.removeEventListener('posts-updated', refresh); };
     }, [myPhone]);
@@ -181,6 +170,7 @@ const ChefHomePage = () => {
             const cleanup = Store.startHeartbeat("chef", myPhone);
             let lastOrdersKey = JSON.stringify(getOrders().map(o => o.chatId + o.msgs.length + o.unread));
             let lastNotifsKey = JSON.stringify(Store.getChefNotifications(myPhone).map(n => n.chatId + n.unread));
+            let reviewPollCount = 0;
             const pollOrders = setInterval(() => {
                 const newOrders = getOrders();
                 const newKey = JSON.stringify(newOrders.map(o => o.chatId + o.msgs.length + o.unread));
@@ -188,6 +178,9 @@ const ChefHomePage = () => {
                 const newNotifs = Store.getChefNotifications(myPhone);
                 const newNKey = JSON.stringify(newNotifs.map(n => n.chatId + n.unread));
                 if (newNKey !== lastNotifsKey) { lastNotifsKey = newNKey; setNotifications(newNotifs); }
+                // Poll reviews every 5s (every 5th tick)
+                reviewPollCount++;
+                if (reviewPollCount % 5 === 0) fetchReviewNotifs();
             }, 1000);
             return () => { cleanup(); clearInterval(pollOrders); window.removeEventListener("message-received", onMsg); };
         }
@@ -296,11 +289,35 @@ const ChefHomePage = () => {
                                             style={{ fontSize: "10px", fontWeight: "bold" }}>{totalUnread} {t("chefHome.newMsg")}</Box>
                                     )}
                                 </Box>
-                                {notifications.length === 0 ? (
+                                {notifications.length === 0 && reviewNotifs.length === 0 ? (
                                     <Box py="20px" textAlign="center">
                                         <Text color="#9B614B" style={{ fontSize: "clamp(11px, 3vw, 12px)" }}>{t("glabal.noNotif")}</Text>
                                     </Box>
-                                ) : notifications.map((n, i) => (
+                                ) : null}
+                                {reviewNotifs.slice(0, 3).map((r, i) => (
+                                    <Box key={`rev-${i}`} display="flex" alignItems="flex-start" gap="10px"
+                                        px="12px" py="10px" cursor="pointer"
+                                        borderBottom="1px solid #F5F5F5"
+                                        bgColor="#FFFBF5"
+                                        _hover={{ bgColor: "#FFF5F2" }}
+                                        onClick={() => { setShowNotifPanel(false); setActiveTab('reviews'); }}>
+                                        <Box borderRadius="full" bgColor="#F4B400" flexShrink={0}
+                                            display="flex" alignItems="center" justifyContent="center"
+                                            color="white" fontWeight="bold"
+                                            style={{ width: "34px", height: "34px", fontSize: "14px" }}>
+                                            ★
+                                        </Box>
+                                        <Box flex="1" minW={0}>
+                                            <Text fontWeight="bold" color="#1C110D" style={{ fontSize: "12px" }}>
+                                                {r.customerName || `+998${r.customerPhone}`}
+                                            </Text>
+                                            <Text color="#9B614B" noOfLines={1} style={{ fontSize: "11px" }}>
+                                                {r.rating > 0 ? `${'★'.repeat(r.rating)} ` : ''}{r.comment || t('chefHome.reviews')}
+                                            </Text>
+                                        </Box>
+                                    </Box>
+                                ))}
+                                {notifications.map((n, i) => (
                                     <Box key={i} display="flex" alignItems="center" gap="10px"
                                         px="12px" py="10px" cursor="pointer"
                                         borderBottom={i < notifications.length - 1 ? "1px solid #F5F5F5" : "none"}
@@ -334,6 +351,7 @@ const ChefHomePage = () => {
                 <Box display="flex" px="16px" pt="14px" pb="10px" gap="8px">
                     {[
                         { key: 'orders', label: `${t("chefHome.title")}${orders.length > 0 ? ` (${orders.length})` : ""}` },
+                        { key: 'reviews', label: `${t("chefHome.reviews")}${reviewNotifs.length > 0 ? ` (${reviewNotifs.length})` : ""}` },
                         { key: 'posts', label: `${t("chefHome.posts")}${posts.length > 0 ? ` (${posts.length})` : ""}` }
                     ].map(tab => (
                         <Button key={tab.key} borderRadius="20px" fontWeight="600"
@@ -440,6 +458,39 @@ const ChefHomePage = () => {
                     </Box>
                 )}
 
+                {/* IZOHLAR */}
+                {activeTab === 'reviews' && (
+                    <Box px="16px" display="flex" flexDir="column" gap="10px">
+                        {reviewNotifs.length === 0 ? (
+                            <Box textAlign="center" py="40px">
+                                <Text color="#9B614B" style={{ fontSize: "14px" }}>{t("chefHome.noReviews")}</Text>
+                            </Box>
+                        ) : reviewNotifs.map((r, i) => (
+                            <Box key={i} bgColor="white" borderRadius="18px" p="14px"
+                                boxShadow="0 2px 12px rgba(192,63,12,0.06)">
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb="6px">
+                                    <Text fontWeight="700" color="#1C110D" style={{ fontSize: "14px" }}>
+                                        {r.customerName || `+998${r.customerPhone}`}
+                                    </Text>
+                                    {r.rating > 0 && (
+                                        <Box display="flex" gap="2px">
+                                            {[1,2,3,4,5].map(s => (
+                                                <span key={s} style={{ fontSize: '13px', color: s <= r.rating ? '#F4B400' : '#E0DAD7' }}>★</span>
+                                            ))}
+                                        </Box>
+                                    )}
+                                </Box>
+                                {r.comment && (
+                                    <Text color="#6B6560" style={{ fontSize: "13px", lineHeight: "1.5" }}>{r.comment}</Text>
+                                )}
+                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "11px" }}>
+                                    {new Date(r.createdAt).toLocaleDateString()}
+                                </Text>
+                            </Box>
+                        ))}
+                    </Box>
+                )}
+
                 {/* POSTLAR */}
                 {activeTab === 'posts' && (
                     <Box px="16px">
@@ -500,22 +551,21 @@ const ChefHomePage = () => {
                             </Box>
                         )}
 
-                        {/* Mijoz ismi */}
+                        {/* Mijoz ismi (majburiy) */}
                         <Box mb="12px">
-                            <Text fontWeight="600" color="#9B614B" mb="6px" style={{ fontSize: "12px" }}>
-                                {t('order.customerName') || "Mijoz ismi (ixtiyoriy)"}
+                            <Text fontWeight="600" mb="6px" style={{ fontSize: "12px", color: orderNameError ? "#E53E3E" : "#9B614B" }}>
+                                {t('order.customerName')} <span style={{ color: '#C03F0C' }}>*</span>
                             </Text>
-                            <Box display="flex" alignItems="center" bgColor="#FFF5F0" borderRadius="14px"
-                                px="14px" border="1.5px solid #F0E6E0" style={{ height: "48px" }}>
-                                <input value={orderCustomerName} onChange={e => handleCustomerNameChange(e.target.value)}
-                                    placeholder={t('order.customerPlaceholder') || "Masalan: Jasur"}
+                            <Box display="flex" alignItems="center" borderRadius="14px"
+                                px="14px" border={`1.5px solid ${orderNameError ? '#E53E3E' : '#F0E6E0'}`}
+                                bgColor={orderNameError ? "#FFF5F5" : "#FFF5F0"} style={{ height: "48px" }}>
+                                <input
+                                    value={orderCustomerName}
+                                    onChange={e => { setOrderCustomerName(e.target.value); setOrderNameError(''); }}
+                                    placeholder={t('order.customerPlaceholder')}
                                     style={{ width: "100%", border: "none", outline: "none", fontSize: "15px", color: "#1C110D", background: "transparent" }} />
-                                {customerOrderCount > 0 && (
-                                    <Text color="#C03F0C" fontWeight="600" style={{ fontSize: "11px", whiteSpace: "nowrap", marginLeft: "8px" }}>
-                                        ({customerOrderCount} ta buyurtma)
-                                    </Text>
-                                )}
                             </Box>
+                            {orderNameError && <Text color="#E53E3E" mt="4px" style={{ fontSize: "12px" }}>⚠ {orderNameError}</Text>}
                         </Box>
 
                         
@@ -572,7 +622,7 @@ const ChefHomePage = () => {
                         <Box display="flex" gap="10px" mt="4px">
                             <Button flex="1" bgColor="#F5F0EE" color="#9B614B" borderRadius="26px"
                                 style={{ height: "50px", fontSize: "14px" }}
-                                onClick={() => { setShowOrderModal(false); setOrderError(''); }}>
+                                onClick={() => { setShowOrderModal(false); setOrderError(''); setOrderNameError(''); }}>
                                 {t('chefHome.cancel') || "Bekor"}
                             </Button>
                             <Button flex="1" bgColor="#22C55E" color="white" borderRadius="26px"

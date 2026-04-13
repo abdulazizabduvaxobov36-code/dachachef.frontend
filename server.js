@@ -66,10 +66,14 @@ app.post('/api/chefs', (req, res) => {
     const chef = { ...req.body, registeredAt: req.body.registeredAt || Date.now() };
     if (!Array.isArray(d.chefs)) d.chefs = [];
     const i = d.chefs.findIndex(c => c.phone === chef.phone);
-    if (i >= 0) d.chefs[i] = chef; else d.chefs.push(chef);
-    write(d);
-    io.emit('chefs-updated', d.chefs);
-    res.json({ ok: true, chef });
+    if (i >= 0) {
+      res.status(400).json({ error: 'Phone already exists' });
+    } else {
+      d.chefs.push(chef);
+      write(d);
+      io.emit('chefs-updated', d.chefs);
+      res.json({ ok: true, chef });
+    }
   } catch (err) {
     console.error('/api/chefs POST error', err);
     res.status(500).json({ error: 'Server error' });
@@ -82,7 +86,18 @@ app.put('/api/chefs/:phone', (req, res) => {
     if (!Array.isArray(d.chefs)) d.chefs = [];
     const index = d.chefs.findIndex(c => c.phone === req.params.phone);
     if (index === -1) return res.status(404).json({ error: 'Chef not found' });
-    d.chefs[index] = { ...d.chefs[index], ...req.body, phone: req.body.phone || d.chefs[index].phone };
+    const oldPhone = req.params.phone;
+    const newPhone = req.body.phone || oldPhone;
+    d.chefs[index] = { ...d.chefs[index], ...req.body, phone: newPhone };
+    // Agar telefon o'zgargan bo'lsa, review va orders larni ham yangilash
+    if (oldPhone !== newPhone) {
+      if (Array.isArray(d.reviews)) {
+        d.reviews.forEach(r => { if (r.chefPhone === oldPhone) r.chefPhone = newPhone; });
+      }
+      if (Array.isArray(d.orders)) {
+        d.orders.forEach(o => { if (o.chefPhone === oldPhone) o.chefPhone = newPhone; });
+      }
+    }
     write(d);
     io.emit('chefs-updated', d.chefs);
     res.json({ ok: true, chef: d.chefs[index] });
@@ -309,6 +324,62 @@ app.patch('/api/orders/:id/rating', (req, res) => {
     res.json({ ok: true, order });
   } catch (err) {
     console.error('/api/orders/:id/rating PATCH error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ─── REVIEWS ─────────────────────────────────────────────────
+app.get('/api/reviews/:chefPhone', (req, res) => {
+  try {
+    const d = read();
+    const reviews = (d.reviews || []).filter(r => r.chefPhone === req.params.chefPhone);
+    const totalReviews = reviews.length;
+    const ratedReviews = reviews.filter(r => typeof r.rating === 'number' && r.rating > 0);
+    const avgRating = ratedReviews.length > 0
+      ? Number((ratedReviews.reduce((sum, r) => sum + r.rating, 0) / ratedReviews.length).toFixed(1))
+      : 0;
+    res.json({ reviews: reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)), avgRating, totalReviews });
+  } catch (err) {
+    console.error('/api/reviews/:chefPhone GET error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/reviews/:chefPhone/customer/:customerPhone', (req, res) => {
+  try {
+    const d = read();
+    const reviews = (d.reviews || []).filter(r => r.chefPhone === req.params.chefPhone && r.customerPhone === req.params.customerPhone);
+    res.json(reviews.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
+  } catch (err) {
+    console.error('/api/reviews/:chefPhone/customer/:customerPhone GET error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/api/reviews', (req, res) => {
+  try {
+    const d = read();
+    const { chefPhone, chefName, customerPhone, customerName, rating, comment } = req.body;
+    if (!chefPhone || !customerPhone || !comment?.trim()) {
+      return res.status(400).json({ error: 'chefPhone, customerPhone and comment are required' });
+    }
+    const review = {
+      _id: Date.now().toString(),
+      chefPhone,
+      chefName,
+      customerPhone,
+      customerName,
+      rating: rating && Number(rating) > 0 ? Number(rating) : 0,
+      comment: comment.trim(),
+      createdAt: new Date().toISOString(),
+    };
+    d.reviews = d.reviews || [];
+    d.reviews.unshift(review);
+    write(d);
+    io.emit('review-received', review);
+    res.json({ ok: true, review });
+  } catch (err) {
+    console.error('/api/reviews POST error', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

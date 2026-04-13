@@ -1,6 +1,6 @@
-import { Box, Text, Button } from '@chakra-ui/react';
+import { Box, Text } from '@chakra-ui/react';
 import { FiSearch } from 'react-icons/fi';
-import { FaStar, FaHeart, FaClipboardList, FaHome, FaUser, FaBell, FaCommentDots } from 'react-icons/fa';
+import { FaStar, FaHeart, FaClipboardList, FaHome, FaUser, FaBell } from 'react-icons/fa';
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -84,7 +84,9 @@ const GlabalPage = () => {
     const q = search.trim().toLowerCase();
     return (c.name || '').toLowerCase().startsWith(q) || (c.surname || '').toLowerCase().startsWith(q) || `${c.name} ${c.surname}`.toLowerCase().startsWith(q);
   });
-  const displayChefs = search.trim() ? filtered : filtered.slice(0, 3);
+  const displayChefs = search.trim()
+    ? filtered
+    : [...filtered].sort((a, b) => (b.registeredAt || 0) - (a.registeredAt || 0)).slice(0, 4);
 
   const NavBar = () => (
     <Box className="fixed-bottom" borderTop="1px solid #EBEBEB"
@@ -183,10 +185,10 @@ const GlabalPage = () => {
         {/* Search — alohida box, headerdan ajratilgan */}
         <Box mx="16px" my="12px" bgColor="white" borderRadius="18px" p="14px"
           boxShadow="0 4px 10px rgba(0,0,0,0.05)">
-          <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '14px' }}>Oshpaz topish</Text>
+          <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '14px' }}>{t('glabal.findChef')}</Text>
           <Box display="flex" alignItems="center" gap="10px" borderRadius="12px"
             bgColor="#FFF5F0" border="1px solid #F3E4DE"
-            px="12px" style={{ height: '44px' }}>
+            px="12px" style={{ height: '52px' }}>
             <FiSearch color="#9B614B" style={{ fontSize: '17px', flexShrink: 0 }} />
             <input value={search} onChange={e => setSearch(e.target.value)}
               placeholder={t('glabal.enterName')}
@@ -225,10 +227,6 @@ const GlabalPage = () => {
             const realIdx = chefs.indexOf(chef);
             const isLiked = liked.includes(chef.phone);
             const isOnline = Store.isOnline('chef', chef.phone);
-            const chatId = Store.makeChatId(myPhone, chef.phone);
-            // Faqat OSHPAZ yozgan bo'lsa tugma ko'rinsin (mijoz o'zi yozgan bo'lsa yo'q)
-            const chatMsgs = Store.getMessages(chatId);
-            const hasChat = chatMsgs.some(m => m.sender === 'chef');
             return (
               <Box key={chef.phone} bgColor="white" borderRadius="18px"
                 boxShadow="0 2px 10px rgba(0,0,0,0.06)" overflow="hidden">
@@ -236,21 +234,12 @@ const GlabalPage = () => {
                   cursor="pointer" onClick={() => navigate(`/chef-view/${realIdx}`)}>
                   <Box position="relative" flexShrink={0}>
                     {chef.image
-                      ? <img 
-                          src={`${chef.image}?v=${Date.now()}`} 
-                          alt="" 
-                          style={{ width: '60px', height: '60px', borderRadius: '14px', objectFit: 'cover' }}
-                          onError={(e) => {
-                            console.log('Image load error:', chef.image, e);
-                            e.target.style.display = 'none';
-                            e.target.nextSibling.style.display = 'flex';
-                          }}
-                        />
-                      : null}
-                    <Box w="60px" h="60px" borderRadius="14px" bgColor="#F0E6E0"
-                      display={chef.image ? 'none' : 'flex'} alignItems="center" justifyContent="center">
-                      <Text fontWeight="800" color="#C03F0C" style={{ fontSize: '22px' }}>{chef.name?.charAt(0)}</Text>
-                    </Box>
+                      ? <img src={chef.image} alt="" style={{ width: '60px', height: '60px', borderRadius: '14px', objectFit: 'cover' }} />
+                      : <Box w="60px" h="60px" borderRadius="14px" bgColor="#F0E6E0"
+                        display="flex" alignItems="center" justifyContent="center">
+                        <Text fontWeight="800" color="#C03F0C" style={{ fontSize: '22px' }}>{chef.name?.charAt(0)}</Text>
+                      </Box>
+                    }
                     <Box position="absolute" bottom="2px" right="2px" w="11px" h="11px"
                       borderRadius="full" border="2px solid white" bgColor={isOnline ? '#22C55E' : '#D1D5DB'} />
                   </Box>

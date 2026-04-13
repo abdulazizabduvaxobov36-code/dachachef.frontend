@@ -127,18 +127,18 @@ const LikePage = () => {
                 onClick={() => navigate(`/chef-view/${regIdx}`)}>
                 <Box display="flex" flexDir="row" alignItems="center" gap={{ base: "10px", sm: "14px" }}>
                   <Box position="relative" flexShrink={0}>
-                    {chef.image ? (
-                      <img src={chef.image} alt=""
-                        style={{ width: "clamp(56px, 15vw, 70px)", height: "clamp(56px, 15vw, 70px)", borderRadius: "12px", objectFit: "cover" }} />
-                    ) : (
-                      <Box borderRadius="12px" bgColor="#FFF0EC"
-                        display="flex" alignItems="center" justifyContent="center"
-                        style={{ width: "clamp(56px, 15vw, 70px)", height: "clamp(56px, 15vw, 70px)" }}>
-                        <Text fontWeight="bold" color="#C03F0C" style={{ fontSize: "clamp(18px, 5vw, 24px)" }}>
-                          {chef.name?.charAt(0)}
-                        </Text>
-                      </Box>
-                    )}
+                    {chef.image
+                      ? <img src={chef.image} alt=""
+                        style={{ width: "clamp(56px, 15vw, 70px)", height: "clamp(56px, 15vw, 70px)", borderRadius: "12px", objectFit: "cover" }}
+                        onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex"; }} />
+                      : null}
+                    <Box borderRadius="12px" bgColor="#FFF0EC"
+                      display={chef.image ? "none" : "flex"} alignItems="center" justifyContent="center"
+                      style={{ width: "clamp(56px, 15vw, 70px)", height: "clamp(56px, 15vw, 70px)" }}>
+                      <Text fontWeight="bold" color="#C03F0C" style={{ fontSize: "clamp(18px, 5vw, 24px)" }}>
+                        {chef.name?.charAt(0)}
+                      </Text>
+                    </Box>
                     <Box position="absolute" bottom="3px" right="3px" w="10px" h="10px"
                       borderRadius="full" border="2px solid white"
                       bgColor={isOnline ? "#22C55E" : "#D1D5DB"} />

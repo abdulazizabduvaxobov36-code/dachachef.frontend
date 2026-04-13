@@ -79,7 +79,7 @@ const OrdersPage = () => {
   const fetchOrders = useCallback(async () => {
     if (!myPhone || myPhone === 'guest') { setOrders([]); return; }
     try {
-      const BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const BASE = import.meta.env?.VITE_API_URL || '';
       const res = await fetch(`${BASE}/orders/customer/${myPhone}/all`);
       if (res.ok) {
         const data = await res.json();
@@ -105,7 +105,7 @@ const OrdersPage = () => {
           const ratingText = `${rating} yulduz${review ? ': ' + review : ''}`;
           // Mijozga SMS yuborish
           Store.sendMessage(selectedChat.id, { text: `Sizga ${ratingText} baho berdim!`, sender: 'customer', from: myPhone, to: selectedChat.chefPhone });
-          
+
           // Oshpazga notification yuborish
           const customerData = getCD();
           await Store.sendChefNotification(selectedChat.chefPhone, {
@@ -117,11 +117,14 @@ const OrdersPage = () => {
             orderAmount: order.amount,
             timestamp: new Date().toISOString()
           });
+
+          // Real-time yangilanish uchun event yuborish
+          window.dispatchEvent(new Event('ratings-updated'));
+          window.dispatchEvent(new Event('chefs-updated'));
         }
       }
     } catch (error) {
-      console.error('Baho qoldirishda xatolik:', error);
-      throw error;
+      console.error('Rating submission error:', error);
     }
   };
 

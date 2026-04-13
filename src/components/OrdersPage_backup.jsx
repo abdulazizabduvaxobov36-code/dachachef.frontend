@@ -54,7 +54,7 @@ const OrdersPage = () => {
   const fetchOrders = async () => {
     if (!myPhone || myPhone === 'guest') return;
     try {
-      const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const AUTH_BASE = import.meta.env.VITE_API_URL || '/api';
       const response = await fetch(`${AUTH_BASE}/orders/customer/${myPhone}/all`);
       if (response.ok) {
         const data = await response.json();

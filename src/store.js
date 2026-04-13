@@ -16,9 +16,7 @@ const broadcast = (type, key) => { try { bc?.postMessage({ type, key }); } catch
 // Server API — xato bo'lsa null qaytaradi, dastur ishlashda davom etadi
 // Production da VITE_API_URL dan foydalanadi
 // Dev da Vite /api proxy mavjud bo'lsa, shu yo'l ishlaydi; aks holda 3001 to'g'ridan-to'g'ri chaqiradi.
-const DEFAULT_BACKEND = `${window.location.protocol}//${window.location.hostname}:3001`;
-const BASE = import.meta.env.VITE_API_URL ||
-  (window.location.port === '5173' ? DEFAULT_BACKEND : `${window.location.origin}/api`);
+const BASE = import.meta.env.VITE_API_URL || '';
 
 const api = {
   get: async (path) => {
@@ -71,7 +69,7 @@ export const Store = {
     local.set('registeredChefs', all);
     window.dispatchEvent(new Event('chefs-updated'));
     broadcast('chefs-updated');
-    api.post('/api/chefs', c);          // server sync (fon)
+    api.post('/chefs', c);          // server sync (fon)
     return c;
   },
 
@@ -106,14 +104,14 @@ export const Store = {
         local.set('registeredChefs', all);
         window.dispatchEvent(new Event('chefs-updated'));
         broadcast('chefs-updated');
-        api.post('/api/chefs', newChef);
+        api.post('/chefs', newChef);
       } else {
         // Telefon raqami o'zgarmagan bo'lsa, oddiy yangilash
         all[i] = { ...all[i], ...updates };
         local.set('registeredChefs', all);
         window.dispatchEvent(new Event('chefs-updated'));
         broadcast('chefs-updated');
-        api.post('/api/chefs', all[i]);   // server sync
+        api.post('/chefs', all[i]);   // server sync
       }
     } else if (updates.phone) {
       const nc = { ...updates, registeredAt: Date.now() };
@@ -121,7 +119,7 @@ export const Store = {
       local.set('registeredChefs', all);
       window.dispatchEvent(new Event('chefs-updated'));
       broadcast('chefs-updated');
-      api.post('/api/chefs', nc);
+      api.post('/chefs', nc);
     }
   },
 
@@ -143,7 +141,7 @@ export const Store = {
     window.dispatchEvent(new Event('chefs-updated'));
     window.dispatchEvent(new Event('posts-updated'));
     broadcast('chefs-updated');
-    api.del(`/api/chefs/${phone}`);
+    api.del(`/chefs/${phone}`);
   },
 
   getChefByPhone: (phone) => Store.getChefs().find(c => c.phone === phone) || null,
@@ -151,7 +149,7 @@ export const Store = {
   listenChefs: (callback) => {
     callback(Store.getChefs());
     // Serverdan bir marta sinxronlaymiz (xato bo'lsa o'tkazib yuboramiz)
-    api.get('/api/chefs').then(serverChefs => {
+    api.get('/chefs').then(serverChefs => {
       if (!serverChefs || !Array.isArray(serverChefs) || serverChefs.length === 0) return;
       const local2 = Store.getChefs();
       // Serverda bor, localda yo'q bo'lsa qo'shamiz
@@ -174,7 +172,7 @@ export const Store = {
   saveCustomerInfo: (phone, data) => {
     if (!phone) return;
     local.set(`customerInfo_${phone}`, { phone, ...data });
-    api.post(`/api/customers/${phone}`, data);   // server sync
+    api.post(`/customers/${phone}`, data);   // server sync
   },
 
   getCustomerInfo: (phone) => {
@@ -182,7 +180,7 @@ export const Store = {
     // Avval localdan, keyin serverdan (fon)
     const cached = local.get(`customerInfo_${phone}`);
     if (!cached) {
-      api.get(`/api/customers/${phone}`).then(d => {
+      api.get(`/customers/${phone}`).then(d => {
         if (d) local.set(`customerInfo_${phone}`, d);
       });
     }
@@ -193,12 +191,12 @@ export const Store = {
   setOnline: (role, id) => {
     if (!role || !id) return;
     localStorage.setItem(`online_${role}_${id}`, Date.now().toString());
-    api.post('/api/online', { role, id });
+    api.post('/online', { role, id });
   },
   setOffline: (role, id) => {
     if (!role || !id) return;
     localStorage.removeItem(`online_${role}_${id}`);
-    api.del(`/api/online/${role}/${id}`);
+    api.del(`/online/${role}/${id}`);
   },
   isOnline: (role, id) => {
     const ts = localStorage.getItem(`online_${role}_${id}`);
@@ -236,7 +234,7 @@ export const Store = {
     localStorage.setItem(uk, String(parseInt(localStorage.getItem(uk) || '0') + 1));
     window.dispatchEvent(new CustomEvent('message-received', { detail: { chatId } }));
     broadcast('message-received', chatId);
-    api.post(`/api/chats/${chatId}`, newMsg);    // server sync
+    api.post(`/chats/${chatId}`, newMsg);    // server sync
     return newMsg;
   },
 
@@ -266,7 +264,7 @@ export const Store = {
 
   clearUnread: (chatId, userId) => {
     localStorage.setItem(`unread_${chatId}_${userId}`, '0');
-    api.post('/api/unread/clear', { chatId, userId });
+    api.post('/unread/clear', { chatId, userId });
   },
   getUnread: (chatId, userId) =>
     parseInt(localStorage.getItem(`unread_${chatId}_${userId}`) || '0'),
@@ -289,7 +287,7 @@ export const Store = {
     local.set('chefPosts', all);
     window.dispatchEvent(new Event('posts-updated'));
     broadcast('posts-updated');
-    api.post('/api/posts', np);
+    api.post('/posts', np);
     return np;
   },
 
@@ -297,7 +295,7 @@ export const Store = {
     local.set('chefPosts', Store.getPosts().filter(p => p.id !== id));
     window.dispatchEvent(new Event('posts-updated'));
     broadcast('posts-updated');
-    api.del(`/api/posts/${id}`);
+    api.del(`/posts/${id}`);
   },
 
   listenPosts: (callback) => {
@@ -411,7 +409,7 @@ export default Store;
 
 Store.getCustomerAllOrders = async (customerPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/all`);
     if (!r.ok) return null;
     return await r.json();
@@ -420,7 +418,7 @@ Store.getCustomerAllOrders = async (customerPhone) => {
 
 Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/chef/${chefPhone}`);
     if (!r.ok) return null;
     return await r.json();
@@ -430,7 +428,7 @@ Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
 // Baho va izoh qoldirish
 Store.updateOrderRating = async (orderId, rating, review) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
     console.log('Rating API call:', `${AUTH_BASE}/orders/${orderId}/rating`, { rating, review });
     const r = await fetch(`${AUTH_BASE}/orders/${orderId}/rating`, {
       method: 'PATCH',
@@ -452,7 +450,7 @@ Store.updateOrderRating = async (orderId, rating, review) => {
 // Oshpazning barcha baholari
 Store.getChefRatings = async (chefPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
     const r = await fetch(`${AUTH_BASE}/orders/chef/${chefPhone}/ratings`);
     if (!r.ok) return null;
     return await r.json();
@@ -462,7 +460,7 @@ Store.getChefRatings = async (chefPhone) => {
 // Mijoz qoldirgan barcha baholar
 Store.getCustomerRatings = async (customerPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/ratings`);
     if (!r.ok) return null;
     return await r.json();
@@ -472,7 +470,7 @@ Store.getCustomerRatings = async (customerPhone) => {
 // Oshpazga notification yuborish (baho va izoh uchun)
 Store.sendChefNotification = async (chefPhone, notification) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
     const r = await fetch(`${AUTH_BASE}/notifications/chef`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -486,7 +484,7 @@ Store.sendChefNotification = async (chefPhone, notification) => {
 // --- AUTH (Backend API) ---─────────────────────────────────────
 Store.authRegister = async ({ name, email, password, role }) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
     const r = await fetch(`${AUTH_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -504,7 +502,7 @@ Store.authRegister = async ({ name, email, password, role }) => {
 
 Store.authLogin = async ({ email, password }) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
     const r = await fetch(`${AUTH_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

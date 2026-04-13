@@ -83,12 +83,13 @@ const ChefsPage = () => {
               cursor="pointer" onClick={() => navigate(`/chef-view/${realIdx}`)}>
               <Box position="relative" flexShrink={0}>
                 {chef.image
-                  ? <img src={chef.image} alt="" style={{ width: '58px', height: '58px', borderRadius: '14px', objectFit: 'cover' }} />
-                  : <Box w="58px" h="58px" borderRadius="14px" bgColor="#F0E6E0"
-                    display="flex" alignItems="center" justifyContent="center">
-                    <Text fontWeight="800" color="#C03F0C" style={{ fontSize: '20px' }}>{chef.name?.charAt(0)}</Text>
-                  </Box>
-                }
+                  ? <img src={chef.image} alt="" style={{ width: '58px', height: '58px', borderRadius: '14px', objectFit: 'cover' }}
+                    onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }} />
+                  : null}
+                <Box w="58px" h="58px" borderRadius="14px" bgColor="#F0E6E0"
+                  display={chef.image ? 'none' : 'flex'} alignItems="center" justifyContent="center">
+                  <Text fontWeight="800" color="#C03F0C" style={{ fontSize: '20px' }}>{chef.name?.charAt(0)}</Text>
+                </Box>
                 <Box position="absolute" bottom="2px" right="2px" w="11px" h="11px"
                   borderRadius="full" border="2px solid white" bgColor={isOnline ? '#22C55E' : '#D1D5DB'} />
               </Box>

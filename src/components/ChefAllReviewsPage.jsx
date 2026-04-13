@@ -1,150 +1,160 @@
 import { Box, Text, Button } from '@chakra-ui/react';
-import { FaArrowLeft, FaStar } from 'react-icons/fa';
+import { FaArrowLeft, FaStar, FaComment } from 'react-icons/fa';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
+
+const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const ChefAllReviewsPage = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { t } = useTranslation();
-    const { chefProfile, ratings } = location.state || {};
-    
-    const [sortBy, setSortBy] = useState('newest'); // newest, highest, lowest
+    const { chefPhone, chefName } = location.state || {};
 
-    const sortedRatings = [...(ratings || [])].sort((a, b) => {
-        switch (sortBy) {
-            case 'highest':
-                return b.rating - a.rating;
-            case 'lowest':
-                return a.rating - b.rating;
-            case 'newest':
-            default:
-                return new Date(b.createdAt) - new Date(a.createdAt);
-        }
-    });
+    const [reviews, setReviews] = useState([]);
+    const [avgRating, setAvgRating] = useState(0);
+    const [loading, setLoading] = useState(true);
+    // filter: 'all' | 'comment' | 'rating'
+    const [filter, setFilter] = useState('all');
+    const [showDropdown, setShowDropdown] = useState(false);
 
-    const fullName = chefProfile.name ? `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim() : t("chefProfileOwn.defaultName");
-    const averageRating = ratings.length > 0 
-        ? (ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length).toFixed(1)
-        : 0;
+    useEffect(() => {
+        if (!chefPhone) return;
+        fetch(`${API}/reviews/${chefPhone}`)
+            .then(r => r.json())
+            .then(data => {
+                setReviews(data.reviews || []);
+                setAvgRating(data.avgRating || 0);
+                setLoading(false);
+            })
+            .catch(() => setLoading(false));
+    }, [chefPhone]);
 
-    const handleBack = () => navigate('/chef-profile');
+    if (!chefPhone) return (
+        <Box minH="100dvh" display="flex" alignItems="center" justifyContent="center">
+            <Text color="#9B8E8A">Ma'lumot topilmadi</Text>
+        </Box>
+    );
+
+    const allReviews = reviews;
+    const commentOnly = reviews.filter(r => !r.rating || r.rating === 0);
+    const ratingReviews = reviews.filter(r => r.rating && r.rating > 0);
+
+    const displayed = filter === 'all' ? allReviews : filter === 'comment' ? commentOnly : ratingReviews;
+
+    const filterOptions = [
+        { key: 'all',     label: 'Hamma izohlar',  count: allReviews.length },
+        { key: 'comment', label: 'Izohlar',         count: commentOnly.length },
+        { key: 'rating',  label: 'Izoh va baholar', count: ratingReviews.length },
+    ];
+    const currentFilter = filterOptions.find(f => f.key === filter);
 
     return (
-        <Box minH="100vh" bgColor="#FFF5F0" display="flex" flexDir="column">
+        <Box minH="100dvh" bgColor="#FFF5F0">
             {/* Header */}
-            <Box bgColor="white" px="16px" pt="14px" pb="12px" boxShadow="0 1px 0 #EBEBEB">
-                <Box display="flex" alignItems="center" gap="12px">
-                    <Button
-                        w="40px" h="40px" borderRadius="50%"
-                        bgColor="white"
-                        onClick={handleBack}
-                    >
-                        <FaArrowLeft style={{ color: "#1C110D" }} />
-                    </Button>
-                    <Box flex="1">
-                        <Text fontWeight="800" color="#1C110D" style={{ fontSize: "18px" }}>
-                            {fullName} - Barcha izohlar
-                        </Text>
-                        <Text color="#9B8E8A" style={{ fontSize: "12px", marginTop: "2px" }}>
-                            {ratings.length} ta izoh • ⭐ {averageRating}
-                        </Text>
-                    </Box>
+            <Box bgColor="white" px="16px" py="14px" display="flex" alignItems="center" gap="12px"
+                boxShadow="0 1px 0 #F0EBE6" position="sticky" top="0" zIndex={50}>
+                <Box w="36px" h="36px" borderRadius="full" bgColor="#FFF0EC"
+                    display="flex" alignItems="center" justifyContent="center"
+                    cursor="pointer" onClick={() => navigate(-1)}>
+                    <FaArrowLeft style={{ fontSize: '14px', color: '#C03F0C' }} />
                 </Box>
-            </Box>
-
-            {/* Sort Options */}
-            <Box px="16px" py="12px" bgColor="white" mt="2px">
-                <Box display="flex" gap="8px" flexWrap="wrap">
-                    {[
-                        { value: 'newest', label: 'Eng yangi' },
-                        { value: 'highest', label: 'Eng yuqori baho' },
-                        { value: 'lowest', label: 'Eng past baho' }
-                    ].map(option => (
-                        <Button
-                            key={option.value}
-                            h="32px" px="12px" borderRadius="16px"
-                            bgColor={sortBy === option.value ? "#C03F0C" : "#F5F3F1"}
-                            color={sortBy === option.value ? "white" : "#6B6560"}
-                            fontWeight="600"
-                            style={{ fontSize: "12px" }}
-                            _hover={{ bgColor: sortBy === option.value ? "#a0300a" : "#E8E8E8" }}
-                            onClick={() => setSortBy(option.value)}
-                        >
-                            {option.label}
-                        </Button>
-                    ))}
+                <Box flex="1" minW={0}>
+                    <Text fontWeight="800" color="#1C110D" noOfLines={1} style={{ fontSize: '17px' }}>{chefName}</Text>
+                    <Text color="#9B8E8A" style={{ fontSize: '12px' }}>
+                        {reviews.length} ta izoh {avgRating > 0 && `· ⭐ ${avgRating}`}
+                    </Text>
                 </Box>
-            </Box>
 
-            {/* Reviews List */}
-            <Box flex="1" px="16px" py="16px" pb="80px">
-                {ratings.length === 0 ? (
-                    <Box textAlign="center" py="60px">
-                        <Text color="#B0A8A4" style={{ fontSize: "14px" }}>
-                            Hali izohlar yo'q
+                {/* Dropdown filter */}
+                <Box position="relative">
+                    <Box cursor="pointer" bgColor="#FFF0EC" borderRadius="12px" px="12px" py="7px"
+                        border="1.5px solid #F5C5B0" display="flex" alignItems="center" gap="6px"
+                        onClick={() => setShowDropdown(v => !v)}>
+                        <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '12px' }}>
+                            {currentFilter?.label}
                         </Text>
+                        <Text color="#C03F0C" style={{ fontSize: '10px' }}>▼</Text>
                     </Box>
-                ) : (
-                    <Box display="flex" flexDir="column" gap="12px">
-                        {sortedRatings.map((r, i) => (
-                            <Box key={r._id || i} bgColor="white" borderRadius="16px" p="16px" boxShadow="0 2px 8px rgba(0,0,0,0.06)">
-                                <Box display="flex" alignItems="flex-start" gap="12px">
-                                    {/* Customer Avatar */}
-                                    <Box w="40px" h="40px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
-                                        display="flex" alignItems="center" justifyContent="center"
-                                        color="white" fontWeight="700" style={{ fontSize: "16px" }}>
-                                        {r.customerName?.charAt(0) || 'M'}
-                                    </Box>
-                                    
-                                    {/* Review Content */}
-                                    <Box flex="1">
-                                        <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb="8px">
-                                            <Box>
-                                                <Text fontWeight="700" color="#1C110D" style={{ fontSize: "14px" }}>
-                                                    {r.customerName || 'Mijoz'}
-                                                </Text>
-                                                <Box display="flex" gap="2px" mt="4px">
-                                                    {[1, 2, 3, 4, 5].map(s => (
-                                                        <FaStar key={s} color={s <= r.rating ? '#F4B400' : '#E0DAD7'} style={{ fontSize: "12px" }} />
-                                                    ))}
-                                                    <Text color="#9B8E8A" style={{ fontSize: "12px", marginLeft: "8px" }}>
-                                                        {r.rating}/5
-                                                    </Text>
-                                                </Box>
-                                            </Box>
-                                            <Text color="#B0A8A4" style={{ fontSize: "11px" }}>
-                                                {new Date(r.createdAt).toLocaleDateString('uz-UZ', {
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
-                                            </Text>
-                                        </Box>
-                                        
-                                        {r.comment && (
-                                            <Text color="#6B6560" style={{ fontSize: "13px", lineHeight: "1.5" }}>
-                                                {r.comment}
-                                            </Text>
-                                        )}
-                                        
-                                        {r.orderAmount && (
-                                            <Box mt="8px" bgColor="#FFF5F0" borderRadius="8px" px="8px" py="4px" display="inline-block">
-                                                <Text color="#9B614B" style={{ fontSize: "11px", fontWeight: "600" }}>
-                                                    Buyurtma: {r.orderAmount.toLocaleString()} so'm
-                                                </Text>
-                                            </Box>
-                                        )}
+                    {showDropdown && (
+                        <Box position="absolute" top="44px" right="0" bgColor="white" borderRadius="16px"
+                            boxShadow="0 8px 24px rgba(0,0,0,0.12)" zIndex={100} overflow="hidden"
+                            border="1px solid #F0E6E0" minW="180px">
+                            {filterOptions.map(opt => (
+                                <Box key={opt.key} px="16px" py="12px" cursor="pointer"
+                                    bgColor={filter === opt.key ? '#FFF0EC' : 'white'}
+                                    _hover={{ bgColor: '#FFF5F2' }}
+                                    display="flex" justifyContent="space-between" alignItems="center"
+                                    onClick={() => { setFilter(opt.key); setShowDropdown(false); }}>
+                                    <Text fontWeight={filter === opt.key ? '700' : '500'}
+                                        color={filter === opt.key ? '#C03F0C' : '#1C110D'}
+                                        style={{ fontSize: '13px' }}>
+                                        {opt.label}
+                                    </Text>
+                                    <Box bgColor={filter === opt.key ? '#C03F0C' : '#F0E6E0'}
+                                        color={filter === opt.key ? 'white' : '#9B614B'}
+                                        borderRadius="full" px="7px" py="1px"
+                                        style={{ fontSize: '11px', fontWeight: '700' }}>
+                                        {opt.count}
                                     </Box>
                                 </Box>
-                            </Box>
-                        ))}
+                            ))}
+                        </Box>
+                    )}
+                </Box>
+            </Box>
+
+            {/* Tashqariga bossa dropdown yopilsin */}
+            {showDropdown && (
+                <Box position="fixed" inset="0" zIndex={49} onClick={() => setShowDropdown(false)} />
+            )}
+
+            {/* Reviews */}
+            <Box px="16px" pt="14px" pb="80px" display="flex" flexDir="column" gap="10px">
+                {loading ? (
+                    <Box textAlign="center" py="40px">
+                        <Text color="#B0A8A4" style={{ fontSize: '14px' }}>Yuklanmoqda...</Text>
                     </Box>
-                )}
+                ) : displayed.length === 0 ? (
+                    <Box bgColor="white" borderRadius="16px" p="24px" textAlign="center"
+                        boxShadow="0 2px 8px rgba(0,0,0,0.06)">
+                        <Text color="#B0A8A4" style={{ fontSize: '14px' }}>Bu bo'limda izoh yo'q</Text>
+                    </Box>
+                ) : displayed.map((r, i) => (
+                    <Box key={r._id || i} bgColor="white" borderRadius="16px" p="14px"
+                        boxShadow="0 2px 8px rgba(0,0,0,0.06)">
+                        <Box display="flex" alignItems="center" gap="10px" mb="8px">
+                            <Box w="36px" h="36px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
+                                display="flex" alignItems="center" justifyContent="center"
+                                color="white" fontWeight="700" style={{ fontSize: '14px' }}>
+                                {r.customerName?.charAt(0) || 'M'}
+                            </Box>
+                            <Box flex="1" minW={0}>
+                                <Text fontWeight="700" color="#1C110D" style={{ fontSize: '14px' }}>
+                                    {r.customerName || `+998${r.customerPhone}`}
+                                </Text>
+                                <Text color="#B0A8A4" style={{ fontSize: '11px' }}>
+                                    {new Date(r.createdAt).toLocaleDateString('uz-UZ')}
+                                </Text>
+                            </Box>
+                            {r.rating > 0 ? (
+                                <Box display="flex" gap="2px">
+                                    {[1,2,3,4,5].map(s => (
+                                        <FaStar key={s} style={{ fontSize: '12px', color: s <= r.rating ? '#F4B400' : '#E0DAD7' }} />
+                                    ))}
+                                </Box>
+                            ) : (
+                                <Box bgColor="#FFF0EC" borderRadius="8px" px="8px" py="3px">
+                                    <FaComment style={{ fontSize: '11px', color: '#C03F0C' }} />
+                                </Box>
+                            )}
+                        </Box>
+                        {r.comment && (
+                            <Text color="#6B6560" style={{ fontSize: '13px', lineHeight: '1.6' }}>{r.comment}</Text>
+                        )}
+                    </Box>
+                ))}
             </Box>
         </Box>
     );
 };
-
 export default ChefAllReviewsPage;

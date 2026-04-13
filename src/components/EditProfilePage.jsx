@@ -15,6 +15,7 @@ const EditProfilePage = () => {
         if (sess?.role === "customer" && sess?.data?.phone) return sess.data;
         return {};
     })();
+    const oldPhone = storedData.phone;
     const [firstName, setFirstName] = useState(storedData.firstName || "");
     const [lastName, setLastName] = useState(storedData.lastName || "");
     const [phone, setPhone] = useState(storedData.phone || "");
@@ -53,16 +54,23 @@ const EditProfilePage = () => {
             localStorage.setItem("customerData", JSON.stringify(updated));
             Store.setSession("customer", updated);
             Store.saveCustomerInfo(phone, { firstName, lastName, image });
-            window.dispatchEvent(new Event("customerData-updated"));
-            // Backend ga ham yangilash (xato bo'lsa ham navigate qilamiz)
+
+            // Telefon raqami o'zgargan bo'lsa, eski saved accountni tozalash
+            if (oldPhone && oldPhone !== phone) {
+                localStorage.removeItem(`saved_customer_${oldPhone}`);
+                sessionStorage.removeItem('session');
+            }
+
+            // Backend ga ham yangilash
             try {
-                const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+                const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
                 await fetch(`${AUTH_BASE}/customers/${phone}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ firstName, lastName, phone, image }),
                 });
             } catch { }
+            window.dispatchEvent(new Event("customerData-updated"));
             navigate("/profile");
         }
     };
