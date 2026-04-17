@@ -79,7 +79,7 @@ const OrdersPage = () => {
   const fetchOrders = useCallback(async () => {
     if (!myPhone || myPhone === 'guest') { setOrders([]); return; }
     try {
-      const BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+      const BASE = import.meta.env?.VITE_API_URL || '';
       const res = await fetch(`${BASE}/orders/customer/${myPhone}/all`);
       if (res.ok) {
         const data = await res.json();

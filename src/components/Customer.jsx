@@ -58,7 +58,7 @@ const Customer = () => {
       Store.saveCustomerInfo(phone, { firstName, lastName, image: null });
       // Backend ga ham saqlash
       try {
-        const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
         await fetch(`${AUTH_BASE}/customers`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

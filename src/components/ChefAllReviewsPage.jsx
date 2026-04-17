@@ -3,7 +3,7 @@ import { FaArrowLeft, FaStar, FaComment } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const API = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env?.VITE_API_URL || '';
 
 const ChefAllReviewsPage = () => {
     const navigate = useNavigate();

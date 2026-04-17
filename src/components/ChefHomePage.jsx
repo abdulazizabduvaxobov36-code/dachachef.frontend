@@ -27,14 +27,14 @@ const ChefHomePage = () => {
     const [postImg, setPostImg] = useState(null);
     const [postName, setPostName] = useState("");
     const [postImgPreview, setPostImgPreview] = useState(null);
-    const [activeTab, setActiveTab] = useState('orders');
+    const [activeTab, setActiveTab] = useState('sorovlar');
     const [showNotifPanel, setShowNotifPanel] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [publishLoading, setPublishLoading] = useState(false);
     const [reviewNotifs, setReviewNotifs] = useState([]);
-    const [newReviewToast, setNewReviewToast] = useState(null); // SMS kabi ogohlantirish
-    const [unseenReviews, setUnseenReviews] = useState([]); // o'qilmagan izohlar (bell uchun)
-    const lastReviewCountRef = useRef(null); // avvalgi review soni
+    const [newReviewToast, setNewReviewToast] = useState(null);
+    const [unseenReviews, setUnseenReviews] = useState([]);
+    const lastReviewCountRef = useRef(null);
 
     // ─── BUYURTMA MODAL ───────────────────────────────────────
     const [showOrderModal, setShowOrderModal] = useState(false);
@@ -49,164 +49,159 @@ const ChefHomePage = () => {
     const [chefTotalCommission, setChefTotalCommission] = useState(0);
     const [chefOrders, setChefOrders] = useState([]);
     const [pendingRequests, setPendingRequests] = useState([]);
+    const [requestActionState, setRequestActionState] = useState({}); // {orderId: 'loading'|'accepted'|'rejected'}
 
     const fetchPendingRequests = async () => {
         if (!myPhone) return;
+        const API_BASE = import.meta.env?.VITE_API_URL || '';
+        let apiPending = [];
+
         try {
-            const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
             const res = await fetch(`${API_BASE}/orders/chef/${myPhone}`);
-            let pending = [];
-            
-            // Backend dan ma'lumot olish
             if (res.ok) {
                 const data = await res.json();
                 const allOrders = Array.isArray(data) ? data : (data.orders || []);
-                pending = allOrders.filter(order => order.status === 'pending' && order.source === 'customer');
+                apiPending = allOrders.filter(o => o.status === 'pending' && o.source === 'customer');
             }
-            
-            // LocalStorage dan ham pending buyurtmalarni olish
-            const localStorageKeys = Object.keys(localStorage);
-            const localPending = localStorageKeys
-                .filter(key => key.startsWith('pendingOrder_') && key.endsWith(`_${myPhone}`))
-                .map(key => {
-                    try {
-                        const orderData = JSON.parse(localStorage.getItem(key));
+        } catch { }
+
+        // custOrders_ localStorage dan ham pending larni olish
+        const localCustOrders = JSON.parse(localStorage.getItem(`custOrders_${myPhone}`) || '[]');
+        const localPending = localCustOrders.filter(o => o.status === 'pending');
+
+        // Eski pendingOrder_ formatidan ham olish
+        const oldFormatPending = Object.keys(localStorage)
+            .filter(key => key.startsWith('pendingOrder_') && key.endsWith(`_${myPhone}`))
+            .map(key => {
+                try {
+                    const val = localStorage.getItem(key);
+                    // Agar JSON bo'lsa, orderData; aks holda faqat flag
+                    let od;
+                    try { od = JSON.parse(val); } catch { od = null; }
+                    if (od && od.customerPhone) {
                         return {
-                            ...orderData,
-                            _id: `local_${key}`,
-                            id: `local_${key}`,
-                            customerPhone: orderData.customerId,
-                            customerName: 'Mijoz',
-                            amount: orderData.price,
-                            createdAt: new Date(orderData.createdAt).toISOString(),
-                            status: 'pending',
-                            source: 'customer'
+                            ...od,
+                            _id: od._id || `local_${key}`,
+                            id: od.id || `local_${key}`,
+                            status: 'pending', source: 'customer'
                         };
-                    } catch (error) {
-                        console.error('Error parsing localStorage order:', error);
-                        return null;
                     }
-                })
-                .filter(order => order !== null);
-            
-            // Backend va localStorage dan kelgan buyurtmalarni birlashtirish
-            const allPending = [...pending, ...localPending];
-            console.log('All pending requests:', allPending);
-            setPendingRequests(allPending);
-        } catch (error) {
-            console.error('Error fetching pending requests:', error);
-            // Faqat localStorage dan olish
-            const localStorageKeys = Object.keys(localStorage);
-            const localPending = localStorageKeys
-                .filter(key => key.startsWith('pendingOrder_') && key.endsWith(`_${myPhone}`))
-                .map(key => {
-                    try {
-                        const orderData = JSON.parse(localStorage.getItem(key));
-                        return {
-                            ...orderData,
-                            _id: `local_${key}`,
-                            id: `local_${key}`,
-                            customerPhone: orderData.customerId,
-                            customerName: 'Mijoz',
-                            amount: orderData.price,
-                            createdAt: new Date(orderData.createdAt).toISOString(),
-                            status: 'pending',
-                            source: 'customer'
-                        };
-                    } catch (error) {
-                        return null;
-                    }
-                })
-                .filter(order => order !== null);
-            setPendingRequests(localPending);
-        }
+                    return null;
+                } catch { return null; }
+            })
+            .filter(Boolean);
+
+        // Birlashtirish — dublikatlarni oldini olish (customerPhone + time matching)
+        const seen = new Set();
+        const merged = [];
+        [...apiPending, ...localPending, ...oldFormatPending].forEach(o => {
+            const key = `${o.customerPhone}_${o.chefPhone || myPhone}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                merged.push({ ...o, _id: o._id || o.id || `local_${o.customerPhone}` });
+            }
+        });
+
+        setPendingRequests(merged);
     };
 
     const handleAcceptRequest = async (order) => {
-        const orderId = order._id || order.id;
+        const orderId = order._id || order.id || `local_${order.customerPhone}`;
+        setRequestActionState(s => ({ ...s, [orderId]: 'loading' }));
+
+        // Offline-first: localStorage ni yangilash
+        const custOrders = JSON.parse(localStorage.getItem(`custOrders_${myPhone}`) || '[]');
+        const updatedOrders = custOrders.map(o =>
+            o.customerPhone === order.customerPhone && o.status === 'pending'
+                ? { ...o, status: 'accepted' } : o
+        );
+        localStorage.setItem(`custOrders_${myPhone}`, JSON.stringify(updatedOrders));
+        localStorage.removeItem(`pendingOrder_${order.customerPhone}_${myPhone}`);
+        localStorage.removeItem(`pendingCustOrder_${order.customerPhone}_${myPhone}`);
+
+        // Chat xabari
+        const chatId = Store.makeChatId(order.customerPhone, myPhone);
+        Store.sendMessage(chatId, {
+            text: `✅ Buyurtmangiz qabul qilindi! ${Number(order.amount || order.price || 0).toLocaleString()} so'm`,
+            sender: 'chef', from: myPhone, to: order.customerPhone,
+        });
+
+        // Backend ga yuborish (fire-and-forget)
+        const API_BASE = import.meta.env?.VITE_API_URL || '';
         try {
-            const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
-            const res = await fetch(`${API_BASE}/orders/${orderId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'accepted' }),
-            });
-            if (res.ok) {
-                // Mijozning pending flagini tozalash
-                const key = `pendingOrder_${order.customerPhone}_${myPhone}`;
-                localStorage.removeItem(key);
-                // Chatga xabar yuborish
-                const chatId = Store.makeChatId(order.customerPhone, myPhone);
-                Store.sendMessage(chatId, {
-                    text: `✅ Buyurtmangiz qabul qilindi! ${Number(order.amount).toLocaleString()} so'm`,
-                    sender: 'chef',
-                    from: myPhone,
-                    to: order.customerPhone,
-                });
-                // Oshpaz hisobot sifatida avtomatik buyurtma yaratish (source='chef')
-                const chefFullName = `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim();
-                await fetch(`${API_BASE}/orders`, {
-                    method: 'POST',
+            if (orderId && !String(orderId).startsWith('local_')) {
+                await fetch(`${API_BASE}/orders/${orderId}`, {
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        customerPhone: order.customerPhone,
-                        customerName: order.customerName,
-                        chefPhone: myPhone,
-                        chefName: chefFullName,
-                        amount: order.amount,
-                        note: order.note || '',
-                        source: 'chef',
-                        status: 'done',
-                        createdAt: new Date().toISOString(),
-                    }),
+                    body: JSON.stringify({ status: 'accepted' }),
                 });
-                fetchPendingRequests();
-                fetchChefTotalEarned();
-            } else {
-                alert("Buyurtmani qabul qilishda xatolik");
             }
-        } catch (error) {
-            console.error('Accept request error:', error);
-            alert("Server bilan aloqa yo'q");
-        }
+            // Oshpaz hisoboti sifatida yangi buyurtma yaratish (source='chef')
+            const chefFullName = `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim();
+            await fetch(`${API_BASE}/orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    customerPhone: order.customerPhone,
+                    customerName: order.customerName || `+998${order.customerPhone}`,
+                    chefPhone: myPhone,
+                    chefName: chefFullName,
+                    amount: order.amount || order.price || 0,
+                    note: order.note || '',
+                    source: 'chef',
+                    status: 'done',
+                    createdAt: new Date().toISOString(),
+                }),
+            });
+        } catch { }
+
+        setRequestActionState(s => ({ ...s, [orderId]: 'accepted' }));
+        fetchPendingRequests();
+        fetchChefTotalEarned();
     };
 
     const handleRejectRequest = async (order) => {
-        const orderId = order._id || order.id;
+        const orderId = order._id || order.id || `local_${order.customerPhone}`;
+        setRequestActionState(s => ({ ...s, [orderId]: 'loading' }));
+
+        // Offline-first: localStorage ni yangilash
+        const custOrders = JSON.parse(localStorage.getItem(`custOrders_${myPhone}`) || '[]');
+        const updatedOrders = custOrders.map(o =>
+            o.customerPhone === order.customerPhone && o.status === 'pending'
+                ? { ...o, status: 'rejected' } : o
+        );
+        localStorage.setItem(`custOrders_${myPhone}`, JSON.stringify(updatedOrders));
+        localStorage.removeItem(`pendingOrder_${order.customerPhone}_${myPhone}`);
+        localStorage.removeItem(`pendingCustOrder_${order.customerPhone}_${myPhone}`);
+
+        // Chat xabari
+        const chatId = Store.makeChatId(order.customerPhone, myPhone);
+        Store.sendMessage(chatId, {
+            text: `❌ Buyurtma rad etildi. Boshqa vaqt urinib ko'ring.`,
+            sender: 'chef', from: myPhone, to: order.customerPhone,
+        });
+
+        // Backend ga yuborish (fire-and-forget)
+        const API_BASE = import.meta.env?.VITE_API_URL || '';
         try {
-            const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
-            const res = await fetch(`${API_BASE}/orders/${orderId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'rejected' }),
-            });
-            if (res.ok) {
-                // Mijozning pending flagini tozalash (qaytadan buyurtma bera olsin)
-                const key = `pendingOrder_${order.customerPhone}_${myPhone}`;
-                localStorage.removeItem(key);
-                // Chatga xabar yuborish
-                const chatId = Store.makeChatId(order.customerPhone, myPhone);
-                Store.sendMessage(chatId, {
-                    text: `❌ Buyurtma rad etildi. Boshqa vaqt urinib ko'ring.`,
-                    sender: 'chef',
-                    from: myPhone,
-                    to: order.customerPhone,
+            if (orderId && !String(orderId).startsWith('local_')) {
+                await fetch(`${API_BASE}/orders/${orderId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'rejected' }),
                 });
-                fetchPendingRequests();
-            } else {
-                alert("Buyurtmani rad etishda xatolik");
             }
-        } catch (error) {
-            console.error('Reject request error:', error);
-            alert("Server bilan aloqa yo'q");
-        }
+        } catch { }
+
+        setRequestActionState(s => ({ ...s, [orderId]: 'rejected' }));
+        fetchPendingRequests();
     };
 
     const fetchChefTotalEarned = async () => {
         if (!myPhone) return;
         try {
-            const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
-            const r = await fetch(`${AUTH_BASE}/orders/chef/${myPhone}`);
+            const API_BASE = import.meta.env?.VITE_API_URL || '';
+            const r = await fetch(`${API_BASE}/orders/chef/${myPhone}`);
             if (!r.ok) return;
             const data = await r.json();
             if (data?.summary) {
@@ -231,43 +226,50 @@ const ChefHomePage = () => {
         setOrderLoading(true);
         setOrderError('');
         setOrderNameError('');
+
+        const API_BASE = import.meta.env?.VITE_API_URL || '';
+        const chefFullName = `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim();
+        const input = orderCustomerName.trim();
+        const digitsOnly = input.replace(/\D/g, '');
+        const isPhone = digitsOnly.length === 9;
+        const orderData = {
+            customerPhone: isPhone ? digitsOnly : `name_${Date.now()}`,
+            customerName: input || "noma'lum",
+            chefPhone: myPhone,
+            chefName: chefFullName,
+            amount: Number(orderAmount),
+            note: orderNote,
+            source: 'chef',
+            status: 'done',
+            createdAt: new Date().toISOString(),
+        };
+
+        // Offline-first: localStorage ga saqlash
+        const existingReported = JSON.parse(localStorage.getItem(`chefReportedOrders_${myPhone}`) || '[]');
+        localStorage.setItem(`chefReportedOrders_${myPhone}`, JSON.stringify([orderData, ...existingReported]));
+
+        // Backend ga yuborish
         try {
-            const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
-            const chefFullName = `${chefProfile.name || 'http://localhost:5000'} ${chefProfile.surname || 'http://localhost:5000'}`.trim();
-            const input = orderCustomerName.trim();
-            const digitsOnly = input.replace(/\D/g, '');
-            const isPhone = digitsOnly.length === 9;
-            const orderData = {
-                customerPhone: isPhone ? digitsOnly : `name_${Date.now()}`,
-                customerName: input || 'noma\'lum',
-                chefPhone: myPhone,
-                chefName: chefFullName,
-                amount: Number(orderAmount),
-                note: orderNote,
-            };
             const res = await fetch(`${API_BASE}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderData),
             });
-            if (res.ok) {
-                setOrderSuccess(true);
-                fetchChefTotalEarned();
-                setTimeout(() => {
-                    setShowOrderModal(false);
-                    setOrderSuccess(false);
-                    setOrderCustomerName('');
-                    setOrderAmount('');
-                    setOrderNote('');
-                    setOrderNameError('');
-                }, 1500);
-            } else {
-                const errBody = await res.json().catch(() => ({}));
-                setOrderError(errBody?.message || errBody?.error || `Xato (${res.status})`);
-            }
-        } catch (e) {
-            setOrderError("Server bilan aloqa yo'q — backend ishlamayapti");
+            if (!res.ok) throw new Error();
+        } catch {
+            // Offline — localStorage da saqlanib qoldi, keyinroq sync bo'ladi
         }
+
+        setOrderSuccess(true);
+        fetchChefTotalEarned();
+        setTimeout(() => {
+            setShowOrderModal(false);
+            setOrderSuccess(false);
+            setOrderCustomerName('');
+            setOrderAmount('');
+            setOrderNote('');
+            setOrderNameError('');
+        }, 1500);
         setOrderLoading(false);
     };
 
@@ -277,7 +279,7 @@ const ChefHomePage = () => {
         const seenTs = Number(localStorage.getItem(`reviewsSeenTs_${myPhone}`) || 0);
         const localReviews = JSON.parse(localStorage.getItem(lsKey) || '[]');
         try {
-            const API = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+            const API = import.meta.env?.VITE_API_URL || '';
             const res = await fetch(`${API}/reviews/${myPhone}`);
             if (!res.ok) throw new Error();
             const data = await res.json();
@@ -288,7 +290,6 @@ const ChefHomePage = () => {
                 ),
                 ...serverReviews,
             ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-            // Yangi izoh kelganini aniqlash (toast)
             if (lastReviewCountRef.current !== null && merged.length > lastReviewCountRef.current) {
                 const newest = merged[0];
                 setNewReviewToast(newest);
@@ -296,7 +297,6 @@ const ChefHomePage = () => {
             }
             lastReviewCountRef.current = merged.length;
             setReviewNotifs(merged);
-            // Bell uchun — faqat o'qilmagan (seenTs dan keyin kelgan) izohlar
             const unseen = merged.filter(r => new Date(r.createdAt).getTime() > seenTs);
             setUnseenReviews(unseen);
         } catch {
@@ -313,8 +313,6 @@ const ChefHomePage = () => {
         }
     };
 
-
-
     const refreshNotifs = () => setNotifications(Store.getChefNotifications(myPhone));
 
     useEffect(() => {
@@ -328,12 +326,9 @@ const ChefHomePage = () => {
         });
         window.addEventListener('posts-updated', refresh);
         refresh();
-
-        // Oshpazning jami pul yig'ishini yuklash
         fetchChefTotalEarned();
         fetchReviewNotifs();
         fetchPendingRequests();
-
         return () => { unsub && unsub(); window.removeEventListener('posts-updated', refresh); };
     }, [myPhone]);
 
@@ -349,10 +344,8 @@ const ChefHomePage = () => {
                 const newNotifs = Store.getChefNotifications(myPhone);
                 const newNKey = JSON.stringify(newNotifs.map(n => n.chatId + n.unread));
                 if (newNKey !== lastNotifsKey) { lastNotifsKey = newNKey; setNotifications(newNotifs); }
-                // Poll reviews every 5s va buyurtmalar ham
                 reviewPollCount++;
                 if (reviewPollCount % 5 === 0) { fetchReviewNotifs(); fetchChefTotalEarned(); }
-                // Pending buyurtmalarni har 3 soniyada tekshirish
                 if (reviewPollCount % 3 === 0) { fetchPendingRequests(); }
             }, 1000);
             return () => { cleanup(); clearInterval(pollOrders); window.removeEventListener("message-received", onMsg); };
@@ -403,8 +396,6 @@ const ChefHomePage = () => {
         setPublishLoading(false);
     };
 
-
-
     return (
         <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column">
 
@@ -435,7 +426,10 @@ const ChefHomePage = () => {
                         color="#B0A8A4" style={{ fontSize: '16px', flexShrink: 0 }}>✕</Box>
                 </Box>
             )}
-            <style>{`@keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
+            <style>{`
+                @keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }
+                .tabs-scroll::-webkit-scrollbar { display: none; }
+            `}</style>
 
             {/* Header */}
             <Box display="flex" justifyContent="space-between" alignItems="center"
@@ -467,7 +461,6 @@ const ChefHomePage = () => {
                         <Box cursor="pointer" p="4px" onClick={() => {
                             setShowNotifPanel(v => {
                                 if (!v) {
-                                    // Panel ochilayapti — hozirgi vaqtni "o'qildi" sifatida saqlash
                                     localStorage.setItem(`reviewsSeenTs_${myPhone}`, Date.now().toString());
                                     setUnseenReviews([]);
                                 }
@@ -559,14 +552,16 @@ const ChefHomePage = () => {
 
             <Box flex="1" pb="80px">
                 {/* Tabs */}
-                <Box display="flex" px="16px" pt="14px" pb="10px" gap="8px">
+                <Box display="flex" alignItems="center" pt="14px" pb="10px">
+                    {/* Scrollable tab buttons */}
+                    <Box className="tabs-scroll" display="flex" gap="8px" overflowX="auto" flex="1" pl="16px" pr="4px"
+                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
                     {[
-                        { key: 'requests', label: `${t("chefHome.requests", { defaultValue: "Requests" })}${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
-                        { key: 'orders', label: `${t("chefHome.title")}${chefOrders.length > 0 ? ` (${chefOrders.length})` : ""}` },
+                        { key: 'sorovlar', label: `So'rovlar${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
                         { key: 'reviews', label: `${t("chefHome.reviews")}${reviewNotifs.length > 0 ? ` (${reviewNotifs.length})` : ""}` },
                         { key: 'posts', label: `${t("chefHome.posts")}${posts.length > 0 ? ` (${posts.length})` : ""}` }
                     ].map(tab => (
-                        <Button key={tab.key} borderRadius="20px" fontWeight="600"
+                        <Button key={tab.key} borderRadius="20px" fontWeight="600" flexShrink={0}
                             bgColor={activeTab === tab.key ? '#C03F0C' : 'white'}
                             color={activeTab === tab.key ? 'white' : '#9B614B'}
                             border="1.5px solid" borderColor={activeTab === tab.key ? '#C03F0C' : '#F0E6E0'}
@@ -575,99 +570,24 @@ const ChefHomePage = () => {
                             {tab.label}
                         </Button>
                     ))}
-                    <Button ml="auto" bgColor="#FFF0EC" color="#C03F0C"
-                        border="1.5px solid #F5C5B0" borderRadius="20px" fontWeight="600"
-                        _hover={{ bgColor: '#FFE0D0' }}
-                        style={{ height: "clamp(32px, 9vw, 38px)", fontSize: "clamp(11px, 3vw, 13px)", padding: "0 clamp(10px, 2.5vw, 14px)" }}
-                        onClick={() => setShowPostModal(true)}>
-                        <FaPlus style={{ marginRight: "5px", fontSize: "10px" }} /> Post
-                    </Button>
+                    </Box>
+                    {/* Post button — outside scrollable area, always visible */}
+                    <Box px="8px" flexShrink={0}>
+                        <Button bgColor="#FFF0EC" color="#C03F0C"
+                            border="1.5px solid #F5C5B0" borderRadius="20px" fontWeight="600"
+                            _hover={{ bgColor: '#FFE0D0' }}
+                            style={{ height: "38px", fontSize: "13px", padding: "0 14px", whiteSpace: "nowrap" }}
+                            onClick={() => setShowPostModal(true)}>
+                            <FaPlus style={{ marginRight: "5px", fontSize: "10px" }} /> Post
+                        </Button>
+                    </Box>
                 </Box>
 
-                {/* REQUESTS */}
-                {activeTab === 'requests' && (
+                {/* SO'ROVLAR + HISOBOT — bitta sahifada */}
+                {activeTab === 'sorovlar' && (
                     <Box px="16px" display="flex" flexDir="column" gap="10px">
-                        {pendingRequests.length === 0 ? (
-                            <Box textAlign="center" py="40px">
-                                <FaMoneyBillWave style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
-                                <Text color="#9B614B" style={{ fontSize: "clamp(13px, 3.5vw, 14px)" }}>Hali so'rov yo'q</Text>
-                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "12px" }}>Mijozlar buyurtma yuborganda shu yerda ko'rinadi</Text>
-                            </Box>
-                        ) : pendingRequests.map(request => (
-                            <Box key={request._id || request.id} bgColor="white" borderRadius="18px"
-                                p="14px" boxShadow="0 2px 12px rgba(192,63,12,0.10)"
-                                border="1.5px solid #FDE68A">
-                                {/* Yangi buyurtma badge */}
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb="10px">
-                                    <Box bgColor="#FFFBEB" borderRadius="8px" px="10px" py="4px" border="1px solid #FDE68A">
-                                        <Text color="#92400E" fontWeight="700" style={{ fontSize: "11px" }}>🆕 Yangi buyurtma</Text>
-                                    </Box>
-                                    <Text color="#B0A8A4" style={{ fontSize: "11px" }}>
-                                        {new Date(request.createdAt).toLocaleDateString('uz-UZ')} {new Date(request.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
-                                    </Text>
-                                </Box>
-                                <Box display="flex" alignItems="center" gap="12px" mb="10px">
-                                    <Box w="44px" h="44px" borderRadius="full" bgColor="#F59E0B" flexShrink={0}
-                                        display="flex" alignItems="center" justifyContent="center"
-                                        color="white" fontWeight="bold" style={{ fontSize: "17px" }}>
-                                        {(request.customerName || request.customerPhone || 'M').charAt(0).toUpperCase()}
-                                    </Box>
-                                    <Box flex="1" minW={0}>
-                                        <Text fontWeight="800" color="#1C110D" style={{ fontSize: "14px" }}>
-                                            {request.customerName || 'Noma\'lum mijoz'}
-                                        </Text>
-                                        <Text color="#9B614B" style={{ fontSize: "12px" }}>
-                                            📞 +998{request.customerPhone}
-                                        </Text>
-                                    </Box>
-                                    <Box textAlign="right">
-                                        <Text fontWeight="800" color="#22C55E" style={{ fontSize: "18px" }}>
-                                            {Number(request.amount || request.price || 0).toLocaleString()} so'm
-                                        </Text>
-                                    </Box>
-                                </Box>
-                                {request.note && (
-                                    <Box bgColor="#FFF5F0" borderRadius="10px" px="10px" py="8px" mb="10px">
-                                        <Text color="#6B6560" style={{ fontSize: "13px" }}>💬 {request.note}</Text>
-                                    </Box>
-                                )}
-                                <Box display="flex" gap="8px">
-                                    <Button
-                                        flex="1"
-                                        bgColor="#22C55E"
-                                        color="white"
-                                        borderRadius="12px"
-                                        fontSize="13px"
-                                        fontWeight="700"
-                                        h="42px"
-                                        _hover={{ bgColor: '#16a34a' }}
-                                        onClick={() => handleAcceptRequest(request)}
-                                    >
-                                        ✅ Qabul qilish
-                                    </Button>
-                                    <Button
-                                        flex="1"
-                                        bgColor="#EF4444"
-                                        color="white"
-                                        borderRadius="12px"
-                                        fontSize="13px"
-                                        fontWeight="700"
-                                        h="42px"
-                                        _hover={{ bgColor: '#dc2626' }}
-                                        onClick={() => handleRejectRequest(request)}
-                                    >
-                                        ❌ Rad etish
-                                    </Button>
-                                </Box>
-                            </Box>
-                        ))}
-                    </Box>
-                )}
 
-                {/* BUYURTMALAR */}
-                {activeTab === 'orders' && (
-                    <Box px="16px" display="flex" flexDir="column" gap="10px">
-                        {/* BUYURTMA QO'SHISH TUGMASI */}
+                        {/* Naqd to'lov qo'shish tugmasi */}
                         <Button w="100%" bgColor="#22C55E" color="white" borderRadius="16px"
                             fontWeight="700" _hover={{ bgColor: '#16a34a' }}
                             style={{ height: "50px", fontSize: "15px" }}
@@ -676,13 +596,105 @@ const ChefHomePage = () => {
                             {t('order.addBtn') || "Buyurtma qo'shish (naqd to'lov)"}
                         </Button>
 
-                        {chefOrders.length === 0 ? (
-                            <Box textAlign="center" py="40px">
-                                <FaMoneyBillWave style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
-                                <Text color="#9B614B" style={{ fontSize: "clamp(13px, 3.5vw, 14px)" }}>Hali buyurtma yo'q</Text>
-                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "12px" }}>Mijoz to'lov qilganda "Buyurtma qo'shish" tugmasini bosing</Text>
+                        {/* Kutayotgan so'rovlar */}
+                        {pendingRequests.length > 0 && (
+                            <Box display="flex" alignItems="center" gap="8px" mt="4px">
+                                <Text fontWeight="700" color="#1C110D" style={{ fontSize: "14px" }}>Kutayotgan so'rovlar</Text>
+                                <Box bgColor="#FDE68A" borderRadius="10px" px="8px" py="2px">
+                                    <Text color="#92400E" fontWeight="700" style={{ fontSize: "11px" }}>{pendingRequests.length} ta</Text>
+                                </Box>
                             </Box>
-                        ) : chefOrders.map(order => (
+                        )}
+
+                        {pendingRequests.map(request => {
+                            const orderId = request._id || request.id || `local_${request.customerPhone}`;
+                            const actionState = requestActionState[orderId];
+                            return (
+                                <Box key={orderId} bgColor="white" borderRadius="18px"
+                                    p="14px" boxShadow="0 2px 12px rgba(192,63,12,0.10)"
+                                    border="1.5px solid #FDE68A">
+                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb="10px">
+                                        <Box bgColor="#FFFBEB" borderRadius="8px" px="10px" py="4px" border="1px solid #FDE68A">
+                                            <Text color="#92400E" fontWeight="700" style={{ fontSize: "11px" }}>🆕 Yangi buyurtma</Text>
+                                        </Box>
+                                        <Text color="#B0A8A4" style={{ fontSize: "11px" }}>
+                                            {new Date(request.createdAt).toLocaleDateString('uz-UZ')} {new Date(request.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                        </Text>
+                                    </Box>
+                                    <Box display="flex" alignItems="center" gap="12px" mb="10px">
+                                        <Box w="44px" h="44px" borderRadius="full" bgColor="#F59E0B" flexShrink={0}
+                                            display="flex" alignItems="center" justifyContent="center"
+                                            color="white" fontWeight="bold" style={{ fontSize: "17px" }}>
+                                            {(request.customerName || request.customerPhone || 'M').charAt(0).toUpperCase()}
+                                        </Box>
+                                        <Box flex="1" minW={0}>
+                                            <Text fontWeight="800" color="#1C110D" style={{ fontSize: "14px" }}>
+                                                {request.customerName || "Noma'lum mijoz"}
+                                            </Text>
+                                            <Text color="#9B614B" style={{ fontSize: "12px" }}>
+                                                📞 +998{request.customerPhone}
+                                            </Text>
+                                        </Box>
+                                        <Box textAlign="right">
+                                            <Text fontWeight="800" color="#22C55E" style={{ fontSize: "18px" }}>
+                                                {Number(request.amount || request.price || 0).toLocaleString()} so'm
+                                            </Text>
+                                        </Box>
+                                    </Box>
+                                    {request.note && (
+                                        <Box bgColor="#FFF5F0" borderRadius="10px" px="10px" py="8px" mb="10px">
+                                            <Text color="#6B6560" style={{ fontSize: "13px" }}>💬 {request.note}</Text>
+                                        </Box>
+                                    )}
+                                    {actionState === 'accepted' ? (
+                                        <Box bgColor="#F0FFF4" borderRadius="12px" py="10px" textAlign="center" border="1px solid #BBF7D0">
+                                            <Text color="#22C55E" fontWeight="700" style={{ fontSize: "13px" }}>✅ Qabul qilindi</Text>
+                                        </Box>
+                                    ) : actionState === 'rejected' ? (
+                                        <Box bgColor="#FEF2F2" borderRadius="12px" py="10px" textAlign="center" border="1px solid #FECDCA">
+                                            <Text color="#EF4444" fontWeight="700" style={{ fontSize: "13px" }}>❌ Rad etildi</Text>
+                                        </Box>
+                                    ) : (
+                                        <Box display="flex" gap="8px">
+                                            <Button flex="1" bgColor="#22C55E" color="white" borderRadius="12px"
+                                                fontSize="13px" fontWeight="700" h="42px"
+                                                isLoading={actionState === 'loading'}
+                                                _hover={{ bgColor: '#16a34a' }}
+                                                onClick={() => handleAcceptRequest(request)}>
+                                                ✅ Qabul qilish
+                                            </Button>
+                                            <Button flex="1" bgColor="#EF4444" color="white" borderRadius="12px"
+                                                fontSize="13px" fontWeight="700" h="42px"
+                                                isLoading={actionState === 'loading'}
+                                                _hover={{ bgColor: '#dc2626' }}
+                                                onClick={() => handleRejectRequest(request)}>
+                                                ❌ Rad etish
+                                            </Button>
+                                        </Box>
+                                    )}
+                                </Box>
+                            );
+                        })}
+
+                        {/* Tasdiqlangan buyurtmalar */}
+                        {chefOrders.length > 0 && (
+                            <Box display="flex" alignItems="center" gap="8px" mt="4px">
+                                <Text fontWeight="700" color="#1C110D" style={{ fontSize: "14px" }}>Tasdiqlangan buyurtmalar</Text>
+                                <Box bgColor="#DCFCE7" borderRadius="10px" px="8px" py="2px">
+                                    <Text color="#16a34a" fontWeight="700" style={{ fontSize: "11px" }}>{chefOrders.length} ta</Text>
+                                </Box>
+                            </Box>
+                        )}
+
+                        {chefOrders.length === 0 && pendingRequests.length === 0 && (
+                            <Box textAlign="center" py="32px">
+                                <FaMoneyBillWave style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
+                                <Text color="#9B614B" style={{ fontSize: "14px" }}>Hali buyurtma yo'q</Text>
+                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "12px" }}>Mijozlar buyurtma yuborganda yoki naqd to'lov qo'shganda bu yerda ko'rinadi</Text>
+                            </Box>
+                        )}
+
+                        {chefOrders.map(order => (
                             <Box key={order._id || order.createdAt} bgColor="white" borderRadius="18px"
                                 p="14px" boxShadow="0 2px 12px rgba(192,63,12,0.06)">
                                 <Box display="flex" alignItems="center" gap="12px" mb={order.note ? "10px" : "0"}>
@@ -725,7 +737,6 @@ const ChefHomePage = () => {
                 {/* IZOHLAR */}
                 {activeTab === 'reviews' && (
                     <Box px="16px" display="flex" flexDir="column" gap="10px">
-                        {/* Header: son + Hammasi tugmasi */}
                         {reviewNotifs.length > 0 && (
                             <Box display="flex" justifyContent="space-between" alignItems="center" mb="2px">
                                 <Box display="flex" alignItems="center" gap="8px">
@@ -739,7 +750,7 @@ const ChefHomePage = () => {
                                     onClick={() => navigate('/chef-all-reviews', {
                                         state: {
                                             chefPhone: myPhone,
-                                            chefName: `${chefProfile.name || 'http://localhost:5000'} ${chefProfile.surname || 'http://localhost:5000'}`.trim()
+                                            chefName: `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim()
                                         }
                                     })}>
                                     <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>Hammasi →</Text>
@@ -786,7 +797,6 @@ const ChefHomePage = () => {
                                 )}
                             </Box>
                         ))}
-
                     </Box>
                 )}
 
@@ -836,7 +846,6 @@ const ChefHomePage = () => {
                             {t('order.addDesc') || "Mijoz naqd to'lagandan keyin kiriting"}
                         </Text>
 
-                        {/* Oshpazning jami pul yig'ishi */}
                         {chefTotalEarned > 0 && (
                             <Box mb="12px" p="8px" bgColor="#F0FFF4" borderRadius="12px" border="1px solid #BBF7D0">
                                 <Text fontWeight="600" color="#22C55E" style={{ fontSize: "12px" }}>
@@ -850,7 +859,6 @@ const ChefHomePage = () => {
                             </Box>
                         )}
 
-                        {/* Mijoz ismi (majburiy) */}
                         <Box mb="12px">
                             <Text fontWeight="600" mb="6px" style={{ fontSize: "12px", color: orderNameError ? "#E53E3E" : "#9B614B" }}>
                                 {t('order.customerName')} <span style={{ color: '#C03F0C' }}>*</span>
@@ -867,8 +875,6 @@ const ChefHomePage = () => {
                             {orderNameError && <Text color="#E53E3E" mt="4px" style={{ fontSize: "12px" }}>⚠ {orderNameError}</Text>}
                         </Box>
 
-
-                        {/* Summa — MAJBURIY */}
                         <Box mb="12px">
                             <Text fontWeight="600" color="#9B614B" mb="6px" style={{ fontSize: "12px" }}>
                                 {t('order.amount') || "Mijoz to'lagan summa (so'm)"} <span style={{ color: '#C03F0C' }}>*</span>
@@ -883,7 +889,6 @@ const ChefHomePage = () => {
                             {orderError && <Text color="#E53E3E" mt="4px" style={{ fontSize: "12px" }}>⚠ {orderError}</Text>}
                         </Box>
 
-                        {/* Komissiya hisob (preview) */}
                         {orderAmount && Number(orderAmount) > 0 && (
                             <Box mb="14px" bgColor="#F0FFF4" borderRadius="14px" px="14px" py="10px"
                                 border="1px solid #BBF7D0">
@@ -908,7 +913,6 @@ const ChefHomePage = () => {
                             </Box>
                         )}
 
-                        {/* Muvaffaqiyat */}
                         {orderSuccess && (
                             <Box mb="12px" bgColor="#F0FFF4" borderRadius="14px" px="14px" py="10px"
                                 border="1px solid #BBF7D0" textAlign="center">

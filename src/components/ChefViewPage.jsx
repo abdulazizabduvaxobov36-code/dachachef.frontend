@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Store from '../store';
 
-const API = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env?.VITE_API_URL || '';
 
 const ChefViewPage = () => {
     const navigate = useNavigate();
@@ -23,8 +23,8 @@ const ChefViewPage = () => {
 
     const session = Store.getSession();
     const isCustomer = session?.role === 'customer';
-    const customerPhone = session?.data?.phone || 'http://localhost:5000';
-    const customerName = session?.data?.firstName || session?.data?.name || 'http://localhost:5000';
+    const customerPhone = session?.data?.phone || '';
+    const customerName = session?.data?.firstName || session?.data?.name || '';
 
     const [chefPosts, setChefPosts] = useState([]);
     const [customerOrders, setCustomerOrders] = useState([]);
@@ -195,11 +195,16 @@ const ChefViewPage = () => {
         setReviewLoading(false);
     };
 
-    // Pending order check
+    // Pending order check — poll every 2s so button re-enables when chef accepts
     useEffect(() => {
         if (!isCustomer || !chef?.phone) return;
-        const key = `pendingOrder_${customerPhone}_${chef.phone}`;
-        setHasPendingOrder(!!localStorage.getItem(key));
+        const checkPending = () => {
+            const key = `pendingOrder_${customerPhone}_${chef.phone}`;
+            setHasPendingOrder(!!localStorage.getItem(key));
+        };
+        checkPending();
+        const iv = setInterval(checkPending, 2000);
+        return () => clearInterval(iv);
     }, [isCustomer, chef?.phone, customerPhone]);
 
     const handleOrderSubmit = async () => {
@@ -211,50 +216,50 @@ const ChefViewPage = () => {
         setOrderError('');
 
         const amount = Number(orderAmount);
-        const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+        const orderData = {
+            customerPhone,
+            customerName,
+            chefPhone: chef.phone,
+            chefName: `${chef.name} ${chef.surname}`,
+            amount,
+            note: orderNote.trim(),
+            source: 'customer',
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+        };
 
+        // Offline-first: localStorage ga saqlash (har doim ishlaydi)
+        const existingOrders = JSON.parse(localStorage.getItem(`custOrders_${chef.phone}`) || '[]');
+        localStorage.setItem(`custOrders_${chef.phone}`, JSON.stringify([orderData, ...existingOrders]));
+        const pendingKey = `pendingOrder_${customerPhone}_${chef.phone}`;
+        localStorage.setItem(pendingKey, '1');
+        setHasPendingOrder(true);
+        setOrderSuccess(true);
+
+        // Chat orqali xabar yuborish
+        const chatId = Store.makeChatId(customerPhone, chef.phone);
+        Store.sendMessage(chatId, {
+            text: `📦 Buyurtma yuborildi: ${amount.toLocaleString()} so'm${orderNote ? ' — ' + orderNote : ''}`,
+            sender: 'customer',
+            from: customerPhone,
+            to: chef.phone,
+        });
+
+        // Backend ga yuborish (fire-and-forget)
         try {
-            const res = await fetch(`${API_BASE}/orders`, {
+            await fetch(`${API}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    customerPhone,
-                    customerName,
-                    chefPhone: chef.phone,
-                    chefName: `${chef.name} ${chef.surname}`,
-                    amount,
-                    note: orderNote.trim(),
-                    source: 'customer',
-                    status: 'pending',
-                    createdAt: new Date().toISOString(),
-                }),
+                body: JSON.stringify(orderData),
             });
-            if (res.ok) {
-                // Pending flagni saqlash
-                const key = `pendingOrder_${customerPhone}_${chef.phone}`;
-                localStorage.setItem(key, '1');
-                setHasPendingOrder(true);
-                setOrderSuccess(true);
-                // Chat orqali xabar yuborish
-                const chatId = Store.makeChatId(customerPhone, chef.phone);
-                Store.sendMessage(chatId, {
-                    text: `📦 Buyurtma yuborildi: ${amount.toLocaleString()} so'm${orderNote ? ' — ' + orderNote : ''}`,
-                    sender: 'customer',
-                    from: customerPhone,
-                    to: chef.phone,
-                });
-                setTimeout(() => {
-                    setShowOrderModal(false);
-                    setOrderSuccess(false);
-                    setOrderAmount('');
-                    setOrderNote('');
-                }, 1800);
-            } else {
-                setOrderError("Xatolik yuz berdi, qaytadan urinib ko'ring");
-            }
-        } catch {
-            setOrderError("Server bilan aloqa yo'q");
-        }
+        } catch { /* offline — localStorage da saqlanib qoldi */ }
+
+        setTimeout(() => {
+            setShowOrderModal(false);
+            setOrderSuccess(false);
+            setOrderAmount('');
+            setOrderNote('');
+        }, 1800);
         setOrderLoading(false);
     };
 
@@ -680,16 +685,32 @@ const ChefViewPage = () => {
                 </Button>
                 {/* Buyurtma berish — faqat mijozlar uchun */}
                 {isCustomer && (
-                    <Button w="100%" h="50px"
-                        bgColor={hasPendingOrder ? '#9B8E8A' : '#22C55E'}
-                        color="white" borderRadius="14px"
-                        fontWeight="700" style={{ fontSize: '15px' }}
-                        _hover={{ bgColor: hasPendingOrder ? '#9B8E8A' : '#16a34a' }}
-                        leftIcon={<FaShoppingBag size={16} />}
-                        disabled={hasPendingOrder}
-                        onClick={() => { if (!hasPendingOrder) { setOrderAmount(''); setOrderNote(''); setOrderError(''); setOrderSuccess(false); setShowOrderModal(true); } }}>
-                        {hasPendingOrder ? '⏳ Buyurtma kutilmoqda...' : '📦 Buyurtma berish'}
-                    </Button>
+                    <Box w="100%" borderRadius="14px" overflow="hidden"
+                        boxShadow={hasPendingOrder ? 'none' : '0 4px 16px rgba(28,17,13,0.18)'}
+                        cursor={hasPendingOrder ? 'not-allowed' : 'pointer'}
+                        onClick={() => { if (!hasPendingOrder) { setOrderAmount(''); setOrderNote(''); setOrderError(''); setOrderSuccess(false); setShowOrderModal(true); } }}
+                        style={{
+                            background: hasPendingOrder ? '#E8E3E0' : 'linear-gradient(135deg, #1C110D 0%, #3D2317 100%)',
+                            borderRadius: '14px', height: '52px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'
+                        }}>
+                        {hasPendingOrder ? (
+                            <>
+                                <Box w="8px" h="8px" borderRadius="full" bgColor="#B0A8A4"
+                                    style={{ animation: 'pulse 1.5s infinite' }} />
+                                <Text fontWeight="700" color="#9B8E8A" style={{ fontSize: '15px' }}>
+                                    Buyurtma kutilmoqda...
+                                </Text>
+                            </>
+                        ) : (
+                            <>
+                                <FaShoppingBag size={17} color="white" />
+                                <Text fontWeight="700" color="white" style={{ fontSize: '15px' }}>
+                                    Buyurtma berish
+                                </Text>
+                            </>
+                        )}
+                    </Box>
                 )}
             </Box>
         </Box>

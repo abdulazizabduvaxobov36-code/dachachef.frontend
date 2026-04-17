@@ -53,7 +53,7 @@ const ChefProfileOwnPage = () => {
     // Baholarni olish
     const fetchRatings = async () => {
         if (!chefProfile.phone) return;
-        const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
         const lsKey = `reviews_${chefProfile.phone}`;
         const localReviews = JSON.parse(localStorage.getItem(lsKey) || '[]');
         try {
@@ -81,7 +81,7 @@ const ChefProfileOwnPage = () => {
     const fetchOrdersCount = async () => {
         if (!chefProfile.phone) return;
         try {
-            const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+            const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
             const res = await fetch(`${AUTH_BASE}/orders/chef/${chefProfile.phone}`);
             if (!res.ok) return;
             const data = await res.json();
@@ -99,7 +99,7 @@ const ChefProfileOwnPage = () => {
 
     const fullName = chefProfile.name ? `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim() : t("chefProfileOwn.defaultName");
     const exp = chefProfile.exp ? String(chefProfile.exp) : '';
-    const totalUnread = Store.getTotalUnreadForChef(chefProfile.phone || 'http://localhost:5000');
+    const totalUnread = Store.getTotalUnreadForChef(chefProfile.phone || '');
 
     const handleLogout = () => { if (chefProfile.phone) Store.setOffline("chef", chefProfile.phone); Store.clearSession(); navigate("/"); };
 
@@ -152,7 +152,7 @@ const ChefProfileOwnPage = () => {
                 {/* About */}
                 <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 1px 6px rgba(0,0,0,0.05)">
                     <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: "15px" }}>{t("chefProfile.about")}</Text>
-                    <Text color="#6B6560" lineHeight="1.7" style={{ fontSize: "13px" }}>{t("chefProfile.aboutText")}</Text>
+                    <Text color="#6B6560" lineHeight="1.7" style={{ fontSize: "13px" }}>{chefProfile.bio || t("chefProfile.aboutText")}</Text>
                 </Box>
 
                 {/* Gallery */}

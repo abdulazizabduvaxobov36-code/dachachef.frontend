@@ -56,7 +56,7 @@ const Chef = () => {
       console.log('Chef.jsx - After Store.addChef, localStorage registeredChefs:', localStorage.getItem('registeredChefs'));
       // Backend ga ham saqlash
       try {
-        const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
         await fetch(`${AUTH_BASE}/chefs`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

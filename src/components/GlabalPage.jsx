@@ -90,7 +90,7 @@ const GlabalPage = () => {
   const filtered = chefs.filter(c => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
-    return (c.name || 'http://localhost:5000').toLowerCase().startsWith(q) || (c.surname || 'http://localhost:5000').toLowerCase().startsWith(q) || `${c.name} ${c.surname}`.toLowerCase().startsWith(q);
+    return (c.name || '').toLowerCase().startsWith(q) || (c.surname || '').toLowerCase().startsWith(q) || `${c.name || ''} ${c.surname || ''}`.toLowerCase().startsWith(q);
   });
   const displayChefs = search.trim()
     ? filtered

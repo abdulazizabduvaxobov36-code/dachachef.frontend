@@ -36,7 +36,7 @@ const CreateOrderPage = () => {
         setLoading(true);
 
         try {
-            const BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+            const BASE = import.meta.env?.VITE_API_URL || '';
             const orderData = {
                 customerPhone: myPhone,
                 customerName: myName,
