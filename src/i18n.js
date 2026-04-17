@@ -41,7 +41,9 @@ const uz = {
         smsLength: "SMS kod 4 ta raqam bo'lishi kerak",
         expRange: "1 dan 60 gacha bo'lishi kerak",
         expRequired: "Tajriba kiritilmadi",
-        fillAll: "Barcha maydonlarni to'g'ri to'ldiring"
+        fillAll: "Barcha maydonlarni to'g'ri to'ldiring",
+        phoneRegisteredAsChef: "Bu raqam oshpaz sifatida ro'yxatdan o'tgan. Bitta telefondan faqat bitta akk ochiladi.",
+        phoneRegisteredAsCustomer: "Bu raqam mijoz sifatida ro'yxatdan o'tgan. Bitta telefondan faqat bitta akk ochiladi."
     },
     glabal: {
         logo: "Oshpaz.uz",
@@ -275,7 +277,9 @@ const ru = {
         smsLength: "СМС код должен быть 4 цифры",
         expRange: "От 1 до 60",
         expRequired: "Введите опыт работы",
-        fillAll: "Заполните все поля правильно"
+        fillAll: "Заполните все поля правильно",
+        phoneRegisteredAsChef: "Этот номер зарегистрирован как повар. С одного телефона можно создать только один аккаунт.",
+        phoneRegisteredAsCustomer: "Этот номер зарегистрирован как клиент. С одного телефона можно создать только один аккаунт."
     },
     glabal: {
         logo: "Oshpaz.uz",

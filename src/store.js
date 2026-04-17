@@ -424,6 +424,30 @@ export const Store = {
 
   removeSavedAccount: (key) => localStorage.removeItem(key),
 
+  // ─── BIR TG — BITTA AKK TEKSHIRUVI ─────────────────────────
+  // Berilgan telefon raqami allaqachon boshqa rol bilan ro'yxatdan o'tganini tekshiradi
+  isPhoneRegistered: (phone) => {
+    // saved_ kalitlaridan barcha saqlangan akkountlarni tekshirish
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key?.startsWith('saved_')) continue;
+      try {
+        const s = JSON.parse(localStorage.getItem(key));
+        if (s?.data?.phone === phone) {
+          return { registered: true, role: s.role };
+        }
+      } catch { }
+    }
+    // registeredChefs dan ham tekshirish
+    const chefs = Store.getChefs();
+    const chef = chefs.find(c => c.phone === phone);
+    if (chef) return { registered: true, role: 'chef' };
+    // customerInfo dan tekshirish
+    const customerInfo = local.get(`customerInfo_${phone}`);
+    if (customerInfo) return { registered: true, role: 'customer' };
+    return { registered: false, role: null };
+  },
+
   clearAllChefs: () => {
     localStorage.removeItem('registeredChefs');
     window.dispatchEvent(new Event('chefs-updated'));

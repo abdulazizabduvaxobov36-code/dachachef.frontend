@@ -42,6 +42,13 @@ const Chef = () => {
     setErrors(e);
     setTouched({ name: true, surname: true, phone: true, exp: true });
     if (!Object.keys(e).length) {
+      // Bitta TG — bitta akk tekshiruvi
+      const check = Store.isPhoneRegistered(phone);
+      if (check.registered && check.role === 'customer') {
+        setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsCustomer') || 'Bu telefon raqami mijoz sifatida ro\'yxatdan o\'tgan. Bitta telefondan faqat bitta akk ochish mumkin.' }));
+        setTouched(prev => ({ ...prev, phone: true }));
+        return;
+      }
       const d = { name, surname, phone, exp, image, bio, id: Date.now() };
       console.log('Chef.jsx - Creating chef:', d);
       localStorage.setItem("chefProfile", JSON.stringify(d));

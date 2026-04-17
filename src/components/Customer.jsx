@@ -45,7 +45,16 @@ const Customer = () => {
   const step1 = () => {
     const e = validate1(); setErrors(e);
     setTouched({ firstName: true, lastName: true, phone: true });
-    if (!Object.keys(e).length) setStep(2);
+    if (!Object.keys(e).length) {
+      // Bitta TG — bitta akk tekshiruvi
+      const check = Store.isPhoneRegistered(phone);
+      if (check.registered && check.role === 'chef') {
+        setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsChef') || 'Bu telefon raqami oshpaz sifatida ro\'yxatdan o\'tgan. Bitta telefondan faqat bitta akk ochish mumkin.' }));
+        setTouched(prev => ({ ...prev, phone: true }));
+        return;
+      }
+      setStep(2);
+    }
   };
   const step2 = async () => {
     const e = validate2(); setErrors(e);
