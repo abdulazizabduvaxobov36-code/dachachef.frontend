@@ -1,5 +1,5 @@
 import { Box, Text, Button } from '@chakra-ui/react';
-import { FaHome, FaCommentDots, FaUser, FaEdit, FaStar, FaSignOutAlt, FaGlobe, FaImage } from 'react-icons/fa';
+import { FaHome, FaCommentDots, FaUser, FaEdit, FaSignOutAlt, FaGlobe, FaImage } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useState, useEffect } from 'react';
@@ -12,8 +12,8 @@ const ChefProfileOwnPage = () => {
     const { t, i18n } = useTranslation();
     const [chefProfile, setChefProfile] = useState({});
     const [posts, setPosts] = useState([]);
-    const [ratings, setRatings] = useState([]);
     const [averageRating, setAverageRating] = useState(0);
+    const [ordersCount, setOrdersCount] = useState(0);
 
     useEffect(() => {
         const raw = JSON.parse(localStorage.getItem("chefProfile") || "null");
@@ -43,40 +43,63 @@ const ChefProfileOwnPage = () => {
         const unsub = Store.listenPosts(all => { const p = JSON.parse(localStorage.getItem("chefProfile")) || {}; setPosts(all.filter(x => x.chefPhone === p.phone)); });
         window.addEventListener("chefs-updated", onUpdate);
         window.addEventListener("ratings-updated", onRatingsUpdate);
-        return () => { 
-            window.removeEventListener("chefs-updated", onUpdate); 
+        return () => {
+            window.removeEventListener("chefs-updated", onUpdate);
             window.removeEventListener("ratings-updated", onRatingsUpdate);
-            unsub?.(); 
+            unsub?.();
         };
     }, []);
 
     // Baholarni olish
     const fetchRatings = async () => {
         if (!chefProfile.phone) return;
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+        const lsKey = `reviews_${chefProfile.phone}`;
+        const localReviews = JSON.parse(localStorage.getItem(lsKey) || '[]');
         try {
-            const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
             const response = await fetch(`${AUTH_BASE}/reviews/${chefProfile.phone}`);
             if (response.ok) {
                 const data = await response.json();
-                const reviewsList = data.reviews || [];
-                setRatings(reviewsList);
-                setAverageRating(data.avgRating || 0);
+                const serverReviews = data.reviews || [];
+                const merged = [
+                    ...localReviews.filter(lr =>
+                        !serverReviews.some(sr => sr.createdAt === lr.createdAt && sr.customerPhone === lr.customerPhone)
+                    ),
+                    ...serverReviews,
+                ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                const rated = merged.filter(r => r.rating > 0);
+                setAverageRating(rated.length > 0 ? +(rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : data.avgRating || 0);
             }
-        } catch (error) {
-            console.error('Baholarni olishda xatolik:', error);
+        } catch {
+            if (localReviews.length > 0) {
+                const rated = localReviews.filter(r => r.rating > 0);
+                setAverageRating(rated.length > 0 ? +(rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : 0);
+            }
         }
+    };
+
+    const fetchOrdersCount = async () => {
+        if (!chefProfile.phone) return;
+        try {
+            const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${AUTH_BASE}/orders/chef/${chefProfile.phone}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (Array.isArray(data?.orders)) setOrdersCount(data.orders.length);
+        } catch { }
     };
 
     useEffect(() => {
         if (!chefProfile.phone) return;
         fetchRatings();
-        const iv = setInterval(fetchRatings, 5000);
+        fetchOrdersCount();
+        const iv = setInterval(() => { fetchRatings(); fetchOrdersCount(); }, 5000);
         return () => clearInterval(iv);
     }, [chefProfile.phone]);
 
     const fullName = chefProfile.name ? `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim() : t("chefProfileOwn.defaultName");
     const exp = chefProfile.exp ? String(chefProfile.exp) : '';
-    const totalUnread = Store.getTotalUnreadForChef(chefProfile.phone || '');
+    const totalUnread = Store.getTotalUnreadForChef(chefProfile.phone || 'http://localhost:5000');
 
     const handleLogout = () => { if (chefProfile.phone) Store.setOffline("chef", chefProfile.phone); Store.clearSession(); navigate("/"); };
 
@@ -106,7 +129,7 @@ const ChefProfileOwnPage = () => {
                 <Box display="flex" justifyContent="center" gap="32px" mt="16px">
                     {[
                         { value: averageRating > 0 ? averageRating : "–", label: t("common.rating"), icon: "⭐" },
-                        { value: ratings.length, label: t("common.orders"), icon: "📦" },
+                        { value: ordersCount, label: t("common.orders"), icon: "📦" },
                         { value: exp || "–", label: t("common.experience2"), icon: "⏱" },
                     ].map((s, i) => (
                         <Box key={i} textAlign="center">
@@ -170,64 +193,6 @@ const ChefProfileOwnPage = () => {
                             </Box>
                         ))}
                     </Box>
-                </Box>
-
-                {/* Baholar */}
-                <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 1px 6px rgba(0,0,0,0.05)">
-                    <Box display="flex" justifyContent="space-between" alignItems="center" mb="12px">
-                        <Box display="flex" alignItems="center" gap="8px">
-                            <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>Mijozlar izohlari</Text>
-                            <Box bgColor="#FFF0EC" borderRadius="10px" px="8px" py="3px">
-                                <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>{ratings.length} ta</Text>
-                            </Box>
-                        </Box>
-                        {ratings.length > 0 && (
-                            <Box cursor="pointer" bgColor="#FFF0EC" borderRadius="12px" px="12px" py="6px"
-                                border="1.5px solid #F5C5B0"
-                                onClick={() => navigate('/chef-all-reviews', { state: { chefPhone: chefProfile.phone, chefName: fullName } })}>
-                                <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>Hammasi →</Text>
-                            </Box>
-                        )}
-                    </Box>
-                    {ratings.length === 0 ? (
-                        <Box textAlign="center" py="20px">
-                            <Text color="#B0A8A4" style={{ fontSize: "13px" }}>Hali baho yo'q</Text>
-                        </Box>
-                    ) : (
-                        <Box display="flex" flexDir="column" gap="10px">
-                            {ratings.slice(0, 3).map((r, i) => (
-                                <Box key={r._id || i} bgColor="#FFF5F0" borderRadius="14px" p="12px">
-                                    <Box display="flex" alignItems="center" gap="10px" mb="6px">
-                                        <Box w="34px" h="34px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
-                                            display="flex" alignItems="center" justifyContent="center"
-                                            color="white" fontWeight="700" style={{ fontSize: "14px" }}>
-                                            {r.customerName?.charAt(0) || 'M'}
-                                        </Box>
-                                        <Box flex="1">
-                                            <Text fontWeight="700" color="#1C110D" style={{ fontSize: "13px" }}>
-                                                {r.customerName || 'Mijoz'}
-                                            </Text>
-                                            {r.rating > 0 && (
-                                                <Box display="flex" gap="2px">
-                                                    {[1, 2, 3, 4, 5].map(s => (
-                                                        <FaStar key={s} color={s <= r.rating ? '#F4B400' : '#E0DAD7'} style={{ fontSize: "10px" }} />
-                                                    ))}
-                                                </Box>
-                                            )}
-                                        </Box>
-                                        <Text color="#B0A8A4" style={{ fontSize: "10px" }}>
-                                            {new Date(r.createdAt).toLocaleDateString('uz-UZ')}
-                                        </Text>
-                                    </Box>
-                                    {r.comment && (
-                                        <Text color="#6B6560" style={{ fontSize: "12px", lineHeight: "1.5" }}>
-                                            {r.comment}
-                                        </Text>
-                                    )}
-                                </Box>
-                            ))}
-                        </Box>
-                    )}
                 </Box>
 
                 {/* Logout */}

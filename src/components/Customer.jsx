@@ -25,13 +25,13 @@ const Customer = () => {
 
   const validate1 = () => {
     const e = {};
-    if (!firstName.trim()) e.firstName = t("customer.firstNameError");
+    if (!firstName.trim()) e.firstName = "Ism kiritish shart";
     else if (!onlyLetters(firstName)) e.firstName = t("errors.onlyLetters");
     else if (firstName.trim().length < 2) e.firstName = t("errors.minLength");
-    if (!lastName.trim()) e.lastName = t("customer.lastNameError");
+    if (!lastName.trim()) e.lastName = "Familiya kiritish shart";
     else if (!onlyLetters(lastName)) e.lastName = t("errors.onlyLetters");
     else if (lastName.trim().length < 2) e.lastName = t("errors.minLength");
-    if (!phone.trim()) e.phone = t("customer.phoneError");
+    if (!phone.trim()) e.phone = "Telefon raqami kiritish shart";
     else if (phone.length !== 9) e.phone = t("errors.phoneLength");
     return e;
   };
@@ -58,7 +58,7 @@ const Customer = () => {
       Store.saveCustomerInfo(phone, { firstName, lastName, image: null });
       // Backend ga ham saqlash
       try {
-        const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
         await fetch(`${AUTH_BASE}/customers`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

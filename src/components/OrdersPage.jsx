@@ -79,7 +79,7 @@ const OrdersPage = () => {
   const fetchOrders = useCallback(async () => {
     if (!myPhone || myPhone === 'guest') { setOrders([]); return; }
     try {
-      const BASE = import.meta.env?.VITE_API_URL || '';
+      const BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${BASE}/orders/customer/${myPhone}/all`);
       if (res.ok) {
         const data = await res.json();
@@ -92,7 +92,12 @@ const OrdersPage = () => {
     }
   }, [myPhone]);
 
-  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+  useEffect(() => {
+    fetchOrders();
+    // Real-time: har 5 soniyada yangilansin
+    const iv = setInterval(fetchOrders, 5000);
+    return () => clearInterval(iv);
+  }, [fetchOrders]);
 
   // Baho qoldirish
   const handleRatingSubmit = async (orderId, rating, review) => {
@@ -250,7 +255,11 @@ const OrdersPage = () => {
   // === CHAT OYNASI ===
   if (selectedChat) {
     const chatMsgs = messages[selectedChat.id] || [];
-    const doneOrders = orders.filter(o => o.chefPhone === selectedChat.chefPhone && o.status === 'done');
+    const chatOrders = orders.filter(o => o.chefPhone === selectedChat.chefPhone && o.source === 'customer');
+    const doneOrders = chatOrders.filter(o => o.status === 'done');
+    const pendingOrders = chatOrders.filter(o => o.status === 'pending');
+    const acceptedOrders = chatOrders.filter(o => o.status === 'accepted');
+    const rejectedOrders = chatOrders.filter(o => o.status === 'rejected');
     return (
       <Box h="100dvh" display="flex" flexDir="column" bgColor="#FFF5F0">
         {/* Header */}
@@ -330,11 +339,73 @@ const OrdersPage = () => {
           )}
           <div ref={endRef} />
 
-          {/* Bajarilgan buyurtmalar va baho */}
+          {/* Buyurtmalar holati */}
+          {pendingOrders.length > 0 && (
+            <Box mt="12px" p="12px" bgColor="#FFFBEB" borderRadius="12px" border="1px solid #FDE68A">
+              <Text fontWeight="700" color="#B45309" mb="8px" style={{ fontSize: '12px' }}>
+                ⏳ Kutilayotgan buyurtmalar:
+              </Text>
+              {pendingOrders.map(order => (
+                <Box key={order._id} p="8px" bgColor="white" borderRadius="8px" mb="6px"
+                  display="flex" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Text fontWeight="700" color="#1C110D" style={{ fontSize: '13px' }}>
+                      {Number(order.amount).toLocaleString()} so'm
+                    </Text>
+                    {order.note && <Text color="#9B614B" style={{ fontSize: '11px' }}>{order.note}</Text>}
+                  </Box>
+                  <Box bgColor="#FFFBEB" borderRadius="8px" px="8px" py="4px">
+                    <Text color="#B45309" fontWeight="700" style={{ fontSize: '11px' }}>Kutilmoqda</Text>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+          {acceptedOrders.length > 0 && (
+            <Box mt="12px" p="12px" bgColor="#EFF6FF" borderRadius="12px" border="1px solid #BFDBFE">
+              <Text fontWeight="700" color="#3B82F6" mb="8px" style={{ fontSize: '12px' }}>
+                ✅ Qabul qilingan buyurtmalar:
+              </Text>
+              {acceptedOrders.map(order => (
+                <Box key={order._id} p="8px" bgColor="white" borderRadius="8px" mb="6px"
+                  display="flex" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Text fontWeight="700" color="#1C110D" style={{ fontSize: '13px' }}>
+                      {Number(order.amount).toLocaleString()} so'm
+                    </Text>
+                    {order.note && <Text color="#9B614B" style={{ fontSize: '11px' }}>{order.note}</Text>}
+                  </Box>
+                  <Box bgColor="#EFF6FF" borderRadius="8px" px="8px" py="4px">
+                    <Text color="#3B82F6" fontWeight="700" style={{ fontSize: '11px' }}>Qabul qilindi</Text>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+          {rejectedOrders.length > 0 && (
+            <Box mt="12px" p="12px" bgColor="#FEE2E2" borderRadius="12px" border="1px solid #FCA5A5">
+              <Text fontWeight="700" color="#EF4444" mb="8px" style={{ fontSize: '12px' }}>
+                ❌ Rad etilgan buyurtmalar:
+              </Text>
+              {rejectedOrders.map(order => (
+                <Box key={order._id} p="8px" bgColor="white" borderRadius="8px" mb="6px"
+                  display="flex" justifyContent="space-between" alignItems="center">
+                  <Box>
+                    <Text fontWeight="700" color="#1C110D" style={{ fontSize: '13px' }}>
+                      {Number(order.amount).toLocaleString()} so'm
+                    </Text>
+                  </Box>
+                  <Box bgColor="#FEE2E2" borderRadius="8px" px="8px" py="4px">
+                    <Text color="#EF4444" fontWeight="700" style={{ fontSize: '11px' }}>Rad etildi</Text>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
           {doneOrders.length > 0 && (
             <Box mt="12px" p="12px" bgColor="#F0FFF4" borderRadius="12px" border="1px solid #BBF7D0">
               <Text fontWeight="600" color="#22C55E" mb="8px" style={{ fontSize: '12px' }}>
-                Bajarilgan buyurtmalar:
+                🎉 Bajarilgan buyurtmalar:
               </Text>
               {doneOrders.map(order => (
                 <Box key={order._id} p="8px" bgColor="white" borderRadius="8px" mb="8px">

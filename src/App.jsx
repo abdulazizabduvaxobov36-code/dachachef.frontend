@@ -18,6 +18,11 @@ import ChefEditProfilePage from "./components/ChefEditProfilePage";
 import ChefViewPage from "./components/ChefViewPage";
 import ChefAllReviewsPage from "./components/ChefAllReviewsPage";
 import AddReviewPage from "./components/AddReviewPage";
+import AdminPage from "./components/AdminPage";
+import AdminChefsPage from "./components/AdminChefsPage";
+import AdminCustomersPage from "./components/AdminCustomersPage";
+import AdminOrdersPage from "./components/AdminOrdersPage";
+import AdminRevenuePage from "./components/AdminRevenuePage";
 
 const App = () => {
   // App birinchi ochilganda eski offline cheflarni tozalash
@@ -45,6 +50,11 @@ const App = () => {
       <Route path="/chef-view/:id" element={<ChefViewPage />} />
       <Route path="/chef-all-reviews" element={<ChefAllReviewsPage />} />
       <Route path="/add-review" element={<AddReviewPage />} />
+      <Route path="/admin" element={<AdminPage />} />
+      <Route path="/admin/chefs" element={<AdminChefsPage />} />
+      <Route path="/admin/customers" element={<AdminCustomersPage />} />
+      <Route path="/admin/orders" element={<AdminOrdersPage />} />
+      <Route path="/admin/revenue" element={<AdminRevenuePage />} />
     </Routes>
   );
 };

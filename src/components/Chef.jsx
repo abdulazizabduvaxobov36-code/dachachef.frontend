@@ -23,16 +23,17 @@ const Chef = () => {
 
   const validate = () => {
     const e = {};
-    if (!name.trim()) e.name = t("errors.minLength");
-    else if (!onlyLetters(name)) e.name = t("errors.onlyLetters");
-    else if (name.trim().length < 2) e.name = t("errors.minLength");
-    if (!surname.trim()) e.surname = t("errors.minLength");
-    else if (!onlyLetters(surname)) e.surname = t("errors.onlyLetters");
-    else if (surname.trim().length < 2) e.surname = t("errors.minLength");
-    if (!phone.trim()) e.phone = t("errors.phoneLength");
-    else if (phone.length !== 9) e.phone = t("errors.phoneLength");
-    if (!exp.trim()) e.exp = t("errors.expRequired");
-    else if (Number(exp) < 1 || Number(exp) > 60) e.exp = t("errors.expRange");
+    if (!name.trim()) e.name = "Ism kiritish shart";
+    else if (!onlyLetters(name)) e.name = "Ism faqat harflardan iborat bo'lishi kerak";
+    else if (name.trim().length < 2) e.name = "Ism kamida 2 ta harfdan iborat bo'lishi kerak";
+    if (!surname.trim()) e.surname = "Familiya kiritish shart";
+    else if (!onlyLetters(surname)) e.surname = "Familiya faqat harflardan iborat bo'lishi kerak";
+    else if (surname.trim().length < 2) e.surname = "Familiya kamida 2 ta harfdan iborat bo'lishi kerak";
+    if (!phone.trim()) e.phone = "Telefon raqami kiritish shart";
+    else if (phone.length !== 9) e.phone = "Telefon raqami 9 ta raqamdan iborat bo'lishi kerak";
+    else if (!/^\d{9}$/.test(phone)) e.phone = "Telefon raqami faqat raqamlardan iborat bo'lishi kerak";
+    if (!exp.trim()) e.exp = "Tajriba kiritish shart";
+    else if (Number(exp) < 1 || Number(exp) > 60) e.exp = "Tajriba 1 dan 60 yilgacha bo'lishi mumkin";
     return e;
   };
 
@@ -42,6 +43,7 @@ const Chef = () => {
     setTouched({ name: true, surname: true, phone: true, exp: true });
     if (!Object.keys(e).length) {
       const d = { name, surname, phone, exp, image, bio, id: Date.now() };
+      console.log('Chef.jsx - Creating chef:', d);
       localStorage.setItem("chefProfile", JSON.stringify(d));
       // Eski saved_chef_* kalitlarini tozalash — bir xil qurilmada eski cardlar qolmasin
       Object.keys(localStorage)
@@ -49,7 +51,9 @@ const Chef = () => {
         .forEach(k => localStorage.removeItem(k));
       Store.setSession("chef", d);
       Store.startHeartbeat("chef", phone);
+      console.log('Chef.jsx - Calling Store.addChef with:', d);
       await Store.addChef(d);
+      console.log('Chef.jsx - After Store.addChef, localStorage registeredChefs:', localStorage.getItem('registeredChefs'));
       // Backend ga ham saqlash
       try {
         const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
@@ -115,9 +119,9 @@ const Chef = () => {
               {image
                 ? <img src={image} alt="" style={{ width: "90px", height: "90px", borderRadius: "50%", objectFit: "cover", border: "3px solid #C03F0C" }} />
                 : <Box w="90px" h="90px" borderRadius="full" bgColor="#FFF0EC" border="3px solid #F5C5B0"
-                    display="flex" alignItems="center" justifyContent="center">
-                    <FaUser style={{ fontSize: "36px", color: "#C03F0C" }} />
-                  </Box>
+                  display="flex" alignItems="center" justifyContent="center">
+                  <FaUser style={{ fontSize: "36px", color: "#C03F0C" }} />
+                </Box>
               }
               <Box position="absolute" bottom="0" right="0" w="28px" h="28px" borderRadius="full"
                 bgColor="#C03F0C" display="flex" alignItems="center" justifyContent="center"

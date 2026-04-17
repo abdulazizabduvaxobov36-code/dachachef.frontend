@@ -15,14 +15,14 @@ const ChefEditProfilePage = () => {
         if (sess?.role === 'chef' && sess?.data?.phone) return sess.data;
         return {};
     })();
-    const [name, setName] = useState(stored.name || '');
-    const [surname, setSurname] = useState(stored.surname || '');
-    const [phone, setPhone] = useState(stored.phone || '');
-    const oldPhone = stored.phone || '';
-    const [exp, setExp] = useState(stored.exp || '');
-    const [bio, setBio] = useState(stored.bio || '');
+    const [name, setName] = useState(stored.name || 'http://localhost:5000');
+    const [surname, setSurname] = useState(stored.surname || 'http://localhost:5000');
+    const [phone, setPhone] = useState(stored.phone || 'http://localhost:5000');
+    const oldPhone = stored.phone || 'http://localhost:5000';
+    const [exp, setExp] = useState(stored.exp || 'http://localhost:5000');
+    const [bio, setBio] = useState(stored.bio || 'http://localhost:5000');
     const [image, setImage] = useState(stored.image || null);
-    const initialValues = { name: stored.name || '', surname: stored.surname || '', phone: stored.phone || '', exp: stored.exp || '', bio: stored.bio || '', image: stored.image || null };
+    const initialValues = { name: stored.name || 'http://localhost:5000', surname: stored.surname || 'http://localhost:5000', phone: stored.phone || 'http://localhost:5000', exp: stored.exp || 'http://localhost:5000', bio: stored.bio || 'http://localhost:5000', image: stored.image || null };
     const [dirty, setDirty] = useState(false);
     const [imageLoading, setImageLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -95,7 +95,7 @@ const ChefEditProfilePage = () => {
 
                 // Backendga ham yuboramiz (xato bo'lsa ham navigate qilamiz)
                 try {
-                    const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
+                    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
                     const response = await fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },

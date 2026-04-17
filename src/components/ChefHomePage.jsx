@@ -1,5 +1,5 @@
 import { Box, Text, Button } from '@chakra-ui/react';
-import { FaHome, FaCommentDots, FaUser, FaBell, FaTimes, FaPhone, FaPlus, FaImage, FaCheck, FaMoneyBillWave } from 'react-icons/fa';
+import { FaHome, FaCommentDots, FaUser, FaBell, FaTimes, FaPhone, FaPlus, FaImage, FaMoneyBillWave } from 'react-icons/fa';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,9 @@ const ChefHomePage = () => {
     const [notifications, setNotifications] = useState([]);
     const [publishLoading, setPublishLoading] = useState(false);
     const [reviewNotifs, setReviewNotifs] = useState([]);
+    const [newReviewToast, setNewReviewToast] = useState(null); // SMS kabi ogohlantirish
+    const [unseenReviews, setUnseenReviews] = useState([]); // o'qilmagan izohlar (bell uchun)
+    const lastReviewCountRef = useRef(null); // avvalgi review soni
 
     // ─── BUYURTMA MODAL ───────────────────────────────────────
     const [showOrderModal, setShowOrderModal] = useState(false);
@@ -44,17 +47,174 @@ const ChefHomePage = () => {
     const [orderNameError, setOrderNameError] = useState('');
     const [chefTotalEarned, setChefTotalEarned] = useState(0);
     const [chefTotalCommission, setChefTotalCommission] = useState(0);
+    const [chefOrders, setChefOrders] = useState([]);
+    const [pendingRequests, setPendingRequests] = useState([]);
+
+    const fetchPendingRequests = async () => {
+        if (!myPhone) return;
+        try {
+            const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${API_BASE}/orders/chef/${myPhone}`);
+            let pending = [];
+            
+            // Backend dan ma'lumot olish
+            if (res.ok) {
+                const data = await res.json();
+                const allOrders = Array.isArray(data) ? data : (data.orders || []);
+                pending = allOrders.filter(order => order.status === 'pending' && order.source === 'customer');
+            }
+            
+            // LocalStorage dan ham pending buyurtmalarni olish
+            const localStorageKeys = Object.keys(localStorage);
+            const localPending = localStorageKeys
+                .filter(key => key.startsWith('pendingOrder_') && key.endsWith(`_${myPhone}`))
+                .map(key => {
+                    try {
+                        const orderData = JSON.parse(localStorage.getItem(key));
+                        return {
+                            ...orderData,
+                            _id: `local_${key}`,
+                            id: `local_${key}`,
+                            customerPhone: orderData.customerId,
+                            customerName: 'Mijoz',
+                            amount: orderData.price,
+                            createdAt: new Date(orderData.createdAt).toISOString(),
+                            status: 'pending',
+                            source: 'customer'
+                        };
+                    } catch (error) {
+                        console.error('Error parsing localStorage order:', error);
+                        return null;
+                    }
+                })
+                .filter(order => order !== null);
+            
+            // Backend va localStorage dan kelgan buyurtmalarni birlashtirish
+            const allPending = [...pending, ...localPending];
+            console.log('All pending requests:', allPending);
+            setPendingRequests(allPending);
+        } catch (error) {
+            console.error('Error fetching pending requests:', error);
+            // Faqat localStorage dan olish
+            const localStorageKeys = Object.keys(localStorage);
+            const localPending = localStorageKeys
+                .filter(key => key.startsWith('pendingOrder_') && key.endsWith(`_${myPhone}`))
+                .map(key => {
+                    try {
+                        const orderData = JSON.parse(localStorage.getItem(key));
+                        return {
+                            ...orderData,
+                            _id: `local_${key}`,
+                            id: `local_${key}`,
+                            customerPhone: orderData.customerId,
+                            customerName: 'Mijoz',
+                            amount: orderData.price,
+                            createdAt: new Date(orderData.createdAt).toISOString(),
+                            status: 'pending',
+                            source: 'customer'
+                        };
+                    } catch (error) {
+                        return null;
+                    }
+                })
+                .filter(order => order !== null);
+            setPendingRequests(localPending);
+        }
+    };
+
+    const handleAcceptRequest = async (order) => {
+        const orderId = order._id || order.id;
+        try {
+            const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${API_BASE}/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'accepted' }),
+            });
+            if (res.ok) {
+                // Mijozning pending flagini tozalash
+                const key = `pendingOrder_${order.customerPhone}_${myPhone}`;
+                localStorage.removeItem(key);
+                // Chatga xabar yuborish
+                const chatId = Store.makeChatId(order.customerPhone, myPhone);
+                Store.sendMessage(chatId, {
+                    text: `✅ Buyurtmangiz qabul qilindi! ${Number(order.amount).toLocaleString()} so'm`,
+                    sender: 'chef',
+                    from: myPhone,
+                    to: order.customerPhone,
+                });
+                // Oshpaz hisobot sifatida avtomatik buyurtma yaratish (source='chef')
+                const chefFullName = `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim();
+                await fetch(`${API_BASE}/orders`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        customerPhone: order.customerPhone,
+                        customerName: order.customerName,
+                        chefPhone: myPhone,
+                        chefName: chefFullName,
+                        amount: order.amount,
+                        note: order.note || '',
+                        source: 'chef',
+                        status: 'done',
+                        createdAt: new Date().toISOString(),
+                    }),
+                });
+                fetchPendingRequests();
+                fetchChefTotalEarned();
+            } else {
+                alert("Buyurtmani qabul qilishda xatolik");
+            }
+        } catch (error) {
+            console.error('Accept request error:', error);
+            alert("Server bilan aloqa yo'q");
+        }
+    };
+
+    const handleRejectRequest = async (order) => {
+        const orderId = order._id || order.id;
+        try {
+            const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${API_BASE}/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'rejected' }),
+            });
+            if (res.ok) {
+                // Mijozning pending flagini tozalash (qaytadan buyurtma bera olsin)
+                const key = `pendingOrder_${order.customerPhone}_${myPhone}`;
+                localStorage.removeItem(key);
+                // Chatga xabar yuborish
+                const chatId = Store.makeChatId(order.customerPhone, myPhone);
+                Store.sendMessage(chatId, {
+                    text: `❌ Buyurtma rad etildi. Boshqa vaqt urinib ko'ring.`,
+                    sender: 'chef',
+                    from: myPhone,
+                    to: order.customerPhone,
+                });
+                fetchPendingRequests();
+            } else {
+                alert("Buyurtmani rad etishda xatolik");
+            }
+        } catch (error) {
+            console.error('Reject request error:', error);
+            alert("Server bilan aloqa yo'q");
+        }
+    };
 
     const fetchChefTotalEarned = async () => {
         if (!myPhone) return;
         try {
-            const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
             const r = await fetch(`${AUTH_BASE}/orders/chef/${myPhone}`);
             if (!r.ok) return;
             const data = await r.json();
             if (data?.summary) {
                 setChefTotalEarned(data.summary.totalNet || 0);
                 setChefTotalCommission(data.summary.totalCommission || 0);
+            }
+            if (Array.isArray(data?.orders)) {
+                setChefOrders(data.orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)));
             }
         } catch { }
     };
@@ -72,27 +232,27 @@ const ChefHomePage = () => {
         setOrderError('');
         setOrderNameError('');
         try {
-            const AUTH_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-            const chefFullName = `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim();
-            // Agar 9 ta raqam kiritilgan bo'lsa — telefon, aks holda — ism
+            const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+            const chefFullName = `${chefProfile.name || 'http://localhost:5000'} ${chefProfile.surname || 'http://localhost:5000'}`.trim();
             const input = orderCustomerName.trim();
             const digitsOnly = input.replace(/\D/g, '');
             const isPhone = digitsOnly.length === 9;
             const orderData = {
-                customerPhone: isPhone ? digitsOnly : (input || 'noma\'lum'),
+                customerPhone: isPhone ? digitsOnly : `name_${Date.now()}`,
                 customerName: input || 'noma\'lum',
                 chefPhone: myPhone,
                 chefName: chefFullName,
                 amount: Number(orderAmount),
                 note: orderNote,
             };
-            const res = await fetch(`${AUTH_BASE}/orders`, {
+            const res = await fetch(`${API_BASE}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(orderData),
             });
             if (res.ok) {
                 setOrderSuccess(true);
+                fetchChefTotalEarned();
                 setTimeout(() => {
                     setShowOrderModal(false);
                     setOrderSuccess(false);
@@ -102,44 +262,58 @@ const ChefHomePage = () => {
                     setOrderNameError('');
                 }, 1500);
             } else {
-                setOrderError(t('order.saveError') || "Saqlashda xato");
+                const errBody = await res.json().catch(() => ({}));
+                setOrderError(errBody?.message || errBody?.error || `Xato (${res.status})`);
             }
-        } catch {
-            setOrderError(t('order.serverError') || "Server bilan aloqa yo'q");
+        } catch (e) {
+            setOrderError("Server bilan aloqa yo'q — backend ishlamayapti");
         }
         setOrderLoading(false);
     };
 
     const fetchReviewNotifs = async () => {
         if (!myPhone) return;
+        const lsKey = `reviews_${myPhone}`;
+        const seenTs = Number(localStorage.getItem(`reviewsSeenTs_${myPhone}`) || 0);
+        const localReviews = JSON.parse(localStorage.getItem(lsKey) || '[]');
         try {
-            const API = import.meta.env.VITE_API_URL || '';
+            const API = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
             const res = await fetch(`${API}/reviews/${myPhone}`);
-            if (!res.ok) return;
+            if (!res.ok) throw new Error();
             const data = await res.json();
-            // So'nggi 5 ta yangi review
-            const newReviews = (data.reviews || []).slice(0, 5);
-            setReviewNotifs(newReviews);
-        } catch { }
+            const serverReviews = data.reviews || [];
+            const merged = [
+                ...localReviews.filter(lr =>
+                    !serverReviews.some(sr => sr.createdAt === lr.createdAt && sr.customerPhone === lr.customerPhone)
+                ),
+                ...serverReviews,
+            ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            // Yangi izoh kelganini aniqlash (toast)
+            if (lastReviewCountRef.current !== null && merged.length > lastReviewCountRef.current) {
+                const newest = merged[0];
+                setNewReviewToast(newest);
+                setTimeout(() => setNewReviewToast(null), 5000);
+            }
+            lastReviewCountRef.current = merged.length;
+            setReviewNotifs(merged);
+            // Bell uchun — faqat o'qilmagan (seenTs dan keyin kelgan) izohlar
+            const unseen = merged.filter(r => new Date(r.createdAt).getTime() > seenTs);
+            setUnseenReviews(unseen);
+        } catch {
+            if (localReviews.length > 0) {
+                if (lastReviewCountRef.current !== null && localReviews.length > lastReviewCountRef.current) {
+                    setNewReviewToast(localReviews[0]);
+                    setTimeout(() => setNewReviewToast(null), 5000);
+                }
+                lastReviewCountRef.current = localReviews.length;
+                setReviewNotifs(localReviews);
+                const unseen = localReviews.filter(r => new Date(r.createdAt).getTime() > seenTs);
+                setUnseenReviews(unseen);
+            }
+        }
     };
 
-    const getOrders = () => {
-        const keys = Object.keys(localStorage).filter(k =>
-            k.startsWith("chat_") && k.includes(`_${myPhone}`)
-        );
-        return keys.map(k => {
-            const chatId = k.replace("chat_", "");
-            if (localStorage.getItem(`accepted_${chatId}`)) return null;
-            const msgs = Store.getMessages(chatId);
-            if (msgs.length === 0) return null;
-            const customerPhone = chatId.replace(`_${myPhone}`, "");
-            const preview = msgs.slice(-4);
-            const unread = Store.getUnread(chatId, myPhone);
-            return { chatId, customerPhone, msgs, preview, unread, lastMsg: msgs[msgs.length - 1] };
-        }).filter(Boolean);
-    };
 
-    const [orders, setOrders] = useState(getOrders);
 
     const refreshNotifs = () => setNotifications(Store.getChefNotifications(myPhone));
 
@@ -154,33 +328,32 @@ const ChefHomePage = () => {
         });
         window.addEventListener('posts-updated', refresh);
         refresh();
-        
+
         // Oshpazning jami pul yig'ishini yuklash
         fetchChefTotalEarned();
         fetchReviewNotifs();
-        
+        fetchPendingRequests();
+
         return () => { unsub && unsub(); window.removeEventListener('posts-updated', refresh); };
     }, [myPhone]);
 
     useEffect(() => {
-        const onMsg = () => { setOrders(getOrders()); refreshNotifs(); };
+        const onMsg = () => { refreshNotifs(); };
         window.addEventListener("message-received", onMsg);
         if (myPhone) {
             refreshNotifs();
             const cleanup = Store.startHeartbeat("chef", myPhone);
-            let lastOrdersKey = JSON.stringify(getOrders().map(o => o.chatId + o.msgs.length + o.unread));
             let lastNotifsKey = JSON.stringify(Store.getChefNotifications(myPhone).map(n => n.chatId + n.unread));
             let reviewPollCount = 0;
             const pollOrders = setInterval(() => {
-                const newOrders = getOrders();
-                const newKey = JSON.stringify(newOrders.map(o => o.chatId + o.msgs.length + o.unread));
-                if (newKey !== lastOrdersKey) { lastOrdersKey = newKey; setOrders(newOrders); }
                 const newNotifs = Store.getChefNotifications(myPhone);
                 const newNKey = JSON.stringify(newNotifs.map(n => n.chatId + n.unread));
                 if (newNKey !== lastNotifsKey) { lastNotifsKey = newNKey; setNotifications(newNotifs); }
-                // Poll reviews every 5s (every 5th tick)
+                // Poll reviews every 5s va buyurtmalar ham
                 reviewPollCount++;
-                if (reviewPollCount % 5 === 0) fetchReviewNotifs();
+                if (reviewPollCount % 5 === 0) { fetchReviewNotifs(); fetchChefTotalEarned(); }
+                // Pending buyurtmalarni har 3 soniyada tekshirish
+                if (reviewPollCount % 3 === 0) { fetchPendingRequests(); }
             }, 1000);
             return () => { cleanup(); clearInterval(pollOrders); window.removeEventListener("message-received", onMsg); };
         }
@@ -230,16 +403,40 @@ const ChefHomePage = () => {
         setPublishLoading(false);
     };
 
-    const acceptAndRemove = (chatId, customerPhone, e) => {
-        e.stopPropagation();
-        localStorage.setItem(`accepted_${chatId}`, '1');
-        Store.clearUnread(chatId, myPhone);
-        setOrders(getOrders());
-        navigate('/chef-messages', { state: { chatId, customerPhone } });
-    };
+
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column">
+
+            {/* SMS kabi yangi izoh ogohlantirishi */}
+            {newReviewToast && (
+                <Box position="fixed" top="16px" left="50%" zIndex={999}
+                    style={{ transform: 'translateX(-50%)', animation: 'slideDown 0.3s ease' }}
+                    maxW="380px" w="calc(100% - 32px)"
+                    bgColor="white" borderRadius="16px" px="16px" py="12px"
+                    boxShadow="0 8px 32px rgba(0,0,0,0.18)"
+                    border="1.5px solid #F4B400"
+                    display="flex" alignItems="center" gap="12px"
+                    cursor="pointer"
+                    onClick={() => { setNewReviewToast(null); setActiveTab('reviews'); }}>
+                    <Box w="40px" h="40px" borderRadius="full" bgColor="#FFF8E0" flexShrink={0}
+                        display="flex" alignItems="center" justifyContent="center" style={{ fontSize: '20px' }}>
+                        ⭐
+                    </Box>
+                    <Box flex="1" minW={0}>
+                        <Text fontWeight="800" color="#1C110D" style={{ fontSize: '13px' }}>
+                            Yangi izoh keldi!
+                        </Text>
+                        <Text color="#6B6560" noOfLines={1} style={{ fontSize: '12px' }}>
+                            {newReviewToast.customerName || 'Mijoz'}{newReviewToast.rating > 0 ? ` · ${'★'.repeat(newReviewToast.rating)}` : ''}{newReviewToast.comment ? `: ${newReviewToast.comment}` : ''}
+                        </Text>
+                    </Box>
+                    <Box onClick={e => { e.stopPropagation(); setNewReviewToast(null); }}
+                        color="#B0A8A4" style={{ fontSize: '16px', flexShrink: 0 }}>✕</Box>
+                </Box>
+            )}
+            <style>{`@keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-20px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
+
             {/* Header */}
             <Box display="flex" justifyContent="space-between" alignItems="center"
                 px="16px" py="14px" bgColor="white" boxShadow="0 1px 0 #EBEBEB">
@@ -267,13 +464,22 @@ const ChefHomePage = () => {
                         <Text color="#22C55E" fontWeight="600" style={{ fontSize: "clamp(9px, 2.5vw, 11px)" }}>{t("common.online")}</Text>
                     </Box>
                     <Box position="relative" ref={notifRef}>
-                        <Box cursor="pointer" p="4px" onClick={() => setShowNotifPanel(v => !v)}>
-                            <FaBell style={{ fontSize: "clamp(18px, 5vw, 22px)", color: totalUnread > 0 ? "#C03F0C" : "#555" }} />
-                            {totalUnread > 0 && (
+                        <Box cursor="pointer" p="4px" onClick={() => {
+                            setShowNotifPanel(v => {
+                                if (!v) {
+                                    // Panel ochilayapti — hozirgi vaqtni "o'qildi" sifatida saqlash
+                                    localStorage.setItem(`reviewsSeenTs_${myPhone}`, Date.now().toString());
+                                    setUnseenReviews([]);
+                                }
+                                return !v;
+                            });
+                        }}>
+                            <FaBell style={{ fontSize: "clamp(18px, 5vw, 22px)", color: (totalUnread > 0 || unseenReviews.length > 0) ? "#C03F0C" : "#555" }} />
+                            {(totalUnread + unseenReviews.length) > 0 && (
                                 <Box position="absolute" top="-4px" right="-4px" minW="16px" h="16px" px="3px"
                                     bgColor="#C03F0C" borderRadius="full" display="flex" alignItems="center"
                                     justifyContent="center" color="white" fontWeight="bold" style={{ fontSize: "9px" }}>
-                                    {totalUnread > 9 ? "9+" : totalUnread}
+                                    {(totalUnread + unseenReviews.length) > 9 ? "9+" : (totalUnread + unseenReviews.length)}
                                 </Box>
                             )}
                         </Box>
@@ -289,18 +495,23 @@ const ChefHomePage = () => {
                                             style={{ fontSize: "10px", fontWeight: "bold" }}>{totalUnread} {t("chefHome.newMsg")}</Box>
                                     )}
                                 </Box>
-                                {notifications.length === 0 && reviewNotifs.length === 0 ? (
+                                {notifications.length === 0 && unseenReviews.length === 0 ? (
                                     <Box py="20px" textAlign="center">
                                         <Text color="#9B614B" style={{ fontSize: "clamp(11px, 3vw, 12px)" }}>{t("glabal.noNotif")}</Text>
                                     </Box>
                                 ) : null}
-                                {reviewNotifs.slice(0, 3).map((r, i) => (
+                                {unseenReviews.slice(0, 3).map((r, i) => (
                                     <Box key={`rev-${i}`} display="flex" alignItems="flex-start" gap="10px"
                                         px="12px" py="10px" cursor="pointer"
                                         borderBottom="1px solid #F5F5F5"
                                         bgColor="#FFFBF5"
                                         _hover={{ bgColor: "#FFF5F2" }}
-                                        onClick={() => { setShowNotifPanel(false); setActiveTab('reviews'); }}>
+                                        onClick={() => {
+                                            localStorage.setItem(`reviewsSeenTs_${myPhone}`, Date.now().toString());
+                                            setUnseenReviews([]);
+                                            setShowNotifPanel(false);
+                                            setActiveTab('reviews');
+                                        }}>
                                         <Box borderRadius="full" bgColor="#F4B400" flexShrink={0}
                                             display="flex" alignItems="center" justifyContent="center"
                                             color="white" fontWeight="bold"
@@ -350,7 +561,8 @@ const ChefHomePage = () => {
                 {/* Tabs */}
                 <Box display="flex" px="16px" pt="14px" pb="10px" gap="8px">
                     {[
-                        { key: 'orders', label: `${t("chefHome.title")}${orders.length > 0 ? ` (${orders.length})` : ""}` },
+                        { key: 'requests', label: `${t("chefHome.requests", { defaultValue: "Requests" })}${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
+                        { key: 'orders', label: `${t("chefHome.title")}${chefOrders.length > 0 ? ` (${chefOrders.length})` : ""}` },
                         { key: 'reviews', label: `${t("chefHome.reviews")}${reviewNotifs.length > 0 ? ` (${reviewNotifs.length})` : ""}` },
                         { key: 'posts', label: `${t("chefHome.posts")}${posts.length > 0 ? ` (${posts.length})` : ""}` }
                     ].map(tab => (
@@ -372,6 +584,86 @@ const ChefHomePage = () => {
                     </Button>
                 </Box>
 
+                {/* REQUESTS */}
+                {activeTab === 'requests' && (
+                    <Box px="16px" display="flex" flexDir="column" gap="10px">
+                        {pendingRequests.length === 0 ? (
+                            <Box textAlign="center" py="40px">
+                                <FaMoneyBillWave style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
+                                <Text color="#9B614B" style={{ fontSize: "clamp(13px, 3.5vw, 14px)" }}>Hali so'rov yo'q</Text>
+                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "12px" }}>Mijozlar buyurtma yuborganda shu yerda ko'rinadi</Text>
+                            </Box>
+                        ) : pendingRequests.map(request => (
+                            <Box key={request._id || request.id} bgColor="white" borderRadius="18px"
+                                p="14px" boxShadow="0 2px 12px rgba(192,63,12,0.10)"
+                                border="1.5px solid #FDE68A">
+                                {/* Yangi buyurtma badge */}
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb="10px">
+                                    <Box bgColor="#FFFBEB" borderRadius="8px" px="10px" py="4px" border="1px solid #FDE68A">
+                                        <Text color="#92400E" fontWeight="700" style={{ fontSize: "11px" }}>🆕 Yangi buyurtma</Text>
+                                    </Box>
+                                    <Text color="#B0A8A4" style={{ fontSize: "11px" }}>
+                                        {new Date(request.createdAt).toLocaleDateString('uz-UZ')} {new Date(request.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                    </Text>
+                                </Box>
+                                <Box display="flex" alignItems="center" gap="12px" mb="10px">
+                                    <Box w="44px" h="44px" borderRadius="full" bgColor="#F59E0B" flexShrink={0}
+                                        display="flex" alignItems="center" justifyContent="center"
+                                        color="white" fontWeight="bold" style={{ fontSize: "17px" }}>
+                                        {(request.customerName || request.customerPhone || 'M').charAt(0).toUpperCase()}
+                                    </Box>
+                                    <Box flex="1" minW={0}>
+                                        <Text fontWeight="800" color="#1C110D" style={{ fontSize: "14px" }}>
+                                            {request.customerName || 'Noma\'lum mijoz'}
+                                        </Text>
+                                        <Text color="#9B614B" style={{ fontSize: "12px" }}>
+                                            📞 +998{request.customerPhone}
+                                        </Text>
+                                    </Box>
+                                    <Box textAlign="right">
+                                        <Text fontWeight="800" color="#22C55E" style={{ fontSize: "18px" }}>
+                                            {Number(request.amount || request.price || 0).toLocaleString()} so'm
+                                        </Text>
+                                    </Box>
+                                </Box>
+                                {request.note && (
+                                    <Box bgColor="#FFF5F0" borderRadius="10px" px="10px" py="8px" mb="10px">
+                                        <Text color="#6B6560" style={{ fontSize: "13px" }}>💬 {request.note}</Text>
+                                    </Box>
+                                )}
+                                <Box display="flex" gap="8px">
+                                    <Button
+                                        flex="1"
+                                        bgColor="#22C55E"
+                                        color="white"
+                                        borderRadius="12px"
+                                        fontSize="13px"
+                                        fontWeight="700"
+                                        h="42px"
+                                        _hover={{ bgColor: '#16a34a' }}
+                                        onClick={() => handleAcceptRequest(request)}
+                                    >
+                                        ✅ Qabul qilish
+                                    </Button>
+                                    <Button
+                                        flex="1"
+                                        bgColor="#EF4444"
+                                        color="white"
+                                        borderRadius="12px"
+                                        fontSize="13px"
+                                        fontWeight="700"
+                                        h="42px"
+                                        _hover={{ bgColor: '#dc2626' }}
+                                        onClick={() => handleRejectRequest(request)}
+                                    >
+                                        ❌ Rad etish
+                                    </Button>
+                                </Box>
+                            </Box>
+                        ))}
+                    </Box>
+                )}
+
                 {/* BUYURTMALAR */}
                 {activeTab === 'orders' && (
                     <Box px="16px" display="flex" flexDir="column" gap="10px">
@@ -384,75 +676,47 @@ const ChefHomePage = () => {
                             {t('order.addBtn') || "Buyurtma qo'shish (naqd to'lov)"}
                         </Button>
 
-                        {orders.length === 0 && (
+                        {chefOrders.length === 0 ? (
                             <Box textAlign="center" py="40px">
-                                <FaCommentDots style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
-                                <Text color="#9B614B" style={{ fontSize: "clamp(13px, 3.5vw, 14px)" }}>{t("chefHome.empty")}</Text>
+                                <FaMoneyBillWave style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
+                                <Text color="#9B614B" style={{ fontSize: "clamp(13px, 3.5vw, 14px)" }}>Hali buyurtma yo'q</Text>
+                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "12px" }}>Mijoz to'lov qilganda "Buyurtma qo'shish" tugmasini bosing</Text>
                             </Box>
-                        )}
-                        {orders.map(order => (
-                            <Box key={order.chatId} bgColor="white" borderRadius="18px"
+                        ) : chefOrders.map(order => (
+                            <Box key={order._id || order.createdAt} bgColor="white" borderRadius="18px"
                                 p="14px" boxShadow="0 2px 12px rgba(192,63,12,0.06)">
-                                <Box display="flex" alignItems="center" gap={{ base: "10px", sm: "12px" }} mb="10px">
-                                    <Box borderRadius="full" bgColor="#C03F0C" flexShrink={0}
+                                <Box display="flex" alignItems="center" gap="12px" mb={order.note ? "10px" : "0"}>
+                                    <Box w="44px" h="44px" borderRadius="full" bgColor="#22C55E" flexShrink={0}
                                         display="flex" alignItems="center" justifyContent="center"
-                                        color="white" fontWeight="bold"
-                                        style={{ width: "clamp(38px, 10vw, 46px)", height: "clamp(38px, 10vw, 46px)", fontSize: "clamp(14px, 3.8vw, 17px)" }}>
-                                        {order.customerPhone?.charAt(0) || "M"}
+                                        color="white" fontWeight="bold" style={{ fontSize: "17px" }}>
+                                        {(order.customerName?.charAt(0) || order.customerPhone?.charAt(0) || 'M').toUpperCase()}
                                     </Box>
                                     <Box flex="1" minW={0}>
-                                        <Text fontWeight="bold" color="#1C110D" style={{ fontSize: "clamp(13px, 3.5vw, 14px)" }}>
-                                            +998{order.customerPhone}
+                                        <Text fontWeight="800" color="#1C110D" style={{ fontSize: "14px" }}>
+                                            {order.customerName || `+998${order.customerPhone}`}
                                         </Text>
-                                        <Box display="flex" alignItems="center" gap="6px">
-                                            <Text color="#9B614B" style={{ fontSize: "clamp(10px, 2.5vw, 11px)" }}>
-                                                {order.msgs.length} {t("chefHome.messages")}
-                                            </Text>
-                                            {order.unread > 0 && (
-                                                <Box bgColor="#C03F0C" color="white" borderRadius="full"
-                                                    px="6px" py="1px" style={{ fontSize: "9px", fontWeight: "bold" }}>
-                                                    {order.unread} {t("chefHome.newMsg")}
-                                                </Box>
-                                            )}
-                                        </Box>
+                                        <Text color="#9B614B" style={{ fontSize: "12px" }}>
+                                            {new Date(order.createdAt).toLocaleDateString('uz-UZ')} · {new Date(order.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
+                                        </Text>
                                     </Box>
-                                    <Box as="a" href={`tel:+998${order.customerPhone}`}
-                                        borderRadius="full" bgColor="#FFF0EC"
-                                        display="flex" alignItems="center" justifyContent="center"
-                                        style={{ width: "clamp(30px, 8vw, 36px)", height: "clamp(30px, 8vw, 36px)" }}>
-                                        <FaPhone style={{ fontSize: "clamp(10px, 2.8vw, 12px)", color: "#C03F0C" }} />
-                                    </Box>
-                                </Box>
-                                <Box bgColor="#FFF5F0" borderRadius="14px" p="10px"
-                                    display="flex" flexDir="column" gap="5px" mb="10px">
-                                    {order.preview.map((msg, i) => (
-                                        <Box key={i} display="flex" justifyContent={msg.sender === 'chef' ? 'flex-end' : 'flex-start'}>
-                                            <Box px="10px" py="5px" maxW="80%"
-                                                borderRadius={msg.sender === 'chef' ? '10px 10px 2px 10px' : '10px 10px 10px 2px'}
-                                                bgColor={msg.sender === 'chef' ? '#C03F0C' : 'white'}
-                                                boxShadow="0 1px 3px rgba(0,0,0,0.08)">
-                                                <Text style={{ fontSize: "clamp(11px, 3vw, 12px)", color: msg.sender === 'chef' ? 'white' : '#1C110D' }}>
-                                                    {msg.text}
-                                                </Text>
+                                    <Box textAlign="right">
+                                        <Text fontWeight="800" color="#22C55E" style={{ fontSize: "16px" }}>
+                                            {Number(order.amount).toLocaleString()} so'm
+                                        </Text>
+                                        {order.customerPhone && order.customerPhone !== order.customerName && (
+                                            <Box as="a" href={`tel:+998${order.customerPhone}`}
+                                                display="flex" alignItems="center" gap="4px" justifyContent="flex-end">
+                                                <FaPhone style={{ fontSize: "10px", color: "#C03F0C" }} />
+                                                <Text color="#C03F0C" style={{ fontSize: "11px" }}>{order.customerPhone}</Text>
                                             </Box>
-                                        </Box>
-                                    ))}
-                                    {order.msgs.length > 4 && (
-                                        <Text textAlign="center" color="#9B614B" style={{ fontSize: "clamp(10px, 2.5vw, 11px)" }}>
-                                            +{order.msgs.length - 4} {t("chefHome.moreMsg")}
-                                        </Text>
-                                    )}
+                                        )}
+                                    </Box>
                                 </Box>
-                                <Box mt="8px">
-                                    <Button w="100%" size="sm"
-                                        bgColor="#22C55E" color="white" borderRadius="26px"
-                                        fontWeight="700" _hover={{ bgColor: '#16a34a' }}
-                                        leftIcon={<FaCheck style={{ fontSize: "12px" }} />}
-                                        style={{ height: "42px", fontSize: "14px" }}
-                                        onClick={(e) => acceptAndRemove(order.chatId, order.customerPhone, e)}>
-                                        {t("chefHome.accept")}
-                                    </Button>
-                                </Box>
+                                {order.note && (
+                                    <Box bgColor="#FFF5F0" borderRadius="10px" px="12px" py="8px">
+                                        <Text color="#6B6560" style={{ fontSize: "12px" }}>{order.note}</Text>
+                                    </Box>
+                                )}
                             </Box>
                         ))}
                     </Box>
@@ -461,33 +725,68 @@ const ChefHomePage = () => {
                 {/* IZOHLAR */}
                 {activeTab === 'reviews' && (
                     <Box px="16px" display="flex" flexDir="column" gap="10px">
+                        {/* Header: son + Hammasi tugmasi */}
+                        {reviewNotifs.length > 0 && (
+                            <Box display="flex" justifyContent="space-between" alignItems="center" mb="2px">
+                                <Box display="flex" alignItems="center" gap="8px">
+                                    <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>Izohlar</Text>
+                                    <Box bgColor="#FFF0EC" borderRadius="10px" px="8px" py="3px">
+                                        <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>{reviewNotifs.length} ta</Text>
+                                    </Box>
+                                </Box>
+                                <Box cursor="pointer" bgColor="#FFF0EC" borderRadius="12px" px="12px" py="6px"
+                                    border="1.5px solid #F5C5B0"
+                                    onClick={() => navigate('/chef-all-reviews', {
+                                        state: {
+                                            chefPhone: myPhone,
+                                            chefName: `${chefProfile.name || 'http://localhost:5000'} ${chefProfile.surname || 'http://localhost:5000'}`.trim()
+                                        }
+                                    })}>
+                                    <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "12px" }}>Hammasi →</Text>
+                                </Box>
+                            </Box>
+                        )}
+
                         {reviewNotifs.length === 0 ? (
                             <Box textAlign="center" py="40px">
+                                <Box style={{ fontSize: '36px', marginBottom: '10px' }}>💬</Box>
                                 <Text color="#9B614B" style={{ fontSize: "14px" }}>{t("chefHome.noReviews")}</Text>
                             </Box>
-                        ) : reviewNotifs.map((r, i) => (
-                            <Box key={i} bgColor="white" borderRadius="18px" p="14px"
+                        ) : reviewNotifs.slice(0, 3).map((r, i) => (
+                            <Box key={r._id || r.createdAt || i} bgColor="white" borderRadius="18px" p="14px"
                                 boxShadow="0 2px 12px rgba(192,63,12,0.06)">
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb="6px">
-                                    <Text fontWeight="700" color="#1C110D" style={{ fontSize: "14px" }}>
-                                        {r.customerName || `+998${r.customerPhone}`}
-                                    </Text>
-                                    {r.rating > 0 && (
-                                        <Box display="flex" gap="2px">
-                                            {[1,2,3,4,5].map(s => (
-                                                <span key={s} style={{ fontSize: '13px', color: s <= r.rating ? '#F4B400' : '#E0DAD7' }}>★</span>
-                                            ))}
+                                <Box display="flex" alignItems="center" gap="10px" mb={r.comment ? "8px" : "0"}>
+                                    <Box w="38px" h="38px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
+                                        display="flex" alignItems="center" justifyContent="center"
+                                        color="white" fontWeight="700" style={{ fontSize: "15px" }}>
+                                        {(r.customerName?.charAt(0) || 'M').toUpperCase()}
+                                    </Box>
+                                    <Box flex="1" minW={0}>
+                                        <Text fontWeight="700" color="#1C110D" style={{ fontSize: "14px" }}>
+                                            {r.customerName || `+998${r.customerPhone}`}
+                                        </Text>
+                                        <Box display="flex" alignItems="center" gap="6px">
+                                            {r.rating > 0 && (
+                                                <Box display="flex" gap="1px">
+                                                    {[1, 2, 3, 4, 5].map(s => (
+                                                        <span key={s} style={{ fontSize: '12px', color: s <= r.rating ? '#F4B400' : '#E0DAD7' }}>★</span>
+                                                    ))}
+                                                </Box>
+                                            )}
+                                            <Text color="#B0A8A4" style={{ fontSize: "11px" }}>
+                                                {new Date(r.createdAt).toLocaleDateString('uz-UZ')}
+                                            </Text>
                                         </Box>
-                                    )}
+                                    </Box>
                                 </Box>
                                 {r.comment && (
-                                    <Text color="#6B6560" style={{ fontSize: "13px", lineHeight: "1.5" }}>{r.comment}</Text>
+                                    <Box bgColor="#FFF5F0" borderRadius="10px" px="12px" py="8px">
+                                        <Text color="#4A3728" style={{ fontSize: "13px", lineHeight: "1.6" }}>{r.comment}</Text>
+                                    </Box>
                                 )}
-                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "11px" }}>
-                                    {new Date(r.createdAt).toLocaleDateString()}
-                                </Text>
                             </Box>
                         ))}
+
                     </Box>
                 )}
 
@@ -536,7 +835,7 @@ const ChefHomePage = () => {
                         <Text color="#9B614B" mb="16px" style={{ fontSize: "13px" }}>
                             {t('order.addDesc') || "Mijoz naqd to'lagandan keyin kiriting"}
                         </Text>
-                        
+
                         {/* Oshpazning jami pul yig'ishi */}
                         {chefTotalEarned > 0 && (
                             <Box mb="12px" p="8px" bgColor="#F0FFF4" borderRadius="12px" border="1px solid #BBF7D0">
@@ -568,7 +867,7 @@ const ChefHomePage = () => {
                             {orderNameError && <Text color="#E53E3E" mt="4px" style={{ fontSize: "12px" }}>⚠ {orderNameError}</Text>}
                         </Box>
 
-                        
+
                         {/* Summa — MAJBURIY */}
                         <Box mb="12px">
                             <Text fontWeight="600" color="#9B614B" mb="6px" style={{ fontSize: "12px" }}>

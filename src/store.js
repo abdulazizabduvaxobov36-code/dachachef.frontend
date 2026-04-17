@@ -16,33 +16,24 @@ const broadcast = (type, key) => { try { bc?.postMessage({ type, key }); } catch
 // Server API — xato bo'lsa null qaytaradi, dastur ishlashda davom etadi
 // Production da VITE_API_URL dan foydalanadi
 // Dev da Vite /api proxy mavjud bo'lsa, shu yo'l ishlaydi; aks holda 3001 to'g'ridan-to'g'ri chaqiradi.
-const BASE = import.meta.env.VITE_API_URL || '';
+const BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
 
 const api = {
   get: async (path) => {
-    try {
-      const r = await fetch(BASE + path, { signal: AbortSignal.timeout(4000) });
-      if (!r.ok) return null;
-      return await r.json();
-    } catch { return null; }
+    // Hech qanday network so'rov yubormaslik
+    return null;
   },
   post: async (path, body) => {
-    try {
-      const r = await fetch(BASE + path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(4000)
-      });
-      if (!r.ok) return null;
-      return await r.json();
-    } catch { return null; }
+    // Hech qanday network so'rov yubormaslik
+    return null;
+  },
+  put: async (path, body) => {
+    // Hech qanday network so'rov yubormaslik
+    return null;
   },
   del: async (path) => {
-    try {
-      const r = await fetch(BASE + path, { method: 'DELETE', signal: AbortSignal.timeout(4000) });
-      return r.ok ? await r.json() : null;
-    } catch { return null; }
+    // Hech qanday network so'rov yubormaslik
+    return null;
   }
 };
 
@@ -57,16 +48,20 @@ export const Store = {
   getChefs: () => {
     const chefs = local.get('registeredChefs') || [];
     if (!Array.isArray(chefs)) return [];
-    const month = 30 * 24 * 60 * 60 * 1000;
-    return chefs.filter(c => !c.registeredAt || Date.now() - c.registeredAt < month);
+    // Barcha oshpazlarni ko'rsatish, vaqt cheklovsiz
+    return chefs.filter(c => c.phone && c.name);
   },
 
   addChef: async (chef) => {
+    console.log('Store.addChef - Input chef:', chef);
     const c = { ...chef, registeredAt: chef.registeredAt || Date.now() };
     const all = Store.getChefs();
+    console.log('Store.addChef - Current chefs:', all);
     const i = all.findIndex(x => x.phone === c.phone);
     if (i >= 0) all[i] = c; else all.push(c);
+    console.log('Store.addChef - Updated chefs:', all);
     local.set('registeredChefs', all);
+    console.log('Store.addChef - Saved to localStorage, checking:', localStorage.getItem('registeredChefs'));
     window.dispatchEvent(new Event('chefs-updated'));
     broadcast('chefs-updated');
     api.post('/chefs', c);          // server sync (fon)
@@ -138,9 +133,11 @@ export const Store = {
     localStorage.setItem('chefPosts', JSON.stringify(posts.filter(p => p.chefPhone !== phone)));
     // Online statusni o'chirish
     localStorage.removeItem(`online_chef_${phone}`);
+    // Eventlarni yuborish - GlabalPage yangilanishi uchun
     window.dispatchEvent(new Event('chefs-updated'));
     window.dispatchEvent(new Event('posts-updated'));
     broadcast('chefs-updated');
+    console.log('chefs-updated event dispatched after removal');
     api.del(`/chefs/${phone}`);
   },
 
@@ -159,13 +156,18 @@ export const Store = {
       });
       if (changed) { local.set('registeredChefs', local2); callback(local2); }
     });
-    // 500ms polling — localStorage o'zgarishlarini kuzatamiz
-    let lastSig = JSON.stringify(Store.getChefs().map(c => c.phone));
-    const iv = setInterval(() => {
-      const sig = JSON.stringify(Store.getChefs().map(c => c.phone));
-      if (sig !== lastSig) { lastSig = sig; callback(Store.getChefs()); }
-    }, 500);
-    return () => clearInterval(iv);
+    // Safe retry logic for chefs updates
+    let retry = 1000;
+    const fetchSafe = async () => {
+      try {
+        await api.get('/chefs');
+        retry = 1000;
+      } catch {
+        retry = Math.min(retry * 2, 10000);
+      }
+      setTimeout(fetchSafe, retry);
+    };
+    fetchSafe();
   },
 
   // ─── CUSTOMER INFO ──────────────────────────────────────────
@@ -204,8 +206,18 @@ export const Store = {
   },
   startHeartbeat: (role, id) => {
     Store.setOnline(role, id);
-    const iv = setInterval(() => Store.setOnline(role, id), 20000);
-    const cleanup = () => { clearInterval(iv); Store.setOffline(role, id); };
+    let retry = 20000;
+    const heartbeatSafe = async () => {
+      try {
+        Store.setOnline(role, id);
+        retry = 20000;
+      } catch {
+        retry = Math.min(retry * 2, 60000);
+      }
+      setTimeout(heartbeatSafe, retry);
+    };
+    heartbeatSafe();
+    const cleanup = () => { Store.setOffline(role, id); };
     window.addEventListener('beforeunload', cleanup);
     return cleanup;
   },
@@ -251,14 +263,22 @@ export const Store = {
       const m = Store.getMessages(chatId); last = m.length; callback(m);
     };
     window.addEventListener('storage', onStorage);
-    const iv = setInterval(() => {
-      const m = Store.getMessages(chatId);
-      if (m.length !== last) { last = m.length; callback(m); }
-    }, 500);
+    // Safe retry logic for messages
+    let retry = 1000;
+    const fetchMessagesSafe = async () => {
+      try {
+        const m = Store.getMessages(chatId);
+        if (m.length !== last) { last = m.length; callback(m); }
+        retry = 1000;
+      } catch {
+        retry = Math.min(retry * 2, 10000);
+      }
+      setTimeout(fetchMessagesSafe, retry);
+    };
+    fetchMessagesSafe();
     return () => {
       window.removeEventListener('message-received', onMsg);
       window.removeEventListener('storage', onStorage);
-      clearInterval(iv);
     };
   },
 
@@ -315,7 +335,7 @@ export const Store = {
         if (unread === 0) return null;
         const customerPhone = chatId.replace(`_${chefPhone}`, '');
         const msgs = Store.getMessages(chatId);
-        return { chatId, customerPhone, unread, lastMsg: msgs.at(-1)?.text || '' };
+        return { chatId, customerPhone, unread, lastMsg: msgs.at(-1)?.text || 'http://localhost:5000' };
       }).filter(Boolean),
 
   getCustomerNotifications: (customerPhone, chefs) =>
@@ -328,7 +348,7 @@ export const Store = {
         chatId, chefPhone: c.phone,
         chefName: `${c.name} ${c.surname}`,
         chefImage: c.image,
-        unread, lastMsg: msgs.at(-1)?.text || ''
+        unread, lastMsg: msgs.at(-1)?.text || 'http://localhost:5000'
       };
     }).filter(Boolean),
 
@@ -403,22 +423,70 @@ export const Store = {
   },
 
   removeSavedAccount: (key) => localStorage.removeItem(key),
+
+  clearAllChefs: () => {
+    localStorage.removeItem('registeredChefs');
+    window.dispatchEvent(new Event('chefs-updated'));
+  },
 };
 
 export default Store;
 
+Store.createOrder = async (customerId, chefId, price, source = 'customer') => {
+  try {
+    const response = await api.post('/orders', { customerId, chefId, price, source });
+    return response;
+  } catch (error) {
+    console.error('Create order error:', error);
+    return null;
+  }
+};
+
+Store.getOrders = async () => {
+  try {
+    return await api.get('/orders');
+  } catch (error) {
+    console.error('Get orders error:', error);
+    return null;
+  }
+};
+
+Store.getChefOrders = async (chefId) => {
+  try {
+    return await api.get(`/orders/chef/${chefId}`);
+  } catch (error) {
+    console.error('Get chef orders error:', error);
+    return null;
+  }
+};
+
+Store.getCustomerOrders = async (customerId) => {
+  try {
+    return await api.get(`/orders/customer/${customerId}`);
+  } catch (error) {
+    console.error('Get customer orders error:', error);
+    return null;
+  }
+};
+
+Store.updateOrder = async (orderId, status) => {
+  try {
+    return await api.put(`/orders/${orderId}`, { status });
+  } catch (error) {
+    console.error('Update order error:', error);
+    return null;
+  }
+};
+
 Store.getCustomerAllOrders = async (customerPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-    const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/all`);
-    if (!r.ok) return null;
-    return await r.json();
+    return await api.get(`/orders/customer/${customerPhone}/all`);
   } catch { return null; }
 };
 
 Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/chef/${chefPhone}`);
     if (!r.ok) return null;
     return await r.json();
@@ -428,7 +496,7 @@ Store.getCustomerOrdersForChef = async (customerPhone, chefPhone) => {
 // Baho va izoh qoldirish
 Store.updateOrderRating = async (orderId, rating, review) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     console.log('Rating API call:', `${AUTH_BASE}/orders/${orderId}/rating`, { rating, review });
     const r = await fetch(`${AUTH_BASE}/orders/${orderId}/rating`, {
       method: 'PATCH',
@@ -450,7 +518,7 @@ Store.updateOrderRating = async (orderId, rating, review) => {
 // Oshpazning barcha baholari
 Store.getChefRatings = async (chefPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/orders/chef/${chefPhone}/ratings`);
     if (!r.ok) return null;
     return await r.json();
@@ -460,7 +528,7 @@ Store.getChefRatings = async (chefPhone) => {
 // Mijoz qoldirgan barcha baholar
 Store.getCustomerRatings = async (customerPhone) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/orders/customer/${customerPhone}/ratings`);
     if (!r.ok) return null;
     return await r.json();
@@ -470,7 +538,7 @@ Store.getCustomerRatings = async (customerPhone) => {
 // Oshpazga notification yuborish (baho va izoh uchun)
 Store.sendChefNotification = async (chefPhone, notification) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/notifications/chef`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -484,7 +552,7 @@ Store.sendChefNotification = async (chefPhone, notification) => {
 // --- AUTH (Backend API) ---─────────────────────────────────────
 Store.authRegister = async ({ name, email, password, role }) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -502,7 +570,7 @@ Store.authRegister = async ({ name, email, password, role }) => {
 
 Store.authLogin = async ({ email, password }) => {
   try {
-    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+    const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
     const r = await fetch(`${AUTH_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

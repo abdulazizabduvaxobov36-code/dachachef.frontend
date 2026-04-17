@@ -63,7 +63,7 @@ const EditProfilePage = () => {
 
             // Backend ga ham yangilash
             try {
-                const AUTH_BASE = import.meta.env?.VITE_API_URL || '/api';
+                const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
                 await fetch(`${AUTH_BASE}/customers/${phone}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },

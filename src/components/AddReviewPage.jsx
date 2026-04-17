@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Store from '../store';
 
-const API = import.meta.env.VITE_API_URL || '';
+const API = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
 
 const AddReviewPage = () => {
     const navigate = useNavigate();
@@ -13,8 +13,8 @@ const AddReviewPage = () => {
     const isRating = type === 'rating';
 
     const session = Store.getSession();
-    const customerPhone = session?.data?.phone || '';
-    const customerName = session?.data?.firstName || session?.data?.name || '';
+    const customerPhone = session?.data?.phone || 'http://localhost:5000';
+    const customerName = session?.data?.firstName || session?.data?.name || 'http://localhost:5000';
 
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');

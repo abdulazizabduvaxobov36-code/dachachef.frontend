@@ -1,9 +1,9 @@
-import { Box, Text, Button } from '@chakra-ui/react';
+import { Box, Text } from '@chakra-ui/react';
 import { FaArrowLeft, FaStar, FaComment } from 'react-icons/fa';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
 
 const ChefAllReviewsPage = () => {
     const navigate = useNavigate();
@@ -17,16 +17,43 @@ const ChefAllReviewsPage = () => {
     const [filter, setFilter] = useState('all');
     const [showDropdown, setShowDropdown] = useState(false);
 
-    useEffect(() => {
+    const loadReviews = () => {
         if (!chefPhone) return;
+        const lsKey = `reviews_${chefPhone}`;
+        const localReviews = JSON.parse(localStorage.getItem(lsKey) || '[]');
+
         fetch(`${API}/reviews/${chefPhone}`)
             .then(r => r.json())
             .then(data => {
-                setReviews(data.reviews || []);
-                setAvgRating(data.avgRating || 0);
+                const serverReviews = data.reviews || [];
+                // Serverda yo'q bo'lgan local reviewlarni ham qo'shamiz
+                const merged = [
+                    ...localReviews.filter(lr =>
+                        !serverReviews.some(sr => sr.createdAt === lr.createdAt && sr.customerPhone === lr.customerPhone)
+                    ),
+                    ...serverReviews,
+                ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                setReviews(merged);
+                const rated = merged.filter(r => r.rating > 0);
+                setAvgRating(rated.length > 0 ? +(rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : data.avgRating || 0);
                 setLoading(false);
             })
-            .catch(() => setLoading(false));
+            .catch(() => {
+                // Server offline — faqat localdan yuklaymiz
+                if (localReviews.length > 0) {
+                    setReviews(localReviews);
+                    const rated = localReviews.filter(r => r.rating > 0);
+                    setAvgRating(rated.length > 0 ? +(rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : 0);
+                }
+                setLoading(false);
+            });
+    };
+
+    useEffect(() => {
+        if (!chefPhone) return;
+        loadReviews();
+        const iv = setInterval(loadReviews, 5000);
+        return () => clearInterval(iv);
     }, [chefPhone]);
 
     if (!chefPhone) return (
@@ -42,9 +69,9 @@ const ChefAllReviewsPage = () => {
     const displayed = filter === 'all' ? allReviews : filter === 'comment' ? commentOnly : ratingReviews;
 
     const filterOptions = [
-        { key: 'all',     label: 'Hamma izohlar',  count: allReviews.length },
-        { key: 'comment', label: 'Izohlar',         count: commentOnly.length },
-        { key: 'rating',  label: 'Izoh va baholar', count: ratingReviews.length },
+        { key: 'all', label: 'Hamma izohlar', count: allReviews.length },
+        { key: 'comment', label: 'Izohlar', count: commentOnly.length },
+        { key: 'rating', label: 'Izoh va baholar', count: ratingReviews.length },
     ];
     const currentFilter = filterOptions.find(f => f.key === filter);
 
@@ -138,7 +165,7 @@ const ChefAllReviewsPage = () => {
                             </Box>
                             {r.rating > 0 ? (
                                 <Box display="flex" gap="2px">
-                                    {[1,2,3,4,5].map(s => (
+                                    {[1, 2, 3, 4, 5].map(s => (
                                         <FaStar key={s} style={{ fontSize: '12px', color: s <= r.rating ? '#F4B400' : '#E0DAD7' }} />
                                     ))}
                                 </Box>

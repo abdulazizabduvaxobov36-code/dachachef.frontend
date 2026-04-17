@@ -1,5 +1,5 @@
 import { Box, Text, Button } from '@chakra-ui/react';
-import { FaArrowLeft, FaCommentDots, FaStar, FaUser, FaTimes, FaComment } from 'react-icons/fa';
+import { FaArrowLeft, FaCommentDots, FaStar, FaUser, FaTimes, FaComment, FaShoppingBag } from 'react-icons/fa';
 import HeroHeader from '/images/Hero Header.png';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import Store from '../store';
 
-const API = import.meta.env.VITE_API_URL || '';
+const API = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
 
 const ChefViewPage = () => {
     const navigate = useNavigate();
@@ -19,11 +19,12 @@ const ChefViewPage = () => {
     const [reviews, setReviews] = useState([]);
     const [avgRating, setAvgRating] = useState(0);
     const [totalReviews, setTotalReviews] = useState(0);
+    const [chefOrdersCount, setChefOrdersCount] = useState(0);
 
     const session = Store.getSession();
     const isCustomer = session?.role === 'customer';
-    const customerPhone = session?.data?.phone || '';
-    const customerName = session?.data?.firstName || session?.data?.name || '';
+    const customerPhone = session?.data?.phone || 'http://localhost:5000';
+    const customerName = session?.data?.firstName || session?.data?.name || 'http://localhost:5000';
 
     const [chefPosts, setChefPosts] = useState([]);
     const [customerOrders, setCustomerOrders] = useState([]);
@@ -35,6 +36,15 @@ const ChefViewPage = () => {
     const [reviewLoading, setReviewLoading] = useState(false);
     const [reviewSuccess, setReviewSuccess] = useState(false);
     const [reviewError, setReviewError] = useState('');
+
+    // Order modal state
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [orderAmount, setOrderAmount] = useState('');
+    const [orderNote, setOrderNote] = useState('');
+    const [orderLoading, setOrderLoading] = useState(false);
+    const [orderSuccess, setOrderSuccess] = useState(false);
+    const [orderError, setOrderError] = useState('');
+    const [hasPendingOrder, setHasPendingOrder] = useState(false);
 
     useEffect(() => {
         const refresh = () => setChef(Store.getChefs()[Number(id)] || null);
@@ -54,8 +64,22 @@ const ChefViewPage = () => {
     useEffect(() => {
         if (!chef?.phone) return;
         loadReviews();
-        // Real-time: poll reviews every 3s so chef's new reviews appear live
         const iv = setInterval(loadReviews, 3000);
+        return () => clearInterval(iv);
+    }, [chef?.phone]);
+
+    useEffect(() => {
+        if (!chef?.phone) return;
+        const fetchOrders = async () => {
+            try {
+                const res = await fetch(`${API}/orders/chef/${chef.phone}`);
+                if (!res.ok) return;
+                const data = await res.json();
+                if (Array.isArray(data?.orders)) setChefOrdersCount(data.orders.length);
+            } catch { }
+        };
+        fetchOrders();
+        const iv = setInterval(fetchOrders, 10000);
         return () => clearInterval(iv);
     }, [chef?.phone]);
 
@@ -171,6 +195,69 @@ const ChefViewPage = () => {
         setReviewLoading(false);
     };
 
+    // Pending order check
+    useEffect(() => {
+        if (!isCustomer || !chef?.phone) return;
+        const key = `pendingOrder_${customerPhone}_${chef.phone}`;
+        setHasPendingOrder(!!localStorage.getItem(key));
+    }, [isCustomer, chef?.phone, customerPhone]);
+
+    const handleOrderSubmit = async () => {
+        if (!orderAmount || isNaN(Number(orderAmount)) || Number(orderAmount) <= 0) {
+            setOrderError("Iltimos, to'g'ri summa kiriting");
+            return;
+        }
+        setOrderLoading(true);
+        setOrderError('');
+
+        const amount = Number(orderAmount);
+        const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
+
+        try {
+            const res = await fetch(`${API_BASE}/orders`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    customerPhone,
+                    customerName,
+                    chefPhone: chef.phone,
+                    chefName: `${chef.name} ${chef.surname}`,
+                    amount,
+                    note: orderNote.trim(),
+                    source: 'customer',
+                    status: 'pending',
+                    createdAt: new Date().toISOString(),
+                }),
+            });
+            if (res.ok) {
+                // Pending flagni saqlash
+                const key = `pendingOrder_${customerPhone}_${chef.phone}`;
+                localStorage.setItem(key, '1');
+                setHasPendingOrder(true);
+                setOrderSuccess(true);
+                // Chat orqali xabar yuborish
+                const chatId = Store.makeChatId(customerPhone, chef.phone);
+                Store.sendMessage(chatId, {
+                    text: `📦 Buyurtma yuborildi: ${amount.toLocaleString()} so'm${orderNote ? ' — ' + orderNote : ''}`,
+                    sender: 'customer',
+                    from: customerPhone,
+                    to: chef.phone,
+                });
+                setTimeout(() => {
+                    setShowOrderModal(false);
+                    setOrderSuccess(false);
+                    setOrderAmount('');
+                    setOrderNote('');
+                }, 1800);
+            } else {
+                setOrderError("Xatolik yuz berdi, qaytadan urinib ko'ring");
+            }
+        } catch {
+            setOrderError("Server bilan aloqa yo'q");
+        }
+        setOrderLoading(false);
+    };
+
     if (!chef) return (
         <Box minH="100dvh" display="flex" alignItems="center" justifyContent="center" bgColor="#FFF5F0">
             <Box textAlign="center" p="24px">
@@ -182,7 +269,7 @@ const ChefViewPage = () => {
 
     const fullName = `${chef.name} ${chef.surname}`;
     const isOnline = chef.phone ? Store.isOnline('chef', chef.phone) : false;
-    const recentReviews = reviews.slice(0, 3);
+
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column">
@@ -196,6 +283,101 @@ const ChefViewPage = () => {
                         <FaTimes style={{ color: 'white', fontSize: '16px' }} />
                     </Box>
                     <img src={zoomed} alt="" style={{ maxWidth: '95vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '14px' }} onClick={e => e.stopPropagation()} />
+                </Box>
+            )}
+
+            {/* Order Modal */}
+            {showOrderModal && (
+                <Box position="fixed" inset="0" zIndex={400} display="flex" flexDir="column" justifyContent="flex-end">
+                    <Box position="absolute" inset="0" bgColor="rgba(0,0,0,0.5)" onClick={() => { setShowOrderModal(false); setOrderError(''); setOrderAmount(''); setOrderNote(''); }} />
+                    <Box position="relative" bgColor="white" borderTopRadius="24px"
+                        px="20px" pt="20px" pb="32px" zIndex={1}
+                        boxShadow="0 -8px 32px rgba(0,0,0,0.14)">
+                        <Box w="36px" h="4px" bgColor="#E0DAD7" borderRadius="full" mx="auto" mb="16px" />
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb="16px">
+                            <Text fontWeight="800" color="#1C110D" style={{ fontSize: '17px' }}>📦 Buyurtma berish</Text>
+                            <Box w="32px" h="32px" borderRadius="full" bgColor="#F5F5F5"
+                                display="flex" alignItems="center" justifyContent="center"
+                                cursor="pointer" onClick={() => { setShowOrderModal(false); setOrderError(''); setOrderAmount(''); setOrderNote(''); }}>
+                                <FaTimes style={{ fontSize: '13px', color: '#666' }} />
+                            </Box>
+                        </Box>
+
+                        <Box bgColor="#FFF5F0" borderRadius="12px" px="14px" py="10px" mb="14px"
+                            display="flex" alignItems="center" gap="10px">
+                            {chef.image
+                                ? <img src={chef.image} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
+                                : <Box w="36px" h="36px" borderRadius="full" bgColor="#C03F0C" display="flex" alignItems="center" justifyContent="center">
+                                    <FaUser size={16} color="white" />
+                                </Box>
+                            }
+                            <Box>
+                                <Text color="#9B614B" style={{ fontSize: '10px', fontWeight: '700' }}>Oshpaz</Text>
+                                <Text fontWeight="800" color="#1C110D" style={{ fontSize: '14px' }}>{fullName}</Text>
+                            </Box>
+                        </Box>
+
+                        <Box mb="12px">
+                            <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '13px' }}>
+                                Kelishilgan summa (so'm) *
+                            </Text>
+                            <input
+                                type="number"
+                                value={orderAmount}
+                                onChange={e => { setOrderAmount(e.target.value); setOrderError(''); }}
+                                placeholder="Masalan: 150000"
+                                style={{
+                                    width: '100%', border: '1.5px solid #F0E6E0', outline: 'none',
+                                    fontSize: '16px', color: '#1C110D', background: '#FFF5F0',
+                                    fontFamily: 'inherit', borderRadius: '12px', padding: '12px 14px',
+                                    boxSizing: 'border-box',
+                                }}
+                            />
+                        </Box>
+
+                        <Box mb="14px">
+                            <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '13px' }}>
+                                Izoh (ixtiyoriy)
+                            </Text>
+                            <textarea
+                                value={orderNote}
+                                onChange={e => setOrderNote(e.target.value)}
+                                placeholder="Taom nomi yoki qo'shimcha ma'lumot..."
+                                rows={2}
+                                style={{
+                                    width: '100%', border: '1.5px solid #F0E6E0', outline: 'none',
+                                    fontSize: '14px', color: '#1C110D', background: '#FFF5F0',
+                                    resize: 'none', fontFamily: 'inherit', borderRadius: '12px',
+                                    padding: '10px', boxSizing: 'border-box',
+                                }}
+                            />
+                        </Box>
+
+                        <Box bgColor="#FFFBEB" borderRadius="10px" px="12px" py="8px" mb="12px" border="1px solid #FDE68A">
+                            <Text color="#92400E" style={{ fontSize: '12px', fontWeight: '600' }}>
+                                ⚠️ Faqat oshpaz bilan oldindan kelishib, rozilashgandan keyin buyurtma bering
+                            </Text>
+                        </Box>
+
+                        {orderError && (
+                            <Box bgColor="#FFF5F5" borderRadius="10px" px="12px" py="8px" mb="10px" border="1px solid #FECDCA">
+                                <Text color="#E53E3E" fontWeight="600" style={{ fontSize: '12px' }}>⚠ {orderError}</Text>
+                            </Box>
+                        )}
+
+                        {orderSuccess ? (
+                            <Box bgColor="#F0FFF4" borderRadius="12px" px="14px" py="12px" border="1px solid #BBF7D0" textAlign="center">
+                                <Text color="#22C55E" fontWeight="700" style={{ fontSize: '14px' }}>✅ Buyurtma yuborildi! Oshpaz tasdiqlashini kuting.</Text>
+                            </Box>
+                        ) : (
+                            <Button w="100%" h="48px" bgColor="#C03F0C" color="white" borderRadius="14px"
+                                fontWeight="700" style={{ fontSize: '14px' }}
+                                isLoading={orderLoading}
+                                onClick={handleOrderSubmit}>
+                                📦 Buyurtma yuborish
+                            </Button>
+                        )}
+                    </Box>
                 </Box>
             )}
 
@@ -230,7 +412,7 @@ const ChefViewPage = () => {
                                 : <Box w="36px" h="36px" borderRadius="full" bgColor="#C03F0C"
                                     display="flex" alignItems="center" justifyContent="center">
                                     <FaUser size={16} color="white" />
-                                  </Box>
+                                </Box>
                             }
                             <Box>
                                 <Text color="#9B614B" style={{ fontSize: '10px', fontWeight: '700' }}>{t('chefView.chefLabel')}</Text>
@@ -262,23 +444,25 @@ const ChefViewPage = () => {
                         )}
 
                         {/* Izoh */}
-                        <Box mb="12px">
-                            <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '13px' }}>
-                                {reviewModal === 'rating' ? t('chefView.commentOpt') : t('chefView.commentReq')}
-                            </Text>
-                            <textarea
-                                value={comment}
-                                onChange={e => setComment(e.target.value)}
-                                placeholder={t('chefView.placeholder')}
-                                rows={3}
-                                style={{
-                                    width: '100%', border: '1.5px solid #F0E6E0', outline: 'none',
-                                    fontSize: '14px', color: '#1C110D', background: '#FFF5F0',
-                                    resize: 'none', fontFamily: 'inherit', borderRadius: '12px',
-                                    padding: '10px',
-                                }}
-                            />
-                        </Box>
+                        {true && (
+                            <Box mb="12px">
+                                <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '13px' }}>
+                                    {reviewModal === 'rating' ? t('chefView.commentOpt') : t('chefView.commentReq')}
+                                </Text>
+                                <textarea
+                                    value={comment}
+                                    onChange={e => setComment(e.target.value)}
+                                    placeholder={t('chefView.placeholder')}
+                                    rows={3}
+                                    style={{
+                                        width: '100%', border: '1.5px solid #F0E6E0', outline: 'none',
+                                        fontSize: '14px', color: '#1C110D', background: '#FFF5F0',
+                                        resize: 'none', fontFamily: 'inherit', borderRadius: '12px',
+                                        padding: '10px',
+                                    }}
+                                />
+                            </Box>
+                        )}
 
                         {reviewError && (
                             <Box bgColor="#FFF5F5" borderRadius="10px" px="12px" py="8px" mb="10px"
@@ -323,7 +507,7 @@ const ChefViewPage = () => {
                         ? <img src={chef.image} alt="" style={{ width: '88px', height: '88px', borderRadius: '50%', objectFit: 'cover', border: '4px solid white', boxShadow: '0 4px 14px rgba(0,0,0,0.15)' }} />
                         : <Box w="88px" h="88px" borderRadius="full" bgColor="#C03F0C" border="4px solid white" boxShadow="0 4px 14px rgba(0,0,0,0.12)" display="flex" alignItems="center" justifyContent="center">
                             <FaUser size={32} color="white" />
-                          </Box>
+                        </Box>
                     }
                     <Box position="absolute" bottom="4px" right="4px" w="14px" h="14px" borderRadius="full"
                         bgColor={isOnline ? '#22C55E' : '#D1D5DB'} border="2px solid white" />
@@ -349,7 +533,7 @@ const ChefViewPage = () => {
                 {[
                     { label: t('chefView.statsExp'), value: `${chef.exp || 0} ${t('common.years')}` },
                     { label: t('chefView.statsRating'), value: avgRating > 0 ? String(avgRating) : '5.0' },
-                    { label: t('chefView.statsReviews'), value: String(totalReviews) },
+                    { label: t('common.orders'), value: String(chefOrdersCount) },
                 ].map((s, i) => (
                     <Box key={i} textAlign="center">
                         <Text fontWeight="800" color="#1C110D" style={{ fontSize: '17px' }}>{s.value}</Text>
@@ -437,7 +621,7 @@ const ChefViewPage = () => {
                     </Box>
                 ) : (
                     <Box display="flex" flexDir="column" gap="10px">
-                        {recentReviews.map((r, i) => (
+                        {reviews.slice(0, 3).map((r, i) => (
                             <Box key={i} bgColor="white" borderRadius="16px" p="14px"
                                 boxShadow="0 2px 10px rgba(0,0,0,0.06)">
                                 <Box display="flex" justifyContent="space-between" alignItems="center" mb="6px">
@@ -446,7 +630,7 @@ const ChefViewPage = () => {
                                     </Text>
                                     {r.rating > 0 && (
                                         <Box display="flex" gap="2px">
-                                            {[1,2,3,4,5].map(s => (
+                                            {[1, 2, 3, 4, 5].map(s => (
                                                 <FaStar key={s} style={{ fontSize: '12px', color: s <= r.rating ? '#F4B400' : '#E0DAD7' }} />
                                             ))}
                                         </Box>
@@ -464,7 +648,7 @@ const ChefViewPage = () => {
                 )}
             </Box>
 
-            {/* Action buttons: Izoh + Xabar yozish */}
+            {/* Action buttons: Izoh + Xabar yozish + Buyurtma */}
             <Box mx="16px" mt="8px" mb="28px" display="flex" flexDir="column" gap="10px">
                 {/* Izoh tugmalari — kichik, yonma-yon */}
                 {isCustomer && (
@@ -494,6 +678,19 @@ const ChefViewPage = () => {
                     onClick={() => navigate('/orderspage', { state: { chefName: fullName, chefPhone: chef.phone } })}>
                     {t('chefView.writeMsg')}
                 </Button>
+                {/* Buyurtma berish — faqat mijozlar uchun */}
+                {isCustomer && (
+                    <Button w="100%" h="50px"
+                        bgColor={hasPendingOrder ? '#9B8E8A' : '#22C55E'}
+                        color="white" borderRadius="14px"
+                        fontWeight="700" style={{ fontSize: '15px' }}
+                        _hover={{ bgColor: hasPendingOrder ? '#9B8E8A' : '#16a34a' }}
+                        leftIcon={<FaShoppingBag size={16} />}
+                        disabled={hasPendingOrder}
+                        onClick={() => { if (!hasPendingOrder) { setOrderAmount(''); setOrderNote(''); setOrderError(''); setOrderSuccess(false); setShowOrderModal(true); } }}>
+                        {hasPendingOrder ? '⏳ Buyurtma kutilmoqda...' : '📦 Buyurtma berish'}
+                    </Button>
+                )}
             </Box>
         </Box>
     );

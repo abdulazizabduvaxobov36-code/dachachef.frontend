@@ -77,7 +77,7 @@ const ProfilePage = () => {
                             border="4px solid white" boxShadow="0 4px 16px rgba(0,0,0,0.15)"
                             display="flex" alignItems="center" justifyContent="center">
                             <Text color="white" fontWeight="800" style={{ fontSize: "32px" }}>{firstLetter}</Text>
-                          </Box>
+                        </Box>
                     }
                 </Box>
             </Box>
@@ -119,13 +119,13 @@ const ProfilePage = () => {
                         <Text fontWeight="700" color="#1C110D" style={{ fontSize: "13px" }}>{t("profile.language")}</Text>
                     </Box>
                     <Box display="flex" gap="8px">
-                        {[{code:"uz",label:"🇺🇿 O'zbek"},{code:"ru",label:"🇷🇺 Русский"}].map(lg => (
+                        {[{ code: "uz", label: "🇺🇿 O'zbek" }, { code: "ru", label: "🇷🇺 Русский" }].map(lg => (
                             <Box key={lg.code} flex="1" cursor="pointer" borderRadius="12px" py="10px" textAlign="center"
-                                bgColor={i18n.language===lg.code?"#C03F0C":"#F5F3F1"}
-                                border={`1.5px solid ${i18n.language===lg.code?"#C03F0C":"#E8E8E8"}`}
+                                bgColor={i18n.language === lg.code ? "#C03F0C" : "#F5F3F1"}
+                                border={`1.5px solid ${i18n.language === lg.code ? "#C03F0C" : "#E8E8E8"}`}
                                 transition="all 0.2s"
                                 onClick={() => { i18n.changeLanguage(lg.code); localStorage.setItem("appLang", lg.code); }}>
-                                <Text fontWeight="700" color={i18n.language===lg.code?"white":"#555"} style={{fontSize:"13px"}}>{lg.label}</Text>
+                                <Text fontWeight="700" color={i18n.language === lg.code ? "white" : "#555"} style={{ fontSize: "13px" }}>{lg.label}</Text>
                             </Box>
                         ))}
                     </Box>

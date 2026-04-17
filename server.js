@@ -4,16 +4,16 @@
 //  Frontend:       npm run dev  (boshqa terminal)
 // ============================================================
 
-import express      from 'express';
-import cors         from 'cors';
+import express from 'express';
+import cors from 'cors';
 import { createServer } from 'http';
-import { Server }   from 'socket.io';
+import { Server } from 'socket.io';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 
-const app        = express();
+const app = express();
 const httpServer = createServer(app);
-const io         = new Server(httpServer, {
-  cors: { origin: '*', methods: ['GET','POST','PUT','DELETE'] }
+const io = new Server(httpServer, {
+  cors: { origin: '*', methods: ['GET', 'POST', 'PUT', 'DELETE'] }
 });
 
 app.use(cors());
@@ -23,23 +23,23 @@ app.use(express.json({ limit: '50mb' }));
 const DB = new URL('./data.json', import.meta.url);
 
 const empty = {
-  chefs:       [],   // [{phone, name, surname, exp, image, registeredAt}]
-  customers:   {},   // { phone: {firstName, lastName, phone, image} }
-  chats:       {},   // { chatId: [{id,text,sender,from,to,ts}] }
-  unread:      {},   // { "chatId_phone": count }
-  posts:       [],   // [{id,chefPhone,dishName,image,createdAt}]
-  orders:      [],   // [{_id, customerPhone, chefPhone, amount, status, rating, review, createdAt, completedAt}]
-  online:      {},   // { "chef_phone" | "customer_phone": timestamp }
+  chefs: [],   // [{phone, name, surname, exp, image, registeredAt}]
+  customers: {},   // { phone: {firstName, lastName, phone, image} }
+  chats: {},   // { chatId: [{id,text,sender,from,to,ts}] }
+  unread: {},   // { "chatId_phone": count }
+  posts: [],   // [{id,chefPhone,dishName,image,createdAt}]
+  orders: [],   // [{_id, customerPhone, chefPhone, amount, status, rating, review, createdAt, completedAt}]
+  online: {},   // { "chef_phone" | "customer_phone": timestamp }
 };
 
-const read  = () => {
+const read = () => {
   try {
     if (!existsSync(DB)) { write(empty); return { ...empty }; }
     return JSON.parse(readFileSync(DB, 'utf8'));
   } catch { return { ...empty }; }
 };
 const write = (d) => {
-  try { writeFileSync(DB, JSON.stringify(d, null, 2)); } catch {}
+  try { writeFileSync(DB, JSON.stringify(d, null, 2)); } catch { }
 };
 
 // ─── CHEFS ───────────────────────────────────────────────────
@@ -193,11 +193,11 @@ app.get('/api/chats/:chatId', (req, res) => {
 
 // Xabar yuborish
 app.post('/api/chats/:chatId', (req, res) => {
-  const d    = read();
-  const msg  = req.body;
-  const cid  = req.params.chatId;
-  d.chats    = d.chats || {};
-  d.unread   = d.unread || {};
+  const d = read();
+  const msg = req.body;
+  const cid = req.params.chatId;
+  d.chats = d.chats || {};
+  d.unread = d.unread || {};
   d.chats[cid] = [...(d.chats[cid] || []), msg];
   // Qabul qiluvchining unread++
   const key = `${cid}_${msg.to}`;
@@ -227,7 +227,7 @@ app.delete('/api/chats/:chatId', (req, res) => {
 // ─── UNREAD ──────────────────────────────────────────────────
 // O'qilmagan xabarlar sonini olish
 app.get('/api/unread/:chatId/:userId', (req, res) => {
-  const d   = read();
+  const d = read();
   const key = `${req.params.chatId}_${req.params.userId}`;
   res.json({ count: (d.unread || {})[key] || 0 });
 });
@@ -258,9 +258,9 @@ app.get('/api/posts/:chefPhone', (req, res) => {
 
 // Post qo'shish
 app.post('/api/posts', (req, res) => {
-  const d    = read();
+  const d = read();
   const post = { ...req.body, id: Date.now(), createdAt: Date.now() };
-  d.posts    = [post, ...(d.posts || [])];
+  d.posts = [post, ...(d.posts || [])];
   write(d);
   io.emit('posts-updated', d.posts);
   res.json({ ok: true, post });
@@ -280,7 +280,19 @@ app.delete('/api/posts/:id', (req, res) => {
 app.post('/api/orders', (req, res) => {
   try {
     const d = read();
-    const order = { ...req.body, _id: Date.now().toString(), createdAt: Date.now(), status: 'pending' };
+    const { customerId, chefId, price, source } = req.body;
+    if (!customerId || !chefId || !price || !source) {
+      return res.status(400).json({ error: 'customerId, chefId, price, and source are required' });
+    }
+    const order = {
+      id: Date.now().toString(),
+      customerId,
+      chefId,
+      price,
+      status: 'pending',
+      source,
+      createdAt: Date.now()
+    };
     d.orders = d.orders || [];
     d.orders.push(order);
     write(d);
@@ -299,6 +311,59 @@ app.get('/api/orders/customer/:phone/all', (req, res) => {
     res.json({ orders });
   } catch (err) {
     console.error('/api/orders/customer/:phone/all GET error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Barcha buyurtmalarni olish
+app.get('/api/orders', (_req, res) => {
+  try {
+    const d = read();
+    res.json(d.orders || []);
+  } catch (err) {
+    console.error('/api/orders GET error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Oshpazning buyurtmalari
+app.get('/api/orders/chef/:id', (req, res) => {
+  try {
+    const d = read();
+    const orders = (d.orders || []).filter(o => o.chefId === req.params.id);
+    res.json(orders);
+  } catch (err) {
+    console.error('/api/orders/chef/:id GET error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Mijozning buyurtmalari
+app.get('/api/orders/customer/:id', (req, res) => {
+  try {
+    const d = read();
+    const orders = (d.orders || []).filter(o => o.customerId === req.params.id);
+    res.json(orders);
+  } catch (err) {
+    console.error('/api/orders/customer/:id GET error', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Buyurtmani yangilash (accept/reject)
+app.put('/api/orders/:id', (req, res) => {
+  try {
+    const d = read();
+    const orderId = req.params.id;
+    const { status } = req.body;
+    d.orders = d.orders || [];
+    const order = d.orders.find(o => o.id === orderId);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    order.status = status;
+    write(d);
+    res.json({ ok: true, order });
+  } catch (err) {
+    console.error('/api/orders/:id PUT error', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -389,13 +454,13 @@ io.on('connection', (socket) => {
   // Ulanganda hozirgi ma'lumotlarni yuborish
   const d = read();
   socket.emit('init', {
-    chefs:  d.chefs  || [],
-    posts:  d.posts  || [],
+    chefs: d.chefs || [],
+    posts: d.posts || [],
     online: d.online || {},
   });
 
   // Typing indicator
-  socket.on('typing',      ({ chatId, sender }) => socket.broadcast.emit('typing',      { chatId, sender }));
+  socket.on('typing', ({ chatId, sender }) => socket.broadcast.emit('typing', { chatId, sender }));
   socket.on('stop-typing', ({ chatId, sender }) => socket.broadcast.emit('stop-typing', { chatId, sender }));
 
   // Online heartbeat (socket orqali)
@@ -407,11 +472,11 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('online-updated', { role, id, ts: Date.now() });
   });
 
-  socket.on('disconnect', () => {});
+  socket.on('disconnect', () => { });
 });
 
 // ─── START ───────────────────────────────────────────────────
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {
   console.log('\n🍽️  OSHPAZ.UZ backend ishga tushdi!');
   console.log(`   http://localhost:${PORT}`);

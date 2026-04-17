@@ -10,15 +10,15 @@ export default defineConfig({
     allowedHosts: 'all',
     host: true,
     proxy: {
-      '/orders': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
-      '/reviews': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
-      '/chefs': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
-      '/customers': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
-      '/auth': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
-      '/posts': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
-      '/online': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
-      '/chats': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
-      '/unread': { target: 'http://localhost:5000', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/orders': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/reviews': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/chefs': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/customers': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/auth': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/posts': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/online': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/chats': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
+      '/unread': { target: 'http://localhost:5001', changeOrigin: true, configure: p => p.on('error', () => { }) },
     }
   }
 });

@@ -14,6 +14,15 @@ const Entrance = () => {
         const s = Store.getSession();
         if (s?.role === "customer") { navigate("/glabal", { replace: true }); return; }
         if (s?.role === "chef") { navigate("/chef-home", { replace: true }); return; }
+        
+        // Faqat session yo'q bo'lganda eski cardlarni tozalash
+        const allChefs = JSON.parse(localStorage.getItem('registeredChefs') || '[]');
+        if (allChefs.length > 0) {
+            const validChefs = allChefs.filter(c => c.phone && c.name);
+            localStorage.setItem('registeredChefs', JSON.stringify(validChefs));
+            window.dispatchEvent(new Event('chefs-updated'));
+        }
+        
         setSaved(Store.getSavedAccounts());
     }, []);
 
@@ -73,12 +82,12 @@ const Entrance = () => {
                     <Box display="flex" flexDir="column" gap="10px"
                         bg="rgba(255,255,255,0.08)" backdropFilter="blur(16px)"
                         borderRadius="22px" p="16px" border="1px solid rgba(255,255,255,0.15)">
-                        <Button w="100%" h="54px" bg="#C03F0C" color="white" borderRadius="16px"
-                            fontWeight="700" style={{ fontSize: "15px" }}
-                            _hover={{ bg: "#a0300a" }} display="flex" alignItems="center" justifyContent="space-between" px="20px"
+                        <Button w="100%" h="54px" bg="rgba(255,255,255,0.12)" color="white" borderRadius="16px"
+                            fontWeight="700" style={{ fontSize: "15px" }} border="1px solid rgba(255,255,255,0.2)"
+                            _hover={{ bg: "rgba(255,255,255,0.2)" }} display="flex" alignItems="center" justifyContent="space-between" px="20px"
                             onClick={() => navigate("/customer")}>
                             <Box display="flex" alignItems="center" gap="10px">
-                                <Box w="32px" h="32px" borderRadius="10px" bgColor="rgba(255,255,255,0.2)"
+                                <Box w="32px" h="32px" borderRadius="10px" bgColor="rgba(255,255,255,0.15)"
                                     display="flex" alignItems="center" justifyContent="center">
                                     <FaUser size={14} />
                                 </Box>
@@ -86,12 +95,12 @@ const Entrance = () => {
                             </Box>
                             <FaChevronRight size={14} />
                         </Button>
-                        <Button w="100%" h="54px" bg="rgba(255,255,255,0.12)" color="white" borderRadius="16px"
-                            fontWeight="700" style={{ fontSize: "15px" }} border="1px solid rgba(255,255,255,0.2)"
-                            _hover={{ bg: "rgba(255,255,255,0.2)" }} display="flex" alignItems="center" justifyContent="space-between" px="20px"
+                        <Button w="100%" h="54px" bg="#C03F0C" color="white" borderRadius="16px"
+                            fontWeight="700" style={{ fontSize: "15px" }}
+                            _hover={{ bg: "#a0300a" }} display="flex" alignItems="center" justifyContent="space-between" px="20px"
                             onClick={() => navigate("/chef")}>
                             <Box display="flex" alignItems="center" gap="10px">
-                                <Box w="32px" h="32px" borderRadius="10px" bgColor="rgba(255,255,255,0.15)"
+                                <Box w="32px" h="32px" borderRadius="10px" bgColor="rgba(255,255,255,0.2)"
                                     display="flex" alignItems="center" justifyContent="center">
                                     <FaUserTie size={14} />
                                 </Box>

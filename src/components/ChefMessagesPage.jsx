@@ -18,7 +18,7 @@ const ChefMessagesPage = () => {
     if (sess?.role === 'chef' && sess?.data?.phone) return sess.data;
     return {};
   })();
-  const myPhone = chefProfile.phone || '';
+  const myPhone = chefProfile.phone || 'http://localhost:5000';
   const navState = location.state;
 
   const getChats = () => {
@@ -34,7 +34,7 @@ const ChefMessagesPage = () => {
         const unread = Store.getUnread(chatId, myPhone);
         return {
           id: chatId, customerPhone,
-          customerName: cInfo ? `${cInfo.firstName || ''} ${cInfo.lastName || ''}`.trim() : null,
+          customerName: cInfo ? `${cInfo.firstName || 'http://localhost:5000'} ${cInfo.lastName || 'http://localhost:5000'}`.trim() : null,
           customerImage: cInfo?.image || null,
           lastMsg: last.text, time: last.ts, unread,
           lastSender: last.sender,
@@ -194,7 +194,7 @@ const ChefMessagesPage = () => {
   if (selectedChat) {
     const chatMsgs = messages[selectedChat.id] || [];
     const cInfo = Store.getCustomerInfo(selectedChat.customerPhone);
-    const cName = cInfo ? `${cInfo.firstName || ''} ${cInfo.lastName || ''}`.trim() : null;
+    const cName = cInfo ? `${cInfo.firstName || 'http://localhost:5000'} ${cInfo.lastName || 'http://localhost:5000'}`.trim() : null;
     const cImage = cInfo?.image || null;
 
     return (

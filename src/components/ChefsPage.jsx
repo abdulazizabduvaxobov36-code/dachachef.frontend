@@ -31,9 +31,11 @@ const ChefsPage = () => {
     setLiked(upd); setAnimKey(phone); setTimeout(() => setAnimKey(null), 300);
   };
 
-  const filtered = chefs.filter(c =>
-    `${c.name} ${c.surname}`.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = chefs.filter(c => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    return c.name?.toLowerCase().startsWith(q) || c.surname?.toLowerCase().startsWith(q);
+  });
 
   return (
     <Box bgColor="#FFF5F0" minH="100dvh" pb="24px">

@@ -54,7 +54,7 @@ const OrdersPage = () => {
   const fetchOrders = async () => {
     if (!myPhone || myPhone === 'guest') return;
     try {
-      const AUTH_BASE = import.meta.env.VITE_API_URL || '/api';
+      const AUTH_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${AUTH_BASE}/orders/customer/${myPhone}/all`);
       if (response.ok) {
         const data = await response.json();
@@ -330,7 +330,7 @@ const OrdersPage = () => {
             </Box>
           )}
           <div ref={endRef} />
-          
+
           {/* Buyurtmalar va baho qoldirish */}
           {orders.filter(o => o.chefPhone === selectedChat.chefPhone && o.status === 'done').length > 0 && (
             <Box mt="12px" p="12px" bgColor="#F0FFF4" borderRadius="12px" border="1px solid #BBF7D0">

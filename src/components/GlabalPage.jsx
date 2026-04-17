@@ -22,7 +22,13 @@ const GlabalPage = () => {
   const customerData = getCD();
   const myPhone = customerData.phone || 'guest';
 
-  const [chefs, setChefs] = useState(() => Store.getChefs());
+  const [chefs, setChefs] = useState(() => {
+    const initialChefs = Store.getChefs();
+    console.log('GlabalPage initial chefs:', initialChefs.length);
+    console.log('GlabalPage initial chefs data:', initialChefs);
+    console.log('GlabalPage initial localStorage:', localStorage.getItem('registeredChefs'));
+    return initialChefs;
+  });
   const [search, setSearch] = useState('');
   const [liked, setLiked] = useState(() => JSON.parse(localStorage.getItem('likedChefs') || '[]'));
   const [animIdx, setAnimIdx] = useState(null);
@@ -32,6 +38,8 @@ const GlabalPage = () => {
   const refreshAll = () => {
     const latest = Store.getChefs();
     console.log('GlabalPage refreshAll - chefs updated:', latest.length);
+    console.log('GlabalPage refreshAll - chefs data:', latest);
+    console.log('GlabalPage refreshAll - localStorage chefs:', localStorage.getItem('registeredChefs'));
     setChefs([...latest]);
     setNotifs(Store.getCustomerNotifications(myPhone, latest));
   };
@@ -82,11 +90,11 @@ const GlabalPage = () => {
   const filtered = chefs.filter(c => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
-    return (c.name || '').toLowerCase().startsWith(q) || (c.surname || '').toLowerCase().startsWith(q) || `${c.name} ${c.surname}`.toLowerCase().startsWith(q);
+    return (c.name || 'http://localhost:5000').toLowerCase().startsWith(q) || (c.surname || 'http://localhost:5000').toLowerCase().startsWith(q) || `${c.name} ${c.surname}`.toLowerCase().startsWith(q);
   });
   const displayChefs = search.trim()
     ? filtered
-    : [...filtered].sort((a, b) => (b.registeredAt || 0) - (a.registeredAt || 0)).slice(0, 4);
+    : [...filtered].sort((a, b) => (b.registeredAt || 0) - (a.registeredAt || 0));
 
   const NavBar = () => (
     <Box className="fixed-bottom" borderTop="1px solid #EBEBEB"
