@@ -291,95 +291,83 @@ const ChefViewPage = () => {
                 </Box>
             )}
 
-            {/* Order Modal */}
+            {/* Order Modal — soddalashtirilgan */}
             {showOrderModal && (
                 <Box position="fixed" inset="0" zIndex={400} display="flex" flexDir="column" justifyContent="flex-end">
-                    <Box position="absolute" inset="0" bgColor="rgba(0,0,0,0.5)" onClick={() => { setShowOrderModal(false); setOrderError(''); setOrderAmount(''); setOrderNote(''); }} />
+                    <Box position="absolute" inset="0" bgColor="rgba(0,0,0,0.5)"
+                        onClick={() => { setShowOrderModal(false); setOrderError(''); setOrderAmount(''); }} />
                     <Box position="relative" bgColor="white" borderTopRadius="24px"
-                        px="20px" pt="20px" pb="32px" zIndex={1}
+                        px="20px" pt="16px" pb="36px" zIndex={1}
                         boxShadow="0 -8px 32px rgba(0,0,0,0.14)">
-                        <Box w="36px" h="4px" bgColor="#E0DAD7" borderRadius="full" mx="auto" mb="16px" />
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb="16px">
-                            <Text fontWeight="800" color="#1C110D" style={{ fontSize: '17px' }}>📦 Buyurtma berish</Text>
-                            <Box w="32px" h="32px" borderRadius="full" bgColor="#F5F5F5"
-                                display="flex" alignItems="center" justifyContent="center"
-                                cursor="pointer" onClick={() => { setShowOrderModal(false); setOrderError(''); setOrderAmount(''); setOrderNote(''); }}>
-                                <FaTimes style={{ fontSize: '13px', color: '#666' }} />
-                            </Box>
-                        </Box>
+                        <Box w="36px" h="4px" bgColor="#E0DAD7" borderRadius="full" mx="auto" mb="20px" />
 
-                        <Box bgColor="#FFF5F0" borderRadius="12px" px="14px" py="10px" mb="14px"
-                            display="flex" alignItems="center" gap="10px">
+                        {/* Oshpaz nomi */}
+                        <Box display="flex" alignItems="center" gap="12px" mb="20px">
                             {chef.image
-                                ? <img src={chef.image} alt="" style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover' }} />
-                                : <Box w="36px" h="36px" borderRadius="full" bgColor="#C03F0C" display="flex" alignItems="center" justifyContent="center">
-                                    <FaUser size={16} color="white" />
+                                ? <img src={chef.image} alt="" style={{ width: '46px', height: '46px', borderRadius: '50%', objectFit: 'cover' }} />
+                                : <Box w="46px" h="46px" borderRadius="full" bgColor="#C03F0C"
+                                    display="flex" alignItems="center" justifyContent="center">
+                                    <FaUser size={18} color="white" />
                                 </Box>
                             }
                             <Box>
-                                <Text color="#9B614B" style={{ fontSize: '10px', fontWeight: '700' }}>Oshpaz</Text>
-                                <Text fontWeight="800" color="#1C110D" style={{ fontSize: '14px' }}>{fullName}</Text>
+                                <Text color="#9B8E8A" style={{ fontSize: '11px' }}>Buyurtma berilmoqda</Text>
+                                <Text fontWeight="800" color="#1C110D" style={{ fontSize: '16px' }}>{fullName}</Text>
+                            </Box>
+                            <Box ml="auto" w="32px" h="32px" borderRadius="full" bgColor="#F5F5F5"
+                                display="flex" alignItems="center" justifyContent="center"
+                                cursor="pointer" onClick={() => { setShowOrderModal(false); setOrderError(''); setOrderAmount(''); }}>
+                                <FaTimes style={{ fontSize: '13px', color: '#888' }} />
                             </Box>
                         </Box>
 
-                        <Box mb="12px">
-                            <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '13px' }}>
-                                Kelishilgan summa (so'm) *
+                        {/* Summa maydoni */}
+                        <Box mb="16px">
+                            <Text fontWeight="600" color="#9B614B" mb="8px" style={{ fontSize: '12px' }}>
+                                Kelishilgan summa (so'm)
                             </Text>
-                            <input
-                                type="number"
-                                value={orderAmount}
-                                onChange={e => { setOrderAmount(e.target.value); setOrderError(''); }}
-                                placeholder="Masalan: 150000"
-                                style={{
-                                    width: '100%', border: '1.5px solid #F0E6E0', outline: 'none',
-                                    fontSize: '16px', color: '#1C110D', background: '#FFF5F0',
-                                    fontFamily: 'inherit', borderRadius: '12px', padding: '12px 14px',
-                                    boxSizing: 'border-box',
-                                }}
-                            />
-                        </Box>
-
-                        <Box mb="14px">
-                            <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '13px' }}>
-                                Izoh (ixtiyoriy)
-                            </Text>
-                            <textarea
-                                value={orderNote}
-                                onChange={e => setOrderNote(e.target.value)}
-                                placeholder="Taom nomi yoki qo'shimcha ma'lumot..."
-                                rows={2}
-                                style={{
-                                    width: '100%', border: '1.5px solid #F0E6E0', outline: 'none',
-                                    fontSize: '14px', color: '#1C110D', background: '#FFF5F0',
-                                    resize: 'none', fontFamily: 'inherit', borderRadius: '12px',
-                                    padding: '10px', boxSizing: 'border-box',
-                                }}
-                            />
-                        </Box>
-
-                        <Box bgColor="#FFFBEB" borderRadius="10px" px="12px" py="8px" mb="12px" border="1px solid #FDE68A">
-                            <Text color="#92400E" style={{ fontSize: '12px', fontWeight: '600' }}>
-                                ⚠️ Faqat oshpaz bilan oldindan kelishib, rozilashgandan keyin buyurtma bering
-                            </Text>
-                        </Box>
-
-                        {orderError && (
-                            <Box bgColor="#FFF5F5" borderRadius="10px" px="12px" py="8px" mb="10px" border="1px solid #FECDCA">
-                                <Text color="#E53E3E" fontWeight="600" style={{ fontSize: '12px' }}>⚠ {orderError}</Text>
+                            <Box display="flex" alignItems="center" bgColor="#FFF5F0" borderRadius="14px"
+                                px="14px" border={`1.5px solid ${orderError ? '#E53E3E' : '#F0E6E0'}`}
+                                style={{ height: '52px' }}>
+                                <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    value={orderAmount}
+                                    onChange={e => { setOrderAmount(e.target.value); setOrderError(''); }}
+                                    placeholder="0"
+                                    autoFocus
+                                    style={{
+                                        flex: 1, border: 'none', outline: 'none',
+                                        fontSize: '20px', fontWeight: '700', color: '#1C110D',
+                                        background: 'transparent', fontFamily: 'inherit',
+                                    }}
+                                />
+                                <Text color="#9B614B" fontWeight="600" style={{ fontSize: '14px' }}>so'm</Text>
                             </Box>
-                        )}
+                            {orderError && (
+                                <Text color="#E53E3E" mt="6px" style={{ fontSize: '12px' }}>⚠ {orderError}</Text>
+                            )}
+                        </Box>
 
                         {orderSuccess ? (
-                            <Box bgColor="#F0FFF4" borderRadius="12px" px="14px" py="12px" border="1px solid #BBF7D0" textAlign="center">
-                                <Text color="#22C55E" fontWeight="700" style={{ fontSize: '14px' }}>✅ Buyurtma yuborildi! Oshpaz tasdiqlashini kuting.</Text>
+                            <Box bgColor="#F0FFF4" borderRadius="16px" px="14px" py="16px"
+                                border="1px solid #BBF7D0" textAlign="center">
+                                <Text style={{ fontSize: '28px', marginBottom: '6px' }}>✅</Text>
+                                <Text color="#22C55E" fontWeight="700" style={{ fontSize: '15px' }}>
+                                    Buyurtma yuborildi!
+                                </Text>
+                                <Text color="#16a34a" mt="4px" style={{ fontSize: '12px' }}>
+                                    Oshpaz tasdiqlashini kuting
+                                </Text>
                             </Box>
                         ) : (
-                            <Button w="100%" h="48px" bgColor="#C03F0C" color="white" borderRadius="14px"
-                                fontWeight="700" style={{ fontSize: '14px' }}
+                            <Button w="100%" h="52px"
+                                bgColor="#1C110D" color="white" borderRadius="16px"
+                                fontWeight="700" style={{ fontSize: '15px' }}
+                                _hover={{ bgColor: '#2d1a10' }}
                                 isLoading={orderLoading}
                                 onClick={handleOrderSubmit}>
-                                📦 Buyurtma yuborish
+                                Buyurtma yuborish
                             </Button>
                         )}
                     </Box>

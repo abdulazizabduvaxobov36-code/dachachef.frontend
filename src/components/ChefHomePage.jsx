@@ -635,11 +635,6 @@ const ChefHomePage = () => {
                                                 📞 +998{request.customerPhone}
                                             </Text>
                                         </Box>
-                                        <Box textAlign="right">
-                                            <Text fontWeight="800" color="#22C55E" style={{ fontSize: "18px" }}>
-                                                {Number(request.amount || request.price || 0).toLocaleString()} so'm
-                                            </Text>
-                                        </Box>
                                     </Box>
                                     {request.note && (
                                         <Box bgColor="#FFF5F0" borderRadius="10px" px="10px" py="8px" mb="10px">
