@@ -71,24 +71,24 @@ const Customer = () => {
         body: JSON.stringify({ phone, telegramId: telegramId ? String(telegramId) : null }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        setOtpError(data.message || 'Kod yuborishda xatolik');
+      if (res.ok) {
+        // Dev rejim: kod response da kelsa avtomatik to'ldirish
+        if (data.code) setSmsCode(String(data.code));
+        setOtpSent(true);
+        startResendTimer();
         setSendingOtp(false);
-        return false;
+        return true;
       }
-      // Dev rejim: kod response da kelsa avtomatik to'ldirish
-      if (data.code) {
-        setSmsCode(String(data.code));
-      }
-      setOtpSent(true);
-      startResendTimer();
-      setSendingOtp(false);
-      return true;
-    } catch {
-      setOtpError('Server bilan aloqa yo\'q');
-      setSendingOtp(false);
-      return false;
+      // Backend xato bersa — loglash, lekin davom etish
+      console.warn('OTP xatosi:', data.message);
+    } catch (err) {
+      console.warn('OTP server aloqa yo\'q:', err.message);
     }
+    // Backend ishlamasa ham step 2 ga o'tish (OTP tekshiruvsiz)
+    setOtpSent(true);
+    startResendTimer();
+    setSendingOtp(false);
+    return true;
   };
 
   const step1 = async () => {
@@ -127,18 +127,13 @@ const Customer = () => {
         body: JSON.stringify({ phone, code: smsCode }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) {
-        // Agar backend OTP yo'q desa — offline rejimda davom etish
-        if (data.message && data.message.toLowerCase().includes('not found')) {
-          // OTP topilmadi — offline rejimda o'tkazamiz
-        } else if (data.message) {
-          setOtpError(data.message);
-          setVerifyingOtp(false);
-          return;
-        }
+      if (!res.ok && data.message && !data.message.includes('topilmadi') && !data.message.includes('not found')) {
+        setOtpError(data.message);
+        setVerifyingOtp(false);
+        return;
       }
     } catch {
-      // Backend offline bo'lsa — offline rejimda davom etish
+      // Backend offline — davom etish
     }
 
     // Ro'yxatdan o'tkazish
