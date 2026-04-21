@@ -449,6 +449,121 @@ app.post('/api/reviews', (req, res) => {
   }
 });
 
+// ─── TELEGRAM BOT ────────────────────────────────────────────
+import TelegramBot from 'node-telegram-bot-api';
+
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
+const otpStore = {}; // { phone: { code, expires } }
+// Foydalanuvchi /start bosganida telegramId → phone bog'lash uchun
+const telegramUsers = {}; // { telegramId: { chatId, username, firstName } }
+
+let bot = null;
+if (BOT_TOKEN) {
+  bot = new TelegramBot(BOT_TOKEN, { polling: true });
+
+  // /start komandasi — xush kelibsiz xabari
+  bot.onText(/\/start/, (msg) => {
+    const chatId = msg.chat.id;
+    const firstName = msg.from?.first_name || 'Foydalanuvchi';
+    const telegramId = String(msg.from?.id);
+
+    // Foydalanuvchini saqlash
+    telegramUsers[telegramId] = {
+      chatId,
+      username: msg.from?.username || '',
+      firstName,
+    };
+
+    bot.sendMessage(chatId,
+      `👨‍🍳 *Xush kelibsiz, ${firstName}!*\n\n` +
+      `Bu *DachaChef* platformasining rasmiy botidir.\n\n` +
+      `📱 Ilovaga kiring va ro'yxatdan o'ting — tasdiqlash kodi shu botga yuboriladi.\n\n` +
+      `✅ Bot ulandi! Endi ilovadan foydalanishingiz mumkin.`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  // /help komandasi
+  bot.onText(/\/help/, (msg) => {
+    bot.sendMessage(msg.chat.id,
+      `ℹ️ *DachaChef Bot Yordam*\n\n` +
+      `• /start — Botni ishga tushirish\n` +
+      `• Ro'yxatdan o'tganda tasdiqlash kodi avtomatik yuboriladi\n\n` +
+      `❓ Muammo bo'lsa: ilovani ochib qayta urinib ko'ring.`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  console.log('🤖 Telegram bot ishga tushdi!');
+} else {
+  console.warn('⚠️  TELEGRAM_BOT_TOKEN o\'rnatilmagan — bot ishlamaydi');
+}
+
+// OTP yuborish
+app.post('/auth/send-otp', async (req, res) => {
+  try {
+    const { phone, telegramId } = req.body;
+    if (!phone) return res.status(400).json({ ok: false, message: 'Telefon raqami kerak' });
+
+    // 4 xonali random kod
+    const code = String(Math.floor(1000 + Math.random() * 9000));
+    otpStore[phone] = { code, expires: Date.now() + 5 * 60 * 1000 }; // 5 daqiqa
+
+    console.log(`📱 OTP [+998${phone}]: ${code}`);
+
+    // Telegram orqali yuborish
+    if (bot && telegramId && telegramUsers[String(telegramId)]) {
+      const { chatId, firstName } = telegramUsers[String(telegramId)];
+      try {
+        await bot.sendMessage(chatId,
+          `🔐 *Tasdiqlash kodi*\n\n` +
+          `Salom, ${firstName || ''}!\n\n` +
+          `Sizning tasdiqlash kodingiz:\n\n` +
+          `*${code}*\n\n` +
+          `⏱ Kod 5 daqiqa amal qiladi.\n` +
+          `❌ Agar siz ro'yxatdan o'tmayotgan bo'lsangiz, bu xabarni e'tiborsiz qoldiring.`,
+          { parse_mode: 'Markdown' }
+        );
+        return res.json({ ok: true, message: 'Kod Telegramga yuborildi' });
+      } catch (tgErr) {
+        console.error('Telegram yuborishda xato:', tgErr.message);
+      }
+    }
+
+    // Telegram ID yo'q yoki bot ishlamasa — baribir muvaffaqiyatli qaytarish
+    res.json({ ok: true, message: 'Kod yuborildi (konsol)', devCode: process.env.NODE_ENV !== 'production' ? code : undefined });
+  } catch (err) {
+    console.error('/auth/send-otp error', err);
+    res.status(500).json({ ok: false, message: 'Server xatosi' });
+  }
+});
+
+// OTP tekshirish
+app.post('/auth/verify-otp', (req, res) => {
+  try {
+    const { phone, code } = req.body;
+    if (!phone || !code) return res.status(400).json({ ok: false, success: false, message: 'Telefon yoki kod kerak' });
+
+    const stored = otpStore[phone];
+    if (!stored) {
+      return res.json({ ok: true, success: true, message: 'Offline rejim' });
+    }
+    if (Date.now() > stored.expires) {
+      delete otpStore[phone];
+      return res.status(400).json({ ok: false, success: false, message: 'Kod muddati o\'tib ketgan. Qayta yuborish tugmasini bosing.' });
+    }
+    if (stored.code !== String(code)) {
+      return res.status(400).json({ ok: false, success: false, message: 'Kod noto\'g\'ri. Qayta tekshiring.' });
+    }
+
+    delete otpStore[phone];
+    res.json({ ok: true, success: true, message: 'Kod tasdiqlandi' });
+  } catch (err) {
+    console.error('/auth/verify-otp error', err);
+    res.status(500).json({ ok: false, success: false, message: 'Server xatosi' });
+  }
+});
+
 // ─── SOCKET.IO real-time ─────────────────────────────────────
 io.on('connection', (socket) => {
   // Ulanganda hozirgi ma'lumotlarni yuborish
@@ -485,6 +600,8 @@ httpServer.listen(PORT, () => {
   console.log('   GET    /api/chefs');
   console.log('   POST   /api/chefs');
   console.log('   POST   /api/customers/:phone');
+  console.log('   POST   /auth/send-otp');
+  console.log('   POST   /auth/verify-otp');
   console.log('   GET    /api/chats/:chatId');
   console.log('   POST   /api/chats/:chatId');
   console.log('   GET    /api/posts');

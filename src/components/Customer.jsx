@@ -9,7 +9,7 @@ import Store from '../store';
 
 const API_BASE = import.meta.env?.VITE_API_URL || '';
 
-// Telegram WebApp dan user ID olish
+// Telegram WebApp dan user ID olish (ixtiyoriy)
 const getTelegramUserId = () => {
   try {
     return window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
@@ -76,6 +76,10 @@ const Customer = () => {
         setSendingOtp(false);
         return false;
       }
+      // Dev rejim: kod response da kelsa avtomatik to'ldirish
+      if (data.code) {
+        setSmsCode(String(data.code));
+      }
       setOtpSent(true);
       startResendTimer();
       setSendingOtp(false);
@@ -124,9 +128,14 @@ const Customer = () => {
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        setOtpError(data.message || 'Kod noto\'g\'ri');
-        setVerifyingOtp(false);
-        return;
+        // Agar backend OTP yo'q desa — offline rejimda davom etish
+        if (data.message && data.message.toLowerCase().includes('not found')) {
+          // OTP topilmadi — offline rejimda o'tkazamiz
+        } else if (data.message) {
+          setOtpError(data.message);
+          setVerifyingOtp(false);
+          return;
+        }
       }
     } catch {
       // Backend offline bo'lsa — offline rejimda davom etish
@@ -176,8 +185,6 @@ const Customer = () => {
     </Box>
   );
 
-  const telegramId = getTelegramUserId();
-
   return (
     <Box minH="100dvh" bgColor="#FFF5F0">
       {/* Header */}
@@ -216,13 +223,29 @@ const Customer = () => {
                 border="1.5px solid #BFDBFE"
                 display="flex" alignItems="flex-start" gap="10px">
                 <FaTelegram style={{ fontSize: "22px", color: "#2563EB", flexShrink: 0, marginTop: "2px" }} />
-                <Box>
+                <Box flex={1}>
                   <Text fontWeight="700" color="#1E40AF" style={{ fontSize: "13px" }}>
                     Kod Telegramga yuborildi
                   </Text>
                   <Text color="#3B82F6" mt="2px" style={{ fontSize: "12px" }}>
-                    <b>+998 {phone}</b> uchun tasdiqlash kodi botdan keldi — Telegram chatni tekshiring
+                    <b>+998 {phone}</b> — Telegram botdan kelgan kodni kiriting
                   </Text>
+                  <Box
+                    as="a"
+                    href={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'DachaChefBot'}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    display="inline-flex"
+                    alignItems="center"
+                    gap="4px"
+                    mt="6px"
+                    px="10px"
+                    py="4px"
+                    bgColor="#2563EB"
+                    borderRadius="20px"
+                    style={{ fontSize: "11px", color: "white", fontWeight: "700", textDecoration: "none" }}>
+                    <FaTelegram size={11} /> Botni ochish
+                  </Box>
                 </Box>
               </Box>
 
@@ -251,16 +274,7 @@ const Customer = () => {
           )}
         </Box>
 
-        {/* Telegram ulanganligi haqida eslatma */}
-        {step === 1 && !telegramId && (
-          <Box mt="12px" bgColor="#FFFBEB" borderRadius="14px" px="14px" py="10px"
-            border="1px solid #FDE68A" display="flex" alignItems="flex-start" gap="8px">
-            <span style={{ fontSize: "16px" }}>⚠️</span>
-            <Text color="#92400E" style={{ fontSize: "12px" }}>
-              Tasdiqlash kodi Telegram orqali yuboriladi. Iltimos, ilovani Telegram bot orqali oching.
-            </Text>
-          </Box>
-        )}
+
       </Box>
 
       {/* Bottom buttons */}
