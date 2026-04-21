@@ -227,7 +227,7 @@ const Customer = () => {
                   </Text>
                   <Box
                     as="a"
-                    href={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'DachaChefBot'}`}
+                    href={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'dacha_chef_bot'}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     display="inline-flex"
