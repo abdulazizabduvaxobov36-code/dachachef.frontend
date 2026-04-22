@@ -8,14 +8,11 @@ import { IoChevronForward } from "react-icons/io5";
 import Store from '../store';
 
 const API_BASE = import.meta.env?.VITE_API_URL || '';
+const BOT_USERNAME = import.meta.env?.VITE_BOT_USERNAME || 'dacha_chef_bot';
 
-// Telegram WebApp dan user ID olish (ixtiyoriy)
 const getTelegramUserId = () => {
-  try {
-    return window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null;
-  } catch {
-    return null;
-  }
+  try { return window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null; }
+  catch { return null; }
 };
 
 const Customer = () => {
@@ -30,8 +27,8 @@ const Customer = () => {
   const [touched, setTouched] = useState({});
   const [sendingOtp, setSendingOtp] = useState(false);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
   const [otpError, setOtpError] = useState('');
+  const [needBot, setNeedBot] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
 
   const onlyLetters = v => /^[A-Za-zА-Яа-яЁёʻʼ\s]*$/.test(v);
@@ -49,21 +46,16 @@ const Customer = () => {
     return e;
   };
 
-  // Resend timer countdown
   const startResendTimer = () => {
     setResendTimer(60);
     const iv = setInterval(() => {
-      setResendTimer(prev => {
-        if (prev <= 1) { clearInterval(iv); return 0; }
-        return prev - 1;
-      });
+      setResendTimer(prev => { if (prev <= 1) { clearInterval(iv); return 0; } return prev - 1; });
     }, 1000);
   };
 
   const sendOtp = async () => {
     const telegramId = getTelegramUserId();
-    setSendingOtp(true);
-    setOtpError('');
+    setSendingOtp(true); setOtpError(''); setNeedBot(false);
     try {
       const res = await fetch(`${API_BASE}/auth/send-otp`, {
         method: 'POST',
@@ -71,55 +63,32 @@ const Customer = () => {
         body: JSON.stringify({ phone, telegramId: telegramId ? String(telegramId) : null }),
       });
       const data = await res.json();
-      if (res.ok) {
-        // Dev rejim: kod response da kelsa avtomatik to'ldirish
-        if (data.code) setSmsCode(String(data.code));
-        setOtpSent(true);
-        startResendTimer();
-        setSendingOtp(false);
-        return true;
-      }
-      // Backend xato bersa — loglash, lekin davom etish
-      console.warn('OTP xatosi:', data.message);
-    } catch (err) {
-      console.warn('OTP server aloqa yo\'q:', err.message);
+      if (data.needBot) { setNeedBot(true); setSendingOtp(false); return false; }
+      if (!res.ok) { setOtpError(data.message || 'Xatolik'); setSendingOtp(false); return false; }
+      if (data.devCode) setSmsCode(String(data.devCode));
+      startResendTimer(); setSendingOtp(false); return true;
+    } catch {
+      setOtpError('Server bilan aloqa yo\'q'); setSendingOtp(false); return false;
     }
-    // Backend ishlamasa ham step 2 ga o'tish (OTP tekshiruvsiz)
-    setOtpSent(true);
-    startResendTimer();
-    setSendingOtp(false);
-    return true;
   };
 
   const step1 = async () => {
     const e = validate1(); setErrors(e);
     setTouched({ firstName: true, lastName: true, phone: true });
     if (Object.keys(e).length) return;
-
-    // Bitta TG — bitta akk tekshiruvi
     const check = Store.isPhoneRegistered(phone);
     if (check.registered && check.role === 'chef') {
-      setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsChef') || 'Bu telefon raqami oshpaz sifatida ro\'yxatdan o\'tgan.' }));
+      setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsChef') || 'Bu raqam oshpaz sifatida ro\'yxatdan o\'tgan.' }));
       return;
     }
-
     const ok = await sendOtp();
     if (ok) setStep(2);
   };
 
   const step2 = async () => {
-    if (!smsCode.trim()) {
-      setTouched(p => ({ ...p, smsCode: true }));
-      setErrors(p => ({ ...p, smsCode: t("customer.smsError") }));
-      return;
-    }
-    if (smsCode.length !== 4) {
-      setErrors(p => ({ ...p, smsCode: t("errors.smsLength") }));
-      return;
-    }
-
-    setVerifyingOtp(true);
-    setOtpError('');
+    if (!smsCode.trim()) { setTouched(p => ({ ...p, smsCode: true })); setErrors(p => ({ ...p, smsCode: t("customer.smsError") })); return; }
+    if (smsCode.length !== 4) { setErrors(p => ({ ...p, smsCode: t("errors.smsLength") })); return; }
+    setVerifyingOtp(true); setOtpError('');
     try {
       const res = await fetch(`${API_BASE}/auth/verify-otp`, {
         method: 'POST',
@@ -127,16 +96,9 @@ const Customer = () => {
         body: JSON.stringify({ phone, code: smsCode }),
       });
       const data = await res.json();
-      if (!res.ok && data.message && !data.message.includes('topilmadi') && !data.message.includes('not found')) {
-        setOtpError(data.message);
-        setVerifyingOtp(false);
-        return;
-      }
-    } catch {
-      // Backend offline — davom etish
-    }
+      if (!res.ok) { setOtpError(data.message || 'Kod noto\'g\'ri'); setVerifyingOtp(false); return; }
+    } catch { }
 
-    // Ro'yxatdan o'tkazish
     const d = { firstName, lastName, phone };
     localStorage.setItem("customerData", JSON.stringify(d));
     Store.setSession("customer", { phone, firstName, lastName });
@@ -144,12 +106,10 @@ const Customer = () => {
     Store.saveCustomerInfo(phone, { firstName, lastName, image: null });
     try {
       await fetch(`${API_BASE}/customers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone, firstName, lastName }),
       });
     } catch { }
-
     setVerifyingOtp(false);
     navigate("/glabal");
   };
@@ -164,13 +124,10 @@ const Customer = () => {
         border={`1.5px solid ${hasErr(key) ? "#E53E3E" : "#F0E6E0"}`} style={{ height: "52px" }}>
         <Box color={hasErr(key) ? "#E53E3E" : "#C03F0C"} flexShrink={0} mr="10px">{icon}</Box>
         {prefix && <Text flexShrink={0} mr="4px" color="#9B614B" fontWeight="600" style={{ fontSize: "14px" }}>{prefix}</Text>}
-        <input
-          value={value}
-          placeholder={label}
+        <input value={value} placeholder={label}
           onChange={e => {
             const v = isNum ? e.target.value.replace(/\D/g, "").slice(0, maxLen) : e.target.value;
-            setter(v);
-            if (touched[key]) setErrors(p => ({ ...p, [key]: "" }));
+            setter(v); if (touched[key]) setErrors(p => ({ ...p, [key]: "" }));
           }}
           onBlur={() => setTouched(p => ({ ...p, [key]: true }))}
           style={{ width: "100%", border: "none", outline: "none", fontSize: "15px", color: "#1C110D", background: "transparent" }}
@@ -182,16 +139,14 @@ const Customer = () => {
 
   return (
     <Box minH="100dvh" bgColor="#FFF5F0">
-      {/* Header */}
       <Box bgColor="white" px="16px" pt="14px" pb="14px" display="flex" alignItems="center" gap="12px"
         boxShadow="0 1px 0 #F0EBE6" position="sticky" top={0} zIndex={10}>
         <Box w="36px" h="36px" borderRadius="full" bgColor="#FFF0EC" border="1px solid #F5C5B0"
           display="flex" alignItems="center" justifyContent="center" cursor="pointer"
-          onClick={() => step === 2 ? (setStep(1), setErrors({}), setSmsCode(''), setOtpError('')) : navigate("/")}>
+          onClick={() => step === 2 ? (setStep(1), setErrors({}), setSmsCode(''), setOtpError(''), setNeedBot(false)) : navigate("/")}>
           <FaArrowLeft style={{ color: "#C03F0C", fontSize: "14px" }} />
         </Box>
         <Text fontWeight="700" color="#1C110D" style={{ fontSize: "17px" }}>{t("entrance.userBtn")}</Text>
-        {/* Step indicator */}
         <Box ml="auto" display="flex" gap="6px">
           {[1, 2].map(s => (
             <Box key={s} w="28px" h="4px" borderRadius="full"
@@ -210,34 +165,45 @@ const Customer = () => {
               {renderField("firstName", t("customer.firstName"), <FaUser size={14} />, firstName, setFirstName)}
               {renderField("lastName", t("customer.lastName"), <FaUser size={14} />, lastName, setLastName)}
               {renderField("phone", t("customer.phone"), <FaPhoneAlt size={14} />, phone, setPhone, true, 9, "+998")}
+
+              {needBot && (
+                <Box bgColor="#EFF6FF" borderRadius="14px" px="14px" py="12px" mt="4px"
+                  border="1.5px solid #BFDBFE" display="flex" alignItems="flex-start" gap="10px">
+                  <FaTelegram style={{ fontSize: "20px", color: "#2563EB", flexShrink: 0, marginTop: "2px" }} />
+                  <Box flex={1}>
+                    <Text fontWeight="700" color="#1E40AF" style={{ fontSize: "13px" }}>Telegram botni ishga tushiring</Text>
+                    <Text color="#3B82F6" mt="2px" mb="8px" style={{ fontSize: "12px" }}>
+                      Quyidagi botni oching, /start bosing, keyin qaytib "Davom etish" ni bosing
+                    </Text>
+                    <Box as="a" href={`https://t.me/${BOT_USERNAME}`} target="_blank" rel="noopener noreferrer"
+                      display="inline-flex" alignItems="center" gap="6px" px="12px" py="6px"
+                      bgColor="#2563EB" borderRadius="20px"
+                      style={{ fontSize: "12px", color: "white", fontWeight: "700", textDecoration: "none" }}>
+                      <FaTelegram size={12} /> @{BOT_USERNAME}
+                    </Box>
+                  </Box>
+                </Box>
+              )}
+
+              {otpError && (
+                <Box bgColor="#FFF5F5" borderRadius="10px" px="12px" py="8px" mt="8px" border="1px solid #FECDCA">
+                  <Text color="#E53E3E" fontWeight="600" style={{ fontSize: "13px" }}>⚠ {otpError}</Text>
+                </Box>
+              )}
             </>
           ) : (
             <>
-              {/* Telegram orqali yuborildi xabari */}
               <Box bgColor="#EFF6FF" borderRadius="14px" px="16px" py="12px" mb="16px"
-                border="1.5px solid #BFDBFE"
-                display="flex" alignItems="flex-start" gap="10px">
+                border="1.5px solid #BFDBFE" display="flex" alignItems="flex-start" gap="10px">
                 <FaTelegram style={{ fontSize: "22px", color: "#2563EB", flexShrink: 0, marginTop: "2px" }} />
                 <Box flex={1}>
-                  <Text fontWeight="700" color="#1E40AF" style={{ fontSize: "13px" }}>
-                    Kod Telegramga yuborildi
-                  </Text>
+                  <Text fontWeight="700" color="#1E40AF" style={{ fontSize: "13px" }}>Kod Telegramga yuborildi ✅</Text>
                   <Text color="#3B82F6" mt="2px" style={{ fontSize: "12px" }}>
-                    <b>+998 {phone}</b> — Telegram botdan kelgan kodni kiriting
+                    <b>+998 {phone}</b> — Telegram botdan kelgan 4 xonali kodni kiriting
                   </Text>
-                  <Box
-                    as="a"
-                    href={`https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'dacha_chef_bot'}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    display="inline-flex"
-                    alignItems="center"
-                    gap="4px"
-                    mt="6px"
-                    px="10px"
-                    py="4px"
-                    bgColor="#2563EB"
-                    borderRadius="20px"
+                  <Box as="a" href={`https://t.me/${BOT_USERNAME}`} target="_blank" rel="noopener noreferrer"
+                    display="inline-flex" alignItems="center" gap="4px" mt="6px" px="10px" py="4px"
+                    bgColor="#2563EB" borderRadius="20px"
                     style={{ fontSize: "11px", color: "white", fontWeight: "700", textDecoration: "none" }}>
                     <FaTelegram size={11} /> Botni ochish
                   </Box>
@@ -252,46 +218,37 @@ const Customer = () => {
                 </Box>
               )}
 
-              {/* Qayta yuborish */}
               <Box textAlign="center" mt="8px">
-                {resendTimer > 0 ? (
-                  <Text color="#B0A8A4" style={{ fontSize: "13px" }}>
-                    Qayta yuborish: {resendTimer}s
-                  </Text>
-                ) : (
-                  <Text color="#C03F0C" fontWeight="600" style={{ fontSize: "13px", cursor: "pointer" }}
+                {resendTimer > 0
+                  ? <Text color="#B0A8A4" style={{ fontSize: "13px" }}>Qayta yuborish: {resendTimer}s</Text>
+                  : <Text color="#C03F0C" fontWeight="600" style={{ fontSize: "13px", cursor: "pointer" }}
                     onClick={() => { setSmsCode(''); setOtpError(''); sendOtp(); }}>
                     Kodni qayta yuborish
                   </Text>
-                )}
+                }
               </Box>
             </>
           )}
         </Box>
-
-
       </Box>
 
-      {/* Bottom buttons */}
       <Box className="fixed-bottom" px="20px" py="14px" borderTop="1px solid #F0EBE6" bgColor="white">
         {step === 1 ? (
           <Button w="100%" h="52px" bgColor="#C03F0C" color="white" borderRadius="26px"
             fontWeight="700" style={{ fontSize: "16px" }} _hover={{ bgColor: "#a0300a" }}
-            isLoading={sendingOtp} loadingText="Yuborilmoqda..."
-            onClick={step1}>
+            isLoading={sendingOtp} loadingText="Yuborilmoqda..." onClick={step1}>
             {t("customer.continue")} <IoChevronForward style={{ marginLeft: "8px" }} />
           </Button>
         ) : (
           <Box display="flex" flexDir="column" gap="10px">
             <Button w="100%" h="52px" bgColor="#C03F0C" color="white" borderRadius="26px"
               fontWeight="700" style={{ fontSize: "16px" }} _hover={{ bgColor: "#a0300a" }}
-              isLoading={verifyingOtp} loadingText="Tekshirilmoqda..."
-              onClick={step2}>
+              isLoading={verifyingOtp} loadingText="Tekshirilmoqda..." onClick={step2}>
               ✅ Tasdiqlash <IoChevronForward style={{ marginLeft: "8px" }} />
             </Button>
             <Button w="100%" h="46px" variant="outline" borderColor="#F0E6E0" color="#9B614B"
               borderRadius="26px" fontWeight="600" style={{ fontSize: "14px" }}
-              onClick={() => { setStep(1); setErrors({}); setSmsCode(""); setOtpError(""); setOtpSent(false); }}>
+              onClick={() => { setStep(1); setErrors({}); setSmsCode(""); setOtpError(""); setNeedBot(false); }}>
               {t("customer.back")}
             </Button>
           </Box>
