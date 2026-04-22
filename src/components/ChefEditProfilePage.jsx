@@ -68,56 +68,31 @@ const ChefEditProfilePage = () => {
         setErrors(e);
         setTouched({ name: true, surname: true, exp: true });
         if (Object.keys(e).length === 0) {
-            setSaving(true);
-            try {
-                const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
-                const merged = { ...oldData, name, surname, phone, exp, bio: bio.trim(), image };
+            setSaving(false);
+            const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
+            const merged = { ...oldData, name, surname, phone, exp, bio: bio.trim(), image };
 
-                // Avval localStorage ga saqlaymiz - backend xato bo'lsa ham ishlaydi
-                localStorage.setItem('chefProfile', JSON.stringify(merged));
+            localStorage.setItem('chefProfile', JSON.stringify(merged));
 
-                // Telefon raqami o'zgargan bo'lsa, eski sessionni tozalash
-                if (oldPhone && oldPhone !== phone) {
-                    // Eski telefon raqami bilan saqlangan sessionlarni tozalash
-                    localStorage.removeItem(`saved_chef_${oldPhone}`);
-                    localStorage.removeItem(`chef_${oldPhone}`);
-                    sessionStorage.removeItem('session');
-                }
-
-                // Yangi sessionni saqlash
-                Store.setSession('chef', merged);
-
-                // Store.updateChef ni chaqiramiz - bu localStorage dagi oshpazlar ro'yxatini yangilaydi
-                await Store.updateChef(oldPhone || phone, merged);
-
-                // Event yuboramiz - barcha sahifalar yangilansin
-                window.dispatchEvent(new Event('chefs-updated'));
-
-                // Backendga ham yuboramiz (xato bo'lsa ham navigate qilamiz)
-                try {
-                    const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-                    const response = await fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(merged),
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Server xatolik: ${response.status}`);
-                    }
-
-                    navigate('/chef-profile');
-                } catch (error) {
-                    console.error('Profil saqlashda xatolik:', error);
-                    // Backend xato bo'lsa ham localStorage saqlangan ma'lumot bilan navigatsiya qilamiz
-                    navigate('/chef-profile');
-                }
-            } catch (error) {
-                console.error('Profil saqlashda umumiy xatolik:', error);
-                navigate('/chef-profile');
-            } finally {
-                setSaving(false);
+            if (oldPhone && oldPhone !== phone) {
+                localStorage.removeItem(`saved_chef_${oldPhone}`);
+                localStorage.removeItem(`chef_${oldPhone}`);
+                sessionStorage.removeItem('session');
             }
+
+            Store.setSession('chef', merged);
+            Store.updateChef(oldPhone || phone, merged).catch(() => { });
+            window.dispatchEvent(new Event('chefs-updated'));
+
+            // Backend ga background da — navigate ni kutmaymiz
+            const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+            fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(merged),
+            }).catch(() => { });
+
+            navigate('/chef-profile');
         }
     };
     const hasErr = (key) => errors[key] && touched[key];

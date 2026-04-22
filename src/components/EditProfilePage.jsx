@@ -43,34 +43,27 @@ const EditProfilePage = () => {
         reader.onloadend = () => setImage(reader.result);
         reader.readAsDataURL(file);
     };
-    const handleSave = async () => {
+    const handleSave = () => {
         const e = validate();
         setErrors(e);
         setTouched({ firstName: true, lastName: true, phone: true });
         if (Object.keys(e).length === 0) {
-            // Eski ma'lumotlarni saqlab, yangilarini ustiga yozamiz
             const old = JSON.parse(localStorage.getItem("customerData") || "null") || {};
             const updated = { ...old, firstName, lastName, phone, image };
             localStorage.setItem("customerData", JSON.stringify(updated));
             Store.setSession("customer", updated);
             Store.saveCustomerInfo(phone, { firstName, lastName, image });
-
-            // Telefon raqami o'zgargan bo'lsa, eski saved accountni tozalash
             if (oldPhone && oldPhone !== phone) {
                 localStorage.removeItem(`saved_customer_${oldPhone}`);
                 sessionStorage.removeItem('session');
             }
-
-            // Backend ga ham yangilash
-            try {
-                const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-                await fetch(`${AUTH_BASE}/customers/${phone}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ firstName, lastName, phone, image }),
-                });
-            } catch { }
             window.dispatchEvent(new Event("customerData-updated"));
+            const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+            fetch(`${AUTH_BASE}/customers/${phone}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ firstName, lastName, phone, image }),
+            }).catch(() => { });
             navigate("/profile");
         }
     };

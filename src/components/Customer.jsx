@@ -63,12 +63,12 @@ const Customer = () => {
         body: JSON.stringify({ phone, telegramId: telegramId ? String(telegramId) : null }),
       });
       const data = await res.json();
-      if (data.needBot) { setNeedBot(true); setSendingOtp(false); return false; }
       if (!res.ok) { setOtpError(data.message || 'Xatolik'); setSendingOtp(false); return false; }
       if (data.devCode) setSmsCode(String(data.devCode));
       startResendTimer(); setSendingOtp(false); return true;
     } catch {
-      setOtpError('Server bilan aloqa yo\'q'); setSendingOtp(false); return false;
+      // Server bilan aloqa yo'q — baribir step 2 ga o'tish
+      startResendTimer(); setSendingOtp(false); return true;
     }
   };
 
