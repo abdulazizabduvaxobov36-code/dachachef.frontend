@@ -1,4 +1,4 @@
-import { Box, Text, Button } from '@chakra-ui/react';
+import { Box, Text } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaSync } from 'react-icons/fa';
@@ -10,8 +10,8 @@ const dateStr = (d) => {
     const dt = new Date(typeof d === 'number' && d < 1e12 ? d * 1000 : d);
     return dt.toLocaleDateString('uz-UZ') + ' ' + dt.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
 };
-const getBlocked = () => JSON.parse(localStorage.getItem('blockedUsers') || '{}');
-const setBlockedLS = (obj) => localStorage.setItem('blockedUsers', JSON.stringify(obj));
+const getBlocked = () => JSON.parse(localStorage.getItem('blockedChefs') || '{}');
+const setBlockedLS = (obj) => localStorage.setItem('blockedChefs', JSON.stringify(obj));
 
 const AdminChefsPage = () => {
     const navigate = useNavigate();
@@ -19,6 +19,7 @@ const AdminChefsPage = () => {
     const [blocked, setBlockedState] = useState(getBlocked);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [tab, setTab] = useState('all');
 
     useEffect(() => {
         if (sessionStorage.getItem('adminAuthed') !== '1') { navigate('/admin'); return; }
@@ -46,19 +47,36 @@ const AdminChefsPage = () => {
         setBlockedState({ ...b });
     };
 
-    const deleteChef = (phone) => {
-        if (!window.confirm("Bu oshpazni o'chirasizmi?")) return;
+    const deleteChef = async (phone) => {
+        if (!window.confirm("Bu oshpazni o'chirasizmi? Bu amal qaytarib bo'lmaydi.")) return;
         Store.removeChef(phone);
+        localStorage.removeItem(`chef_${phone}`);
+        localStorage.removeItem(`saved_chef_${phone}`);
+        const b = { ...getBlocked() };
+        delete b[phone];
+        setBlockedLS(b);
+        setBlockedState({ ...b });
         setChefs(prev => prev.filter(c => c.phone !== phone));
+        try {
+            await fetch(`${API}/chefs/${phone}`, { method: 'DELETE' });
+        } catch { }
     };
 
-    const filtered = chefs.filter(c => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (c.name || '').toLowerCase().includes(q) ||
-               (c.surname || '').toLowerCase().includes(q) ||
-               (c.phone || '').includes(q);
-    });
+    const applyFilter = (list) => {
+        const q = search.trim().toLowerCase();
+        return list.filter(c => {
+            if (q && !(
+                (c.name || '').toLowerCase().includes(q) ||
+                (c.surname || '').toLowerCase().includes(q) ||
+                (c.phone || '').includes(q)
+            )) return false;
+            if (tab === 'blocked') return !!blocked[c.phone];
+            return true;
+        });
+    };
+
+    const filtered = applyFilter(chefs);
+    const blockedCount = chefs.filter(c => blocked[c.phone]).length;
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0">
@@ -81,7 +99,29 @@ const AdminChefsPage = () => {
                 </Box>
             </Box>
 
-            <Box px="16px" pt="12px" pb="8px">
+            {/* Tabs */}
+            <Box px="16px" pt="12px" display="flex" gap="8px">
+                <Box flex="1" cursor="pointer" textAlign="center" py="9px" borderRadius="12px"
+                    bgColor={tab === 'all' ? '#C03F0C' : 'white'}
+                    border={tab === 'all' ? '1.5px solid #C03F0C' : '1.5px solid #F0E6E0'}
+                    onClick={() => setTab('all')}>
+                    <Text fontWeight="700" style={{ fontSize: '13px' }}
+                        color={tab === 'all' ? 'white' : '#9B8E8A'}>
+                        Hammasi ({chefs.length})
+                    </Text>
+                </Box>
+                <Box flex="1" cursor="pointer" textAlign="center" py="9px" borderRadius="12px"
+                    bgColor={tab === 'blocked' ? '#EF4444' : 'white'}
+                    border={tab === 'blocked' ? '1.5px solid #EF4444' : '1.5px solid #F0E6E0'}
+                    onClick={() => setTab('blocked')}>
+                    <Text fontWeight="700" style={{ fontSize: '13px' }}
+                        color={tab === 'blocked' ? 'white' : '#9B8E8A'}>
+                        Bloklangan ({blockedCount})
+                    </Text>
+                </Box>
+            </Box>
+
+            <Box px="16px" pt="10px" pb="8px">
                 <Box display="flex" alignItems="center" gap="10px" bgColor="white" borderRadius="14px"
                     px="14px" border="1.5px solid #F0E6E0" style={{ height: '44px' }}>
                     <input
@@ -98,7 +138,9 @@ const AdminChefsPage = () => {
             <Box px="16px" pb="24px" display="flex" flexDir="column" gap="10px">
                 {filtered.length === 0 && !loading && (
                     <Box bgColor="white" borderRadius="16px" p="24px" textAlign="center">
-                        <Text color="#B0A8A4">Hali oshpaz yo'q</Text>
+                        <Text color="#B0A8A4">
+                            {tab === 'blocked' ? 'Bloklangan oshpaz yo\'q' : 'Hali oshpaz yo\'q'}
+                        </Text>
                     </Box>
                 )}
                 {filtered.map((chef, i) => (

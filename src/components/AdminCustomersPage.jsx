@@ -1,7 +1,7 @@
 import { Box, Text } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaLock, FaUnlock, FaSync } from 'react-icons/fa';
+import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaSync } from 'react-icons/fa';
 
 const API = import.meta.env.VITE_API_URL || '';
 const dateStr = (d) => {
@@ -9,8 +9,8 @@ const dateStr = (d) => {
     const dt = new Date(typeof d === 'number' && d < 1e12 ? d * 1000 : d);
     return dt.toLocaleDateString('uz-UZ') + ' ' + dt.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
 };
-const getBlocked = () => JSON.parse(localStorage.getItem('blockedUsers') || '{}');
-const setBlockedLS = (obj) => localStorage.setItem('blockedUsers', JSON.stringify(obj));
+const getBlocked = () => JSON.parse(localStorage.getItem('blockedCustomers') || '{}');
+const setBlockedLS = (obj) => localStorage.setItem('blockedCustomers', JSON.stringify(obj));
 
 const AdminCustomersPage = () => {
     const navigate = useNavigate();
@@ -18,6 +18,7 @@ const AdminCustomersPage = () => {
     const [blocked, setBlockedState] = useState(getBlocked);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
+    const [tab, setTab] = useState('all');
 
     useEffect(() => {
         if (sessionStorage.getItem('adminAuthed') !== '1') { navigate('/admin'); return; }
@@ -54,13 +55,36 @@ const AdminCustomersPage = () => {
         setBlockedState({ ...b });
     };
 
-    const filtered = customers.filter(c => {
-        if (!search.trim()) return true;
-        const q = search.toLowerCase();
-        return (c.firstName || c.name || '').toLowerCase().includes(q) ||
-            (c.lastName || '').toLowerCase().includes(q) ||
-            (c.phone || '').includes(q);
-    });
+    const deleteCustomer = async (phone) => {
+        if (!window.confirm("Bu mijozni o'chirasizmi? Bu amal qaytarib bo'lmaydi.")) return;
+        localStorage.removeItem(`customerInfo_${phone}`);
+        localStorage.removeItem(`saved_customer_${phone}`);
+        localStorage.removeItem(`customer_${phone}`);
+        const b = { ...getBlocked() };
+        delete b[phone];
+        setBlockedLS(b);
+        setBlockedState({ ...b });
+        setCustomers(prev => prev.filter(c => c.phone !== phone));
+        try {
+            await fetch(`${API}/customers/${phone}`, { method: 'DELETE' });
+        } catch { }
+    };
+
+    const applyFilter = (list) => {
+        const q = search.trim().toLowerCase();
+        return list.filter(c => {
+            if (q && !(
+                (c.firstName || c.name || '').toLowerCase().includes(q) ||
+                (c.lastName || '').toLowerCase().includes(q) ||
+                (c.phone || '').includes(q)
+            )) return false;
+            if (tab === 'blocked') return !!blocked[c.phone];
+            return true;
+        });
+    };
+
+    const filtered = applyFilter(customers);
+    const blockedCount = customers.filter(c => blocked[c.phone]).length;
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0">
@@ -83,7 +107,29 @@ const AdminCustomersPage = () => {
                 </Box>
             </Box>
 
-            <Box px="16px" pt="12px" pb="8px">
+            {/* Tabs */}
+            <Box px="16px" pt="12px" display="flex" gap="8px">
+                <Box flex="1" cursor="pointer" textAlign="center" py="9px" borderRadius="12px"
+                    bgColor={tab === 'all' ? '#C03F0C' : 'white'}
+                    border={tab === 'all' ? '1.5px solid #C03F0C' : '1.5px solid #F0E6E0'}
+                    onClick={() => setTab('all')}>
+                    <Text fontWeight="700" style={{ fontSize: '13px' }}
+                        color={tab === 'all' ? 'white' : '#9B8E8A'}>
+                        Hammasi ({customers.length})
+                    </Text>
+                </Box>
+                <Box flex="1" cursor="pointer" textAlign="center" py="9px" borderRadius="12px"
+                    bgColor={tab === 'blocked' ? '#EF4444' : 'white'}
+                    border={tab === 'blocked' ? '1.5px solid #EF4444' : '1.5px solid #F0E6E0'}
+                    onClick={() => setTab('blocked')}>
+                    <Text fontWeight="700" style={{ fontSize: '13px' }}
+                        color={tab === 'blocked' ? 'white' : '#9B8E8A'}>
+                        Bloklangan ({blockedCount})
+                    </Text>
+                </Box>
+            </Box>
+
+            <Box px="16px" pt="10px" pb="8px">
                 <Box display="flex" alignItems="center" gap="10px" bgColor="white" borderRadius="14px"
                     px="14px" border="1.5px solid #F0E6E0" style={{ height: '44px' }}>
                     <input
@@ -100,7 +146,9 @@ const AdminCustomersPage = () => {
             <Box px="16px" pb="24px" display="flex" flexDir="column" gap="10px">
                 {filtered.length === 0 && !loading && (
                     <Box bgColor="white" borderRadius="16px" p="24px" textAlign="center">
-                        <Text color="#B0A8A4">Hali mijoz yo'q</Text>
+                        <Text color="#B0A8A4">
+                            {tab === 'blocked' ? 'Bloklangan mijoz yo\'q' : 'Hali mijoz yo\'q'}
+                        </Text>
                     </Box>
                 )}
                 {filtered.map((c, i) => (
@@ -130,13 +178,22 @@ const AdminCustomersPage = () => {
                                 {c.createdAt && <Text color="#B0A8A4" style={{ fontSize: '11px' }}>{dateStr(c.createdAt)}</Text>}
                             </Box>
                         </Box>
-                        <Box cursor="pointer" borderRadius="10px" py="8px"
-                            bgColor={blocked[c.phone] ? '#ECFDF5' : '#FEF2F2'}
-                            display="flex" alignItems="center" justifyContent="center" gap="6px"
-                            onClick={() => toggleBlock(c.phone)}>
-                            {blocked[c.phone]
-                                ? <><FaUnlock style={{ fontSize: '11px', color: '#22C55E' }} /><Text color="#22C55E" fontWeight="700" style={{ fontSize: '12px' }}>Blokdan chiqar</Text></>
-                                : <><FaLock style={{ fontSize: '11px', color: '#EF4444' }} /><Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Bloklash</Text></>}
+                        <Box display="flex" gap="8px">
+                            <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
+                                bgColor={blocked[c.phone] ? '#ECFDF5' : '#FEF2F2'}
+                                display="flex" alignItems="center" justifyContent="center" gap="6px"
+                                onClick={() => toggleBlock(c.phone)}>
+                                {blocked[c.phone]
+                                    ? <><FaUnlock style={{ fontSize: '11px', color: '#22C55E' }} /><Text color="#22C55E" fontWeight="700" style={{ fontSize: '12px' }}>Blokdan chiqar</Text></>
+                                    : <><FaLock style={{ fontSize: '11px', color: '#EF4444' }} /><Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Bloklash</Text></>}
+                            </Box>
+                            <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
+                                bgColor="#FFF5F0"
+                                display="flex" alignItems="center" justifyContent="center" gap="6px"
+                                onClick={() => deleteCustomer(c.phone)}>
+                                <FaTrash style={{ fontSize: '11px', color: '#C03F0C' }} />
+                                <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '12px' }}>O'chirish</Text>
+                            </Box>
                         </Box>
                     </Box>
                 ))}

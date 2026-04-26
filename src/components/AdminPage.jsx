@@ -6,7 +6,10 @@ import Store from '../store';
 
 const API = import.meta.env.VITE_API_URL || '';
 const fmt = (n) => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
-const getBlocked = () => JSON.parse(localStorage.getItem('blockedUsers') || '{}');
+const getBlocked = () => ({
+    ...JSON.parse(localStorage.getItem('blockedChefs') || '{}'),
+    ...JSON.parse(localStorage.getItem('blockedCustomers') || '{}'),
+});
 export const isBlocked = (phone) => !!getBlocked()[phone];
 
 const AdminPage = () => {

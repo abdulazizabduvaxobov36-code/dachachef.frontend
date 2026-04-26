@@ -105,9 +105,9 @@ const AdminOrdersPage = () => {
     };
 
     const blockChef = (chefPhone) => {
-        const b = JSON.parse(localStorage.getItem('blockedUsers') || '{}');
+        const b = JSON.parse(localStorage.getItem('blockedChefs') || '{}');
         b[chefPhone] = true;
-        localStorage.setItem('blockedUsers', JSON.stringify(b));
+        localStorage.setItem('blockedChefs', JSON.stringify(b));
         alert(`Oshpaz bloklandi: ${chefPhone}`);
     };
 
