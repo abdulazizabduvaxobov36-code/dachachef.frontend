@@ -427,24 +427,25 @@ export const Store = {
   // ─── BIR TG — BITTA AKK TEKSHIRUVI ─────────────────────────
   // Berilgan telefon raqami allaqachon boshqa rol bilan ro'yxatdan o'tganini tekshiradi
   isPhoneRegistered: (phone) => {
-    // saved_ kalitlaridan barcha saqlangan akkountlarni tekshirish
+    // Faqat faol saved_ kalitlarini tekshirish (7 kun ichida)
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key?.startsWith('saved_')) continue;
       try {
         const s = JSON.parse(localStorage.getItem(key));
         if (s?.data?.phone === phone) {
+          if (Date.now() - s.loginTime > 7 * 24 * 60 * 60 * 1000) {
+            localStorage.removeItem(key);
+            continue;
+          }
           return { registered: true, role: s.role };
         }
       } catch { }
     }
-    // registeredChefs dan ham tekshirish
+    // Faqat registeredChefs dan oshpazni tekshirish
     const chefs = Store.getChefs();
     const chef = chefs.find(c => c.phone === phone);
     if (chef) return { registered: true, role: 'chef' };
-    // customerInfo dan tekshirish
-    const customerInfo = local.get(`customerInfo_${phone}`);
-    if (customerInfo) return { registered: true, role: 'customer' };
     return { registered: false, role: null };
   },
 

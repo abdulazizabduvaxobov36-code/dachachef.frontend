@@ -59,41 +59,37 @@ const ChefEditProfilePage = () => {
         navigate(-1);
     };
     const handleSave = async () => {
-        if (imageLoading) {
-            alert(t('chefEditProfile.waitImage') || 'Iltimos, rasm yuklanishini kuting.');
-            return;
-        }
-        if (saving) return;
+        if (imageLoading || saving) return;
         const e = validate();
         setErrors(e);
         setTouched({ name: true, surname: true, exp: true });
-        if (Object.keys(e).length === 0) {
-            setSaving(false);
-            const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
-            const merged = { ...oldData, name, surname, phone, exp, bio: bio.trim(), image };
+        if (Object.keys(e).length > 0) return;
 
-            localStorage.setItem('chefProfile', JSON.stringify(merged));
+        setSaving(true);
+        const oldData = JSON.parse(localStorage.getItem('chefProfile') || 'null') || {};
+        const merged = { ...oldData, name, surname, phone, exp, bio: bio.trim(), image };
 
-            if (oldPhone && oldPhone !== phone) {
-                localStorage.removeItem(`saved_chef_${oldPhone}`);
-                localStorage.removeItem(`chef_${oldPhone}`);
-                sessionStorage.removeItem('session');
-            }
+        localStorage.setItem('chefProfile', JSON.stringify(merged));
 
-            Store.setSession('chef', merged);
-            Store.updateChef(oldPhone || phone, merged).catch(() => { });
-            window.dispatchEvent(new Event('chefs-updated'));
-
-            // Backend ga background da — navigate ni kutmaymiz
-            const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-            fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(merged),
-            }).catch(() => { });
-
-            navigate('/chef-profile');
+        if (oldPhone && oldPhone !== phone) {
+            localStorage.removeItem(`saved_chef_${oldPhone}`);
+            localStorage.removeItem(`chef_${oldPhone}`);
+            sessionStorage.removeItem('session');
         }
+
+        Store.setSession('chef', merged);
+        Store.updateChef(oldPhone || phone, merged).catch(() => { });
+        window.dispatchEvent(new Event('chefs-updated'));
+
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+        fetch(`${AUTH_BASE}/chefs/${oldPhone || phone}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(merged),
+        }).catch(() => { });
+
+        setSaving(false);
+        navigate('/chef-profile');
     };
     const hasErr = (key) => errors[key] && touched[key];
     const renderInput = (key, label, icon, value, setter, isNum, maxLen, prefix, placeholder) => (

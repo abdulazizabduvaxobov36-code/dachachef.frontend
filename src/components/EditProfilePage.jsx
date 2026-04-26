@@ -47,25 +47,26 @@ const EditProfilePage = () => {
         const e = validate();
         setErrors(e);
         setTouched({ firstName: true, lastName: true, phone: true });
-        if (Object.keys(e).length === 0) {
-            const old = JSON.parse(localStorage.getItem("customerData") || "null") || {};
-            const updated = { ...old, firstName, lastName, phone, image };
-            localStorage.setItem("customerData", JSON.stringify(updated));
-            Store.setSession("customer", updated);
-            Store.saveCustomerInfo(phone, { firstName, lastName, image });
-            if (oldPhone && oldPhone !== phone) {
-                localStorage.removeItem(`saved_customer_${oldPhone}`);
-                sessionStorage.removeItem('session');
-            }
-            window.dispatchEvent(new Event("customerData-updated"));
-            const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-            fetch(`${AUTH_BASE}/customers/${phone}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ firstName, lastName, phone, image }),
-            }).catch(() => { });
-            navigate("/profile");
+        if (Object.keys(e).length > 0) return;
+
+        const old = JSON.parse(localStorage.getItem("customerData") || "null") || {};
+        const updated = { ...old, firstName, lastName, phone, image };
+        localStorage.setItem("customerData", JSON.stringify(updated));
+        Store.setSession("customer", updated);
+        Store.saveCustomerInfo(phone, { firstName, lastName, image });
+        if (oldPhone && oldPhone !== phone) {
+            localStorage.removeItem(`customerInfo_${oldPhone}`);
+            localStorage.removeItem(`saved_customer_${oldPhone}`);
+            sessionStorage.removeItem('session');
         }
+        window.dispatchEvent(new Event("customerData-updated"));
+        const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+        fetch(`${AUTH_BASE}/customers/${phone}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ firstName, lastName, phone, image }),
+        }).catch(() => { });
+        navigate("/profile");
     };
     const hasErr = (key) => errors[key] && touched[key];
     const renderField = (key, label, icon, value, setter, isNum) => (

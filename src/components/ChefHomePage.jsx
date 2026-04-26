@@ -707,16 +707,7 @@ const ChefHomePage = () => {
                                         </Text>
                                     </Box>
                                     <Box textAlign="right">
-                                        <Text fontWeight="800" color="#22C55E" style={{ fontSize: "16px" }}>
-                                            {Number(order.amount).toLocaleString()} so'm
-                                        </Text>
-                                        {order.customerPhone && order.customerPhone !== order.customerName && (
-                                            <Box as="a" href={`tel:+998${order.customerPhone}`}
-                                                display="flex" alignItems="center" gap="4px" justifyContent="flex-end">
-                                                <FaPhone style={{ fontSize: "10px", color: "#C03F0C" }} />
-                                                <Text color="#C03F0C" style={{ fontSize: "11px" }}>{order.customerPhone}</Text>
-                                            </Box>
-                                        )}
+                                        <Text color="#9B614B" style={{ fontSize: "11px" }}>✅ Bajarildi</Text>
                                     </Box>
                                 </Box>
                                 {order.note && (

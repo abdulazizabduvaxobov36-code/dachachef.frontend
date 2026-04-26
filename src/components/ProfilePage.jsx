@@ -33,7 +33,11 @@ const ProfilePage = () => {
     const myPhone = customerData.phone || "";
 
     const handleLogout = () => {
-        if (customerData.phone) Store.setOffline("customer", customerData.phone);
+        if (customerData.phone) {
+            Store.setOffline("customer", customerData.phone);
+            localStorage.removeItem(`customerInfo_${customerData.phone}`);
+        }
+        localStorage.removeItem("customerData");
         Store.clearSession();
         navigate("/");
     };

@@ -101,7 +101,12 @@ const ChefProfileOwnPage = () => {
     const exp = chefProfile.exp ? String(chefProfile.exp) : '';
     const totalUnread = Store.getTotalUnreadForChef(chefProfile.phone || '');
 
-    const handleLogout = () => { if (chefProfile.phone) Store.setOffline("chef", chefProfile.phone); Store.clearSession(); navigate("/"); };
+    const handleLogout = () => {
+        if (chefProfile.phone) Store.setOffline("chef", chefProfile.phone);
+        localStorage.removeItem("chefProfile");
+        Store.clearSession();
+        navigate("/");
+    };
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column" pb="80px">
