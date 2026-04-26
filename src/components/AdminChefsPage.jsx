@@ -1,5 +1,5 @@
 import { Box, Text } from '@chakra-ui/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaSync } from 'react-icons/fa';
 import Store from '../store';
@@ -17,6 +17,7 @@ const AdminChefsPage = () => {
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all');
+    const deletedRef = useRef(new Set());
 
     useEffect(() => {
         if (sessionStorage.getItem('adminAuthed') !== '1') { navigate('/admin'); return; }
@@ -31,9 +32,10 @@ const AdminChefsPage = () => {
             const r = await fetch(`${API}/admin/chefs`);
             if (r.ok) {
                 const d = await r.json();
-                setChefs(Array.isArray(d) ? d : (d.chefs || Store.getChefs()));
-            } else setChefs(Store.getChefs());
-        } catch { setChefs(Store.getChefs()); }
+                const list = Array.isArray(d) ? d : (d.chefs || Store.getChefs());
+                setChefs(list.filter(c => !deletedRef.current.has(c.phone)));
+            } else setChefs(Store.getChefs().filter(c => !deletedRef.current.has(c.phone)));
+        } catch { setChefs(Store.getChefs().filter(c => !deletedRef.current.has(c.phone))); }
         setLoading(false);
     };
 
@@ -54,6 +56,7 @@ const AdminChefsPage = () => {
 
     const deleteChef = async (chef) => {
         if (!window.confirm(`${chef.name} ${chef.surname} ni o'chirasizmi? Bu amal qaytarib bo'lmaydi.`)) return;
+        deletedRef.current.add(chef.phone);
         Store.removeChef(chef.phone);
         localStorage.removeItem(`chef_${chef.phone}`);
         localStorage.removeItem(`saved_chef_${chef.phone}`);
