@@ -48,6 +48,16 @@ const GlabalPage = () => {
     if (customerData.phone) return Store.startHeartbeat('customer', customerData.phone);
   }, []);
 
+  // Bloklangan mijozni darhol chiqarish
+  useEffect(() => {
+    if (!customerData.phone) return;
+    const API_BASE = import.meta.env?.VITE_API_URL || '';
+    fetch(`${API_BASE}/customers/${customerData.phone}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data?.isBlocked) navigate('/blocked', { replace: true }); })
+      .catch(() => { });
+  }, []);
+
   useEffect(() => {
     const unsub = Store.listenChefs(latest => { setChefs([...latest]); setNotifs(Store.getCustomerNotifications(myPhone, latest)); });
     window.addEventListener('chefs-updated', refreshAll);

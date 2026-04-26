@@ -5,7 +5,8 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git push *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Read(//c/Users/abel/OneDrive/Desktop/dachachef_fixed 18/src/components/**)"
     ],
     "additionalDirectories": [
       "c:\\Users\\abdul\\OneDrive\\Desktop\\backend"

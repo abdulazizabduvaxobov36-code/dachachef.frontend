@@ -10,13 +10,10 @@ const dateStr = (d) => {
     const dt = new Date(typeof d === 'number' && d < 1e12 ? d * 1000 : d);
     return dt.toLocaleDateString('uz-UZ') + ' ' + dt.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
 };
-const getBlocked = () => JSON.parse(localStorage.getItem('blockedChefs') || '{}');
-const setBlockedLS = (obj) => localStorage.setItem('blockedChefs', JSON.stringify(obj));
 
 const AdminChefsPage = () => {
     const navigate = useNavigate();
     const [chefs, setChefs] = useState([]);
-    const [blocked, setBlockedState] = useState(getBlocked);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all');
@@ -24,14 +21,14 @@ const AdminChefsPage = () => {
     useEffect(() => {
         if (sessionStorage.getItem('adminAuthed') !== '1') { navigate('/admin'); return; }
         loadChefs();
-        const iv = setInterval(loadChefs, 10000);
+        const iv = setInterval(loadChefs, 15000);
         return () => clearInterval(iv);
     }, []);
 
     const loadChefs = async () => {
         setLoading(true);
         try {
-            const r = await fetch(`${API}/chefs`);
+            const r = await fetch(`${API}/admin/chefs`);
             if (r.ok) {
                 const d = await r.json();
                 setChefs(Array.isArray(d) ? d : (d.chefs || Store.getChefs()));
@@ -40,25 +37,29 @@ const AdminChefsPage = () => {
         setLoading(false);
     };
 
-    const toggleBlock = (phone) => {
-        const b = { ...getBlocked() };
-        if (b[phone]) delete b[phone]; else b[phone] = true;
-        setBlockedLS(b);
-        setBlockedState({ ...b });
+    const toggleBlock = async (chef) => {
+        const wasBlocked = !!chef.isBlocked;
+        const action = wasBlocked ? 'blokdan chiqarasizmi' : 'bloklamoqchimisiz';
+        if (!window.confirm(`${chef.name} ${chef.surname} ni ${action}?`)) return;
+        try {
+            const r = await fetch(`${API}/chefs/${chef.phone}/block`, { method: 'PATCH' });
+            if (r.ok) {
+                const { isBlocked } = await r.json();
+                setChefs(prev => prev.map(c => c.phone === chef.phone ? { ...c, isBlocked } : c));
+            }
+        } catch {
+            alert('Xato yuz berdi. Internet aloqasini tekshiring.');
+        }
     };
 
-    const deleteChef = async (phone) => {
-        if (!window.confirm("Bu oshpazni o'chirasizmi? Bu amal qaytarib bo'lmaydi.")) return;
-        Store.removeChef(phone);
-        localStorage.removeItem(`chef_${phone}`);
-        localStorage.removeItem(`saved_chef_${phone}`);
-        const b = { ...getBlocked() };
-        delete b[phone];
-        setBlockedLS(b);
-        setBlockedState({ ...b });
-        setChefs(prev => prev.filter(c => c.phone !== phone));
+    const deleteChef = async (chef) => {
+        if (!window.confirm(`${chef.name} ${chef.surname} ni o'chirasizmi? Bu amal qaytarib bo'lmaydi.`)) return;
+        Store.removeChef(chef.phone);
+        localStorage.removeItem(`chef_${chef.phone}`);
+        localStorage.removeItem(`saved_chef_${chef.phone}`);
+        setChefs(prev => prev.filter(c => c.phone !== chef.phone));
         try {
-            await fetch(`${API}/chefs/${phone}`, { method: 'DELETE' });
+            await fetch(`${API}/chefs/${chef.phone}`, { method: 'DELETE' });
         } catch { }
     };
 
@@ -70,13 +71,13 @@ const AdminChefsPage = () => {
                 (c.surname || '').toLowerCase().includes(q) ||
                 (c.phone || '').includes(q)
             )) return false;
-            if (tab === 'blocked') return !!blocked[c.phone];
+            if (tab === 'blocked') return !!c.isBlocked;
             return true;
         });
     };
 
     const filtered = applyFilter(chefs);
-    const blockedCount = chefs.filter(c => blocked[c.phone]).length;
+    const blockedCount = chefs.filter(c => c.isBlocked).length;
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0">
@@ -146,7 +147,7 @@ const AdminChefsPage = () => {
                 {filtered.map((chef, i) => (
                     <Box key={chef.phone || i} bgColor="white" borderRadius="16px" p="14px"
                         boxShadow="0 2px 8px rgba(0,0,0,0.05)"
-                        border={blocked[chef.phone] ? '1.5px solid #FCA5A5' : '1.5px solid transparent'}>
+                        border={chef.isBlocked ? '1.5px solid #FCA5A5' : '1.5px solid transparent'}>
                         <Box display="flex" alignItems="center" gap="12px" mb="10px">
                             <Box w="46px" h="46px" borderRadius="12px" flexShrink={0}
                                 overflow="hidden" bgColor="#F0E6E0"
@@ -160,7 +161,7 @@ const AdminChefsPage = () => {
                                     <Text fontWeight="800" color="#1C110D" style={{ fontSize: '14px' }}>
                                         {chef.name} {chef.surname}
                                     </Text>
-                                    {blocked[chef.phone] && (
+                                    {chef.isBlocked && (
                                         <Box bgColor="#FEE2E2" borderRadius="6px" px="6px" py="1px">
                                             <Text color="#EF4444" fontWeight="700" style={{ fontSize: '10px' }}>BLOKLANGAN</Text>
                                         </Box>
@@ -174,17 +175,17 @@ const AdminChefsPage = () => {
                         </Box>
                         <Box display="flex" gap="8px">
                             <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
-                                bgColor={blocked[chef.phone] ? '#ECFDF5' : '#FEF2F2'}
+                                bgColor={chef.isBlocked ? '#ECFDF5' : '#FEF2F2'}
                                 display="flex" alignItems="center" justifyContent="center" gap="6px"
-                                onClick={() => toggleBlock(chef.phone)}>
-                                {blocked[chef.phone]
+                                onClick={() => toggleBlock(chef)}>
+                                {chef.isBlocked
                                     ? <><FaUnlock style={{ fontSize: '11px', color: '#22C55E' }} /><Text color="#22C55E" fontWeight="700" style={{ fontSize: '12px' }}>Blokdan chiqar</Text></>
                                     : <><FaLock style={{ fontSize: '11px', color: '#EF4444' }} /><Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Bloklash</Text></>}
                             </Box>
                             <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
                                 bgColor="#FFF5F0"
                                 display="flex" alignItems="center" justifyContent="center" gap="6px"
-                                onClick={() => deleteChef(chef.phone)}>
+                                onClick={() => deleteChef(chef)}>
                                 <FaTrash style={{ fontSize: '11px', color: '#C03F0C' }} />
                                 <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '12px' }}>O'chirish</Text>
                             </Box>

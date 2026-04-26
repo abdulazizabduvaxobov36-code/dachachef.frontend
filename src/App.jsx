@@ -23,6 +23,7 @@ import AdminChefsPage from "./components/AdminChefsPage";
 import AdminCustomersPage from "./components/AdminCustomersPage";
 import AdminOrdersPage from "./components/AdminOrdersPage";
 import AdminRevenuePage from "./components/AdminRevenuePage";
+import BlockedPage from "./components/BlockedPage";
 
 const App = () => {
   // App birinchi ochilganda eski offline cheflarni tozalash
@@ -55,6 +56,7 @@ const App = () => {
       <Route path="/admin/customers" element={<AdminCustomersPage />} />
       <Route path="/admin/orders" element={<AdminOrdersPage />} />
       <Route path="/admin/revenue" element={<AdminRevenuePage />} />
+      <Route path="/blocked" element={<BlockedPage />} />
     </Routes>
   );
 };

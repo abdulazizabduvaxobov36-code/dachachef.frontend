@@ -315,6 +315,16 @@ const ChefHomePage = () => {
 
     const refreshNotifs = () => setNotifications(Store.getChefNotifications(myPhone));
 
+    // Bloklangan oshpazni darhol chiqarish
+    useEffect(() => {
+        if (!myPhone) return;
+        const API_BASE = import.meta.env?.VITE_API_URL || '';
+        fetch(`${API_BASE}/chefs/${myPhone}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => { if (data?.isBlocked) navigate('/blocked', { replace: true }); })
+            .catch(() => { });
+    }, [myPhone]);
+
     useEffect(() => {
         const refresh = () => {
             if (!myPhone) return;

@@ -1,5 +1,5 @@
 import { Box, Text } from '@chakra-ui/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaSync } from 'react-icons/fa';
 
@@ -9,21 +9,19 @@ const dateStr = (d) => {
     const dt = new Date(typeof d === 'number' && d < 1e12 ? d * 1000 : d);
     return dt.toLocaleDateString('uz-UZ') + ' ' + dt.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
 };
-const getBlocked = () => JSON.parse(localStorage.getItem('blockedCustomers') || '{}');
-const setBlockedLS = (obj) => localStorage.setItem('blockedCustomers', JSON.stringify(obj));
 
 const AdminCustomersPage = () => {
     const navigate = useNavigate();
     const [customers, setCustomers] = useState([]);
-    const [blocked, setBlockedState] = useState(getBlocked);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all');
+    const deletedRef = useRef(new Set());
 
     useEffect(() => {
         if (sessionStorage.getItem('adminAuthed') !== '1') { navigate('/admin'); return; }
         loadCustomers();
-        const iv = setInterval(loadCustomers, 10000);
+        const iv = setInterval(loadCustomers, 15000);
         return () => clearInterval(iv);
     }, []);
 
@@ -38,35 +36,47 @@ const AdminCustomersPage = () => {
                 list.forEach(c => { if (c.phone) custData[c.phone] = c; });
             }
         } catch { }
-        Object.keys(localStorage).filter(k => k.startsWith('customer_') || k === 'customerData').forEach(k => {
-            try {
-                const v = JSON.parse(localStorage.getItem(k));
-                if (v?.phone && !custData[v.phone]) custData[v.phone] = v;
-            } catch { }
-        });
-        setCustomers(Object.values(custData));
+        // localStorage dan ham qo'shamiz (backendga tushmagan foydalanuvchilar)
+        Object.keys(localStorage)
+            .filter(k => k.startsWith('saved_customer_') || k.startsWith('customerInfo_'))
+            .forEach(k => {
+                try {
+                    const v = JSON.parse(localStorage.getItem(k));
+                    const p = v?.phone || v?.data?.phone;
+                    if (p && !custData[p]) custData[p] = v?.data || v;
+                } catch { }
+            });
+        // O'chirilganlarni chiqarib tashlash
+        deletedRef.current.forEach(phone => delete custData[phone]);
+        setCustomers(Object.values(custData).filter(c => c?.phone));
         setLoading(false);
     };
 
-    const toggleBlock = (phone) => {
-        const b = { ...getBlocked() };
-        if (b[phone]) delete b[phone]; else b[phone] = true;
-        setBlockedLS(b);
-        setBlockedState({ ...b });
+    const toggleBlock = async (c) => {
+        const wasBlocked = !!c.isBlocked;
+        const action = wasBlocked ? 'blokdan chiqarasizmi' : 'bloklamoqchimisiz';
+        if (!window.confirm(`${c.firstName || c.name || 'Mijoz'} ni ${action}?`)) return;
+        try {
+            const r = await fetch(`${API}/customers/${c.phone}/block`, { method: 'PATCH' });
+            if (r.ok) {
+                const { isBlocked } = await r.json();
+                setCustomers(prev => prev.map(x => x.phone === c.phone ? { ...x, isBlocked } : x));
+            }
+        } catch {
+            alert('Xato yuz berdi. Internet aloqasini tekshiring.');
+        }
     };
 
-    const deleteCustomer = async (phone) => {
-        if (!window.confirm("Bu mijozni o'chirasizmi? Bu amal qaytarib bo'lmaydi.")) return;
-        localStorage.removeItem(`customerInfo_${phone}`);
-        localStorage.removeItem(`saved_customer_${phone}`);
-        localStorage.removeItem(`customer_${phone}`);
-        const b = { ...getBlocked() };
-        delete b[phone];
-        setBlockedLS(b);
-        setBlockedState({ ...b });
-        setCustomers(prev => prev.filter(c => c.phone !== phone));
+    const deleteCustomer = async (c) => {
+        if (!window.confirm(`${c.firstName || c.name || 'Mijoz'} ni o'chirasizmi? Bu amal qaytarib bo'lmaydi.`)) return;
+        deletedRef.current.add(c.phone);
+        localStorage.removeItem(`customerInfo_${c.phone}`);
+        localStorage.removeItem(`saved_customer_${c.phone}`);
+        localStorage.removeItem(`customer_${c.phone}`);
+        localStorage.removeItem(`saved_${c.phone}`);
+        setCustomers(prev => prev.filter(x => x.phone !== c.phone));
         try {
-            await fetch(`${API}/customers/${phone}`, { method: 'DELETE' });
+            await fetch(`${API}/customers/${c.phone}`, { method: 'DELETE' });
         } catch { }
     };
 
@@ -78,13 +88,13 @@ const AdminCustomersPage = () => {
                 (c.lastName || '').toLowerCase().includes(q) ||
                 (c.phone || '').includes(q)
             )) return false;
-            if (tab === 'blocked') return !!blocked[c.phone];
+            if (tab === 'blocked') return !!c.isBlocked;
             return true;
         });
     };
 
     const filtered = applyFilter(customers);
-    const blockedCount = customers.filter(c => blocked[c.phone]).length;
+    const blockedCount = customers.filter(c => c.isBlocked).length;
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0">
@@ -154,7 +164,7 @@ const AdminCustomersPage = () => {
                 {filtered.map((c, i) => (
                     <Box key={c.phone || i} bgColor="white" borderRadius="16px" p="14px"
                         boxShadow="0 2px 8px rgba(0,0,0,0.05)"
-                        border={blocked[c.phone] ? '1.5px solid #FCA5A5' : '1.5px solid transparent'}>
+                        border={c.isBlocked ? '1.5px solid #FCA5A5' : '1.5px solid transparent'}>
                         <Box display="flex" alignItems="center" gap="12px" mb="10px">
                             <Box w="46px" h="46px" borderRadius="full" flexShrink={0}
                                 overflow="hidden" bgColor="#3B82F6"
@@ -168,7 +178,7 @@ const AdminCustomersPage = () => {
                                     <Text fontWeight="800" color="#1C110D" style={{ fontSize: '14px' }}>
                                         {c.firstName || c.name || "Noma'lum"} {c.lastName || ''}
                                     </Text>
-                                    {blocked[c.phone] && (
+                                    {c.isBlocked && (
                                         <Box bgColor="#FEE2E2" borderRadius="6px" px="6px" py="1px">
                                             <Text color="#EF4444" fontWeight="700" style={{ fontSize: '10px' }}>BLOKLANGAN</Text>
                                         </Box>
@@ -180,17 +190,17 @@ const AdminCustomersPage = () => {
                         </Box>
                         <Box display="flex" gap="8px">
                             <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
-                                bgColor={blocked[c.phone] ? '#ECFDF5' : '#FEF2F2'}
+                                bgColor={c.isBlocked ? '#ECFDF5' : '#FEF2F2'}
                                 display="flex" alignItems="center" justifyContent="center" gap="6px"
-                                onClick={() => toggleBlock(c.phone)}>
-                                {blocked[c.phone]
+                                onClick={() => toggleBlock(c)}>
+                                {c.isBlocked
                                     ? <><FaUnlock style={{ fontSize: '11px', color: '#22C55E' }} /><Text color="#22C55E" fontWeight="700" style={{ fontSize: '12px' }}>Blokdan chiqar</Text></>
                                     : <><FaLock style={{ fontSize: '11px', color: '#EF4444' }} /><Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Bloklash</Text></>}
                             </Box>
                             <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
                                 bgColor="#FFF5F0"
                                 display="flex" alignItems="center" justifyContent="center" gap="6px"
-                                onClick={() => deleteCustomer(c.phone)}>
+                                onClick={() => deleteCustomer(c)}>
                                 <FaTrash style={{ fontSize: '11px', color: '#C03F0C' }} />
                                 <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '12px' }}>O'chirish</Text>
                             </Box>
