@@ -1,253 +1,322 @@
 import { Box, Button, Text } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaShieldAlt, FaUsers, FaUtensils, FaMoneyBillWave, FaTelegram } from 'react-icons/fa';
+import { FaShieldAlt, FaTelegram, FaSignOutAlt, FaSync } from 'react-icons/fa';
 import Store from '../store';
 
 const API = import.meta.env.VITE_API_URL || '';
 const fmt = (n) => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
-const getBlocked = () => ({
-    ...JSON.parse(localStorage.getItem('blockedChefs') || '{}'),
-    ...JSON.parse(localStorage.getItem('blockedCustomers') || '{}'),
-});
-export const isBlocked = (phone) => !!getBlocked()[phone];
 
-const AdminPage = () => {
-    const navigate = useNavigate();
-    const [authed, setAuthed] = useState(() => sessionStorage.getItem('adminAuthed') === '1');
+// ─── LOGIN ─────────────────────────────────────────────────────
+const LoginScreen = ({ onSuccess }) => {
     const [step, setStep] = useState(1);
     const [code, setCode] = useState('');
     const [sending, setSending] = useState(false);
     const [verifying, setVerifying] = useState(false);
     const [err, setErr] = useState('');
-    const [resendTimer, setResendTimer] = useState(0);
-
-    const [stats, setStats] = useState({ chefs: 0, customers: 0, orders: 0, revenue: 0, commission: 0, blocked: 0 });
-    const [loading, setLoading] = useState(false);
+    const [timer, setTimer] = useState(0);
 
     const startTimer = () => {
-        setResendTimer(60);
-        const iv = setInterval(() => {
-            setResendTimer(prev => {
-                if (prev <= 1) { clearInterval(iv); return 0; }
-                return prev - 1;
-            });
-        }, 1000);
+        setTimer(60);
+        const iv = setInterval(() => setTimer(p => { if (p <= 1) { clearInterval(iv); return 0; } return p - 1; }), 1000);
     };
 
     const sendCode = async () => {
-        setSending(true);
-        setErr('');
+        setSending(true); setErr('');
         try {
             const res = await fetch(`${API}/auth/admin-send-otp`, { method: 'POST' });
             const data = await res.json();
             if (!res.ok) { setErr(data.message || 'Xatolik'); setSending(false); return; }
             if (data.devCode) setCode(String(data.devCode));
-            setStep(2);
-            startTimer();
-        } catch {
-            setErr('Server bilan aloqa yo\'q');
-        }
+            setStep(2); startTimer();
+        } catch { setErr('Server bilan aloqa yo\'q'); }
         setSending(false);
     };
 
     const verify = async () => {
         if (code.length !== 6) { setErr('6 xonali kod kiriting'); return; }
-        setVerifying(true);
-        setErr('');
+        setVerifying(true); setErr('');
         try {
             const res = await fetch(`${API}/auth/admin-verify-otp`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code }),
             });
             const data = await res.json();
             if (!res.ok || !data.success) { setErr(data.message || 'Kod noto\'g\'ri'); setVerifying(false); return; }
             sessionStorage.setItem('adminAuthed', '1');
-            setAuthed(true);
-        } catch {
-            setErr('Server bilan aloqa yo\'q');
-        }
+            onSuccess();
+        } catch { setErr('Server bilan aloqa yo\'q'); }
         setVerifying(false);
     };
 
-    const loadStats = async () => {
-        setLoading(true);
-        let chefCount = Store.getChefs().length;
-        let customerCount = 0, orderCount = 0, revenue = 0, commission = 0;
-        try { const r = await fetch(`${API}/chefs`); if (r.ok) { const d = await r.json(); chefCount = (Array.isArray(d) ? d : (d.chefs || [])).length; } } catch { }
-        try { const r = await fetch(`${API}/customers`); if (r.ok) { const d = await r.json(); customerCount = (Array.isArray(d) ? d : (d.customers || [])).length; } } catch { }
-        try {
-            const r = await fetch(`${API}/orders/admin/orders`);
-            if (r.ok) {
-                const d = await r.json();
-                const list = Array.isArray(d) ? d : (d.orders || []);
-                orderCount = list.length;
-                revenue = list.reduce((s, o) => s + Number(o.amount || 0), 0);
-                commission = list.reduce((s, o) => s + Math.round(Number(o.amount || 0) * 0.1), 0);
-            }
-        } catch { }
-        setStats({ chefs: chefCount, customers: customerCount, orders: orderCount, revenue, commission, blocked: Object.keys(getBlocked()).length });
-        setLoading(false);
-    };
-
-    useEffect(() => {
-        if (authed) { loadStats(); const iv = setInterval(loadStats, 30000); return () => clearInterval(iv); }
-    }, [authed]);
-
-    // Login sahifasi
-    if (!authed) return (
-        <Box minH="100dvh" bgColor="#0F172A" display="flex" alignItems="center" justifyContent="center" px="16px">
-            <Box bgColor="#1E293B" borderRadius="24px" p="32px" w="100%" maxW="360px"
-                boxShadow="0 8px 32px rgba(0,0,0,0.4)" border="1px solid #334155">
-                <Box display="flex" alignItems="center" gap="10px" mb="24px">
-                    <FaShieldAlt style={{ fontSize: '28px', color: '#C03F0C' }} />
-                    <Box>
-                        <Text fontWeight="800" color="white" style={{ fontSize: '20px' }}>Admin Panel</Text>
-                        <Text color="#94A3B8" style={{ fontSize: '12px' }}>Faqat adminlar uchun</Text>
-                    </Box>
+    return (
+        <Box minH="100dvh" bgColor="#0F172A" display="flex" flexDir="column"
+            alignItems="center" justifyContent="center" px="20px">
+            {/* Logo */}
+            <Box display="flex" alignItems="center" gap="12px" mb="32px">
+                <Box w="52px" h="52px" borderRadius="16px" bgColor="#C03F0C"
+                    display="flex" alignItems="center" justifyContent="center">
+                    <FaShieldAlt style={{ fontSize: '24px', color: 'white' }} />
                 </Box>
+                <Box>
+                    <Text fontWeight="800" color="white" style={{ fontSize: '22px', lineHeight: 1.1 }}>Admin Panel</Text>
+                    <Text color="#64748B" style={{ fontSize: '12px' }}>DachaChef boshqaruv</Text>
+                </Box>
+            </Box>
+
+            <Box bgColor="#1E293B" borderRadius="24px" p="28px" w="100%" maxW="360px"
+                border="1px solid #334155">
 
                 {step === 1 ? (
                     <>
+                        <Text fontWeight="700" color="white" mb="6px" style={{ fontSize: '18px' }}>
+                            Kirish
+                        </Text>
+                        <Text color="#64748B" mb="24px" style={{ fontSize: '13px', lineHeight: '1.6' }}>
+                            Telegram botga 6 xonali tasdiqlash kodi yuboriladi. Faqat admin kira oladi.
+                        </Text>
                         <Box bgColor="#0F172A" borderRadius="14px" p="14px" mb="20px"
-                            border="1px solid #334155" display="flex" alignItems="flex-start" gap="10px">
-                            <FaTelegram style={{ fontSize: '20px', color: '#2563EB', flexShrink: 0, marginTop: '2px' }} />
-                            <Text color="#94A3B8" style={{ fontSize: '13px' }}>
-                                Telegram botga 6 xonali tasdiqlash kodi yuboriladi
+                            display="flex" alignItems="center" gap="10px" border="1px solid #1E40AF">
+                            <FaTelegram style={{ fontSize: '22px', color: '#3B82F6', flexShrink: 0 }} />
+                            <Text color="#93C5FD" style={{ fontSize: '13px' }}>
+                                Kod <Text as="span" fontWeight="700">@dacha_chef_bot</Text> ga keladi
                             </Text>
                         </Box>
-                        {err && <Text color="#EF4444" mb="12px" style={{ fontSize: '13px' }}>⚠ {err}</Text>}
-                        <Button w="100%" h="48px" bgColor="#C03F0C" color="white" borderRadius="14px"
-                            fontWeight="700" _hover={{ bgColor: '#a0300a' }}
+                        {err && (
+                            <Box bgColor="#450A0A" borderRadius="10px" px="14px" py="10px" mb="14px">
+                                <Text color="#FCA5A5" style={{ fontSize: '13px' }}>⚠ {err}</Text>
+                            </Box>
+                        )}
+                        <Button w="100%" h="50px" bgColor="#C03F0C" color="white" borderRadius="14px"
+                            fontWeight="700" fontSize="15px" _hover={{ bgColor: '#a0300a' }}
                             isLoading={sending} loadingText="Yuborilmoqda..."
                             onClick={sendCode}>
-                            Kod olish
+                            📨 Kod olish
                         </Button>
                     </>
                 ) : (
                     <>
-                        <Box bgColor="#0F172A" borderRadius="14px" p="12px" mb="16px"
-                            border="1px solid #2563EB" display="flex" alignItems="center" gap="10px">
-                            <FaTelegram style={{ fontSize: '20px', color: '#2563EB' }} />
-                            <Text color="#94A3B8" style={{ fontSize: '13px' }}>
-                                Telegram botga 6 xonali kod yuborildi
+                        <Box display="flex" alignItems="center" gap="8px" mb="20px">
+                            <Box bgColor="#1E3A5F" borderRadius="10px" p="8px">
+                                <FaTelegram style={{ fontSize: '18px', color: '#3B82F6' }} />
+                            </Box>
+                            <Text color="#93C5FD" style={{ fontSize: '13px' }}>
+                                Telegram botga kod yuborildi
                             </Text>
                         </Box>
-                        <Text color="#94A3B8" mb="6px" fontWeight="600" style={{ fontSize: '13px' }}>Kodni kiriting</Text>
+                        <Text color="#94A3B8" fontWeight="600" mb="8px" style={{ fontSize: '13px' }}>
+                            Kodni kiriting
+                        </Text>
                         <input
-                            value={code}
+                            value={code} autoFocus
                             onChange={e => { setCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setErr(''); }}
                             onKeyDown={e => e.key === 'Enter' && verify()}
-                            placeholder="6 xonali kod"
+                            placeholder="• • • • • •"
                             style={{
-                                width: '100%', border: '1.5px solid #334155', borderRadius: '12px',
-                                padding: '12px 14px', fontSize: '20px', outline: 'none', letterSpacing: '6px',
+                                width: '100%', border: `1.5px solid ${err ? '#EF4444' : '#334155'}`,
+                                borderRadius: '14px', padding: '14px', fontSize: '28px',
+                                letterSpacing: '10px', outline: 'none', textAlign: 'center',
                                 background: '#0F172A', color: 'white', boxSizing: 'border-box',
-                                textAlign: 'center', marginBottom: '12px',
+                                marginBottom: '12px', fontWeight: '700',
                             }}
                         />
-                        {err && <Text color="#EF4444" mb="10px" style={{ fontSize: '13px' }}>⚠ {err}</Text>}
-                        <Button w="100%" h="48px" bgColor="#C03F0C" color="white" borderRadius="14px"
-                            fontWeight="700" _hover={{ bgColor: '#a0300a' }} mb="10px"
+                        {err && (
+                            <Box bgColor="#450A0A" borderRadius="10px" px="14px" py="10px" mb="12px">
+                                <Text color="#FCA5A5" style={{ fontSize: '13px' }}>⚠ {err}</Text>
+                            </Box>
+                        )}
+                        <Button w="100%" h="50px" bgColor="#C03F0C" color="white" borderRadius="14px"
+                            fontWeight="700" fontSize="15px" _hover={{ bgColor: '#a0300a' }} mb="12px"
                             isLoading={verifying} loadingText="Tekshirilmoqda..."
                             onClick={verify}>
-                            Kirish
+                            Kirish →
                         </Button>
-                        <Box textAlign="center">
-                            {resendTimer > 0
-                                ? <Text color="#64748B" style={{ fontSize: '13px' }}>Qayta yuborish: {resendTimer}s</Text>
-                                : <Text color="#C03F0C" fontWeight="600" style={{ fontSize: '13px', cursor: 'pointer' }}
-                                    onClick={() => { setCode(''); setErr(''); sendCode(); }}>
-                                    Kodni qayta yuborish
-                                </Text>
-                            }
-                        </Box>
-                        <Box mt="10px" textAlign="center">
-                            <Text color="#64748B" style={{ fontSize: '12px', cursor: 'pointer' }}
+                        <Box display="flex" alignItems="center" justifyContent="space-between">
+                            <Text color="#64748B" style={{ fontSize: '13px', cursor: 'pointer' }}
                                 onClick={() => { setStep(1); setCode(''); setErr(''); }}>
                                 ← Orqaga
                             </Text>
+                            {timer > 0
+                                ? <Text color="#475569" style={{ fontSize: '13px' }}>{timer}s kutish</Text>
+                                : <Text color="#C03F0C" fontWeight="600" style={{ fontSize: '13px', cursor: 'pointer' }}
+                                    onClick={() => { setCode(''); setErr(''); sendCode(); }}>
+                                    Qayta yuborish
+                                </Text>
+                            }
                         </Box>
                     </>
                 )}
             </Box>
         </Box>
     );
+};
 
-    const NAV_ITEMS = [
-        { icon: '👨‍🍳', label: 'Oshpazlar', count: stats.chefs, sub: 'Boshqarish, bloklash', color: '#C03F0C', bg: '#FFF0EC', border: '#F5C5B0', route: '/admin/chefs' },
-        { icon: '👤', label: 'Mijozlar', count: stats.customers, sub: 'Ko\'rish, bloklash', color: '#3B82F6', bg: '#EFF6FF', border: '#BFDBFE', route: '/admin/customers' },
-        { icon: '📋', label: 'Buyurtmalar', count: stats.orders, sub: 'Kim kimga, qancha summa', color: '#7C3AED', bg: '#F5F3FF', border: '#DDD6FE', route: '/admin/orders' },
-        { icon: '💰', label: 'Komissiya', count: fmt(stats.commission), sub: 'Daromad va hisob-kitob', color: '#22C55E', bg: '#F0FFF4', border: '#BBF7D0', route: '/admin/revenue' },
+// ─── STAT CARD ────────────────────────────────────────────────
+const StatCard = ({ icon, label, value, color, bg }) => (
+    <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 2px 10px rgba(0,0,0,0.06)"
+        display="flex" flexDir="column" gap="8px">
+        <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Box w="38px" h="38px" borderRadius="12px" bgColor={bg}
+                display="flex" alignItems="center" justifyContent="center" style={{ fontSize: '18px' }}>
+                {icon}
+            </Box>
+        </Box>
+        <Text fontWeight="800" style={{ fontSize: 'clamp(16px, 4vw, 20px)', color }}>{value}</Text>
+        <Text color="#9B8E8A" style={{ fontSize: '12px' }}>{label}</Text>
+    </Box>
+);
+
+// ─── NAV CARD ─────────────────────────────────────────────────
+const NavCard = ({ icon, label, desc, value, valueColor, valueBg, border, onClick }) => (
+    <Box bgColor="white" borderRadius="18px" px="16px" py="14px"
+        boxShadow="0 2px 10px rgba(0,0,0,0.06)" border={`1.5px solid ${border}`}
+        cursor="pointer" onClick={onClick} display="flex" alignItems="center" gap="14px"
+        _active={{ transform: 'scale(0.98)' }} transition="transform 0.1s">
+        <Box w="48px" h="48px" borderRadius="14px" bgColor={valueBg} flexShrink={0}
+            display="flex" alignItems="center" justifyContent="center" style={{ fontSize: '22px' }}>
+            {icon}
+        </Box>
+        <Box flex="1" minW={0}>
+            <Text fontWeight="800" color="#1C110D" style={{ fontSize: '15px' }}>{label}</Text>
+            <Text color="#9B8E8A" style={{ fontSize: '12px', marginTop: '1px' }}>{desc}</Text>
+        </Box>
+        <Box bgColor={valueBg} borderRadius="10px" px="10px" py="5px" flexShrink={0}>
+            <Text fontWeight="800" style={{ fontSize: '14px', color: valueColor }}>{value}</Text>
+        </Box>
+    </Box>
+);
+
+// ─── DASHBOARD ────────────────────────────────────────────────
+const Dashboard = ({ onLogout }) => {
+    const navigate = useNavigate();
+    const [stats, setStats] = useState({ chefs: 0, blockedChefs: 0, customers: 0, blockedCustomers: 0, orders: 0, revenue: 0, commission: 0 });
+    const [loading, setLoading] = useState(false);
+
+    const loadStats = async () => {
+        setLoading(true);
+        let s = { chefs: 0, blockedChefs: 0, customers: 0, blockedCustomers: 0, orders: 0, revenue: 0, commission: 0 };
+        try {
+            const r = await fetch(`${API}/admin/chefs`);
+            if (r.ok) {
+                const d = await r.json();
+                const list = Array.isArray(d) ? d : [];
+                s.chefs = list.length;
+                s.blockedChefs = list.filter(c => c.isBlocked).length;
+            }
+        } catch { s.chefs = Store.getChefs().length; }
+        try {
+            const r = await fetch(`${API}/customers`);
+            if (r.ok) {
+                const d = await r.json();
+                const list = Array.isArray(d) ? d : [];
+                s.customers = list.length;
+                s.blockedCustomers = list.filter(c => c.isBlocked).length;
+            }
+        } catch { }
+        try {
+            const r = await fetch(`${API}/orders/admin/orders`);
+            if (r.ok) {
+                const d = await r.json();
+                const list = Array.isArray(d) ? d : (d.orders || []);
+                s.orders = list.length;
+                s.revenue = list.reduce((a, o) => a + Number(o.amount || 0), 0);
+                s.commission = list.reduce((a, o) => a + Math.round(Number(o.amount || 0) * 0.1), 0);
+            }
+        } catch { }
+        setStats(s);
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        loadStats();
+        const iv = setInterval(loadStats, 30000);
+        return () => clearInterval(iv);
+    }, []);
+
+    const STATS = [
+        { icon: '👨‍🍳', label: 'Oshpazlar', value: stats.chefs, color: '#C03F0C', bg: '#FFF0EC' },
+        { icon: '👤', label: 'Mijozlar', value: stats.customers, color: '#3B82F6', bg: '#EFF6FF' },
+        { icon: '📋', label: 'Buyurtmalar', value: stats.orders, color: '#7C3AED', bg: '#F5F3FF' },
+        { icon: '💵', label: 'Aylanma', value: fmt(stats.revenue), color: '#22C55E', bg: '#F0FFF4' },
+        { icon: '💰', label: 'Komissiya', value: fmt(stats.commission), color: '#C03F0C', bg: '#FFF0EC' },
+        { icon: '🚫', label: 'Bloklangan', value: stats.blockedChefs + stats.blockedCustomers, color: '#EF4444', bg: '#FEF2F2' },
+    ];
+
+    const NAV = [
+        { icon: '👨‍🍳', label: 'Oshpazlar', desc: `${stats.blockedChefs} ta bloklangan`, value: stats.chefs, valueColor: '#C03F0C', valueBg: '#FFF0EC', border: '#F5C5B0', route: '/admin/chefs' },
+        { icon: '👤', label: 'Mijozlar', desc: `${stats.blockedCustomers} ta bloklangan`, value: stats.customers, valueColor: '#3B82F6', valueBg: '#EFF6FF', border: '#BFDBFE', route: '/admin/customers' },
+        { icon: '📋', label: 'Buyurtmalar', desc: 'Barcha buyurtmalar', value: stats.orders, valueColor: '#7C3AED', valueBg: '#F5F3FF', border: '#DDD6FE', route: '/admin/orders' },
+        { icon: '💰', label: 'Daromad', desc: 'Komissiya hisob-kitob', value: fmt(stats.commission), valueColor: '#22C55E', valueBg: '#F0FFF4', border: '#BBF7D0', route: '/admin/revenue' },
     ];
 
     return (
-        <Box minH="100dvh" bgColor="#FFF5F0">
+        <Box minH="100dvh" bgColor="#F8F4F2">
+            {/* Header */}
             <Box bgColor="white" px="16px" py="14px" boxShadow="0 1px 0 #EBEBEB"
                 display="flex" alignItems="center" justifyContent="space-between">
                 <Box display="flex" alignItems="center" gap="10px">
-                    <Text style={{ fontSize: '22px' }}>🍽️</Text>
+                    <Box w="38px" h="38px" borderRadius="12px" bgColor="#C03F0C"
+                        display="flex" alignItems="center" justifyContent="center">
+                        <FaShieldAlt style={{ fontSize: '16px', color: 'white' }} />
+                    </Box>
                     <Box>
-                        <Text fontWeight="800" color="#1C110D" style={{ fontSize: '20px' }}>Admin Panel</Text>
-                        <Text color="#9B8E8A" style={{ fontSize: '11px' }}>DachaChef boshqaruv markazi</Text>
+                        <Text fontWeight="800" color="#1C110D" style={{ fontSize: '18px', lineHeight: 1.1 }}>Admin Panel</Text>
+                        <Text color="#9B8E8A" style={{ fontSize: '11px' }}>DachaChef boshqaruvi</Text>
                     </Box>
                 </Box>
-                <Box cursor="pointer" bgColor="#FEF2F2" borderRadius="10px" px="10px" py="6px"
-                    border="1.5px solid #FCA5A5"
-                    onClick={() => { sessionStorage.removeItem('adminAuthed'); setAuthed(false); setStep(1); setCode(''); }}>
-                    <Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Chiqish</Text>
+                <Box display="flex" alignItems="center" gap="8px">
+                    <Box cursor="pointer" w="36px" h="36px" borderRadius="10px" bgColor="#F5F3F1"
+                        display="flex" alignItems="center" justifyContent="center"
+                        onClick={loadStats} title="Yangilash">
+                        <FaSync style={{ fontSize: '13px', color: loading ? '#C03F0C' : '#9B8E8A' }} />
+                    </Box>
+                    <Box cursor="pointer" borderRadius="10px" px="12px" py="7px"
+                        bgColor="#FEF2F2" border="1.5px solid #FCA5A5"
+                        display="flex" alignItems="center" gap="6px"
+                        onClick={onLogout}>
+                        <FaSignOutAlt style={{ fontSize: '12px', color: '#EF4444' }} />
+                        <Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Chiqish</Text>
+                    </Box>
                 </Box>
             </Box>
 
-            <Box px="16px" pt="16px" pb="24px">
-                <Text fontWeight="800" color="#1C110D" mb="12px" style={{ fontSize: '16px' }}>📊 Statistika</Text>
-                <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap="10px" mb="24px">
-                    {[
-                        { label: 'Oshpazlar', value: stats.chefs, color: '#C03F0C', icon: '👨‍🍳' },
-                        { label: 'Mijozlar', value: stats.customers, color: '#3B82F6', icon: '👤' },
-                        { label: 'Buyurtmalar', value: stats.orders, color: '#7C3AED', icon: '📋' },
-                        { label: 'Jami aylanma', value: fmt(stats.revenue), color: '#22C55E', icon: '💵' },
-                        { label: 'Bizga komissiya', value: fmt(stats.commission), color: '#C03F0C', icon: '💰' },
-                        { label: 'Bloklangan', value: stats.blocked, color: '#EF4444', icon: '🚫' },
-                    ].map((s, i) => (
-                        <Box key={i} bgColor="white" borderRadius="16px" p="14px"
-                            boxShadow="0 2px 8px rgba(0,0,0,0.06)"
-                            display="flex" alignItems="center" gap="10px">
-                            <Text style={{ fontSize: '22px' }}>{s.icon}</Text>
-                            <Box>
-                                <Text color="#9B614B" style={{ fontSize: '11px' }}>{s.label}</Text>
-                                <Text fontWeight="800" style={{ fontSize: '16px', color: s.color }}>{s.value}</Text>
-                            </Box>
-                        </Box>
+            <Box px="16px" pt="16px" pb="32px">
+                {/* Stats */}
+                <Text fontWeight="800" color="#1C110D" mb="12px" style={{ fontSize: '15px' }}>
+                    📊 Umumiy ko'rsatkichlar
+                </Text>
+                <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="10px" mb="24px">
+                    {STATS.map((s, i) => (
+                        <StatCard key={i} {...s} />
                     ))}
                 </Box>
 
-                <Text fontWeight="800" color="#1C110D" mb="12px" style={{ fontSize: '16px' }}>🗂 Boshqaruv bo'limlari</Text>
+                {/* Navigation */}
+                <Text fontWeight="800" color="#1C110D" mb="12px" style={{ fontSize: '15px' }}>
+                    🗂 Bo'limlar
+                </Text>
                 <Box display="flex" flexDir="column" gap="10px">
-                    {NAV_ITEMS.map((item, i) => (
-                        <Box key={i} bgColor="white" borderRadius="18px" p="16px"
-                            boxShadow="0 2px 10px rgba(0,0,0,0.06)"
-                            border={`1.5px solid ${item.border}`}
-                            cursor="pointer" onClick={() => navigate(item.route)}
-                            display="flex" alignItems="center" gap="14px">
-                            <Box w="50px" h="50px" borderRadius="14px" bgColor={item.bg} flexShrink={0}
-                                display="flex" alignItems="center" justifyContent="center"
-                                style={{ fontSize: '22px' }}>
-                                {item.icon}
-                            </Box>
-                            <Box flex="1" minW={0}>
-                                <Text fontWeight="800" color="#1C110D" style={{ fontSize: '16px' }}>{item.label}</Text>
-                                <Text color="#9B8E8A" style={{ fontSize: '12px' }}>{item.sub}</Text>
-                            </Box>
-                            <Box bgColor={item.bg} borderRadius="12px" px="10px" py="4px" flexShrink={0}>
-                                <Text fontWeight="800" style={{ fontSize: '14px', color: item.color }}>{item.count}</Text>
-                            </Box>
-                        </Box>
+                    {NAV.map((item, i) => (
+                        <NavCard key={i} {...item} onClick={() => navigate(item.route)} />
                     ))}
                 </Box>
             </Box>
         </Box>
     );
 };
+
+// ─── MAIN ─────────────────────────────────────────────────────
+const AdminPage = () => {
+    const [authed, setAuthed] = useState(() => sessionStorage.getItem('adminAuthed') === '1');
+
+    const handleLogout = () => {
+        if (!window.confirm('Chiqishni xohlaysizmi?')) return;
+        sessionStorage.removeItem('adminAuthed');
+        setAuthed(false);
+    };
+
+    if (!authed) return <LoginScreen onSuccess={() => setAuthed(true)} />;
+    return <Dashboard onLogout={handleLogout} />;
+};
+
 export default AdminPage;

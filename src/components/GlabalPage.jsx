@@ -48,13 +48,27 @@ const GlabalPage = () => {
     if (customerData.phone) return Store.startHeartbeat('customer', customerData.phone);
   }, []);
 
-  // Bloklangan mijozni darhol chiqarish
+  // Bloklangan mijozni darhol chiqarish (cache + backend)
   useEffect(() => {
-    if (!customerData.phone) return;
+    const phone = customerData.phone;
+    if (!phone) return;
+    const cacheKey = `blk_customer_${phone}`;
+    const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+    if (cached?.blocked && Date.now() - cached.at < 5 * 60 * 1000) {
+      navigate('/blocked', { replace: true }); return;
+    }
     const API_BASE = import.meta.env?.VITE_API_URL || '';
-    fetch(`${API_BASE}/customers/${customerData.phone}`)
+    fetch(`${API_BASE}/customers/${phone}`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.isBlocked) navigate('/blocked', { replace: true }); })
+      .then(data => {
+        if (!data) return;
+        if (data.isBlocked) {
+          localStorage.setItem(cacheKey, JSON.stringify({ blocked: true, at: Date.now() }));
+          navigate('/blocked', { replace: true });
+        } else {
+          localStorage.removeItem(cacheKey);
+        }
+      })
       .catch(() => { });
   }, []);
 

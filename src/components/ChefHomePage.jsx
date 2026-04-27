@@ -315,13 +315,28 @@ const ChefHomePage = () => {
 
     const refreshNotifs = () => setNotifications(Store.getChefNotifications(myPhone));
 
-    // Bloklangan oshpazni darhol chiqarish
+    // Bloklangan oshpazni darhol chiqarish (cache + backend)
     useEffect(() => {
         if (!myPhone) return;
+        // Avval cache dan tekshir (darhol)
+        const cacheKey = `blk_chef_${myPhone}`;
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+        if (cached?.blocked && Date.now() - cached.at < 5 * 60 * 1000) {
+            navigate('/blocked', { replace: true }); return;
+        }
+        // Keyin backenddan tekshir (yangilash)
         const API_BASE = import.meta.env?.VITE_API_URL || '';
         fetch(`${API_BASE}/chefs/${myPhone}`)
             .then(r => r.ok ? r.json() : null)
-            .then(data => { if (data?.isBlocked) navigate('/blocked', { replace: true }); })
+            .then(data => {
+                if (!data) return;
+                if (data.isBlocked) {
+                    localStorage.setItem(cacheKey, JSON.stringify({ blocked: true, at: Date.now() }));
+                    navigate('/blocked', { replace: true });
+                } else {
+                    localStorage.removeItem(cacheKey);
+                }
+            })
             .catch(() => { });
     }, [myPhone]);
 
