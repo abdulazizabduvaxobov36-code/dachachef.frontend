@@ -5,7 +5,13 @@ import { FaShieldAlt, FaTelegram, FaSignOutAlt, FaSync } from 'react-icons/fa';
 import Store from '../store';
 
 const API = import.meta.env.VITE_API_URL || '';
-const fmt = (n) => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
+const fmt = (n) => {
+    const num = Number(n || 0);
+    if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1) + ' mlrd';
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(1) + ' mln';
+    if (num >= 1_000) return (num / 1_000).toFixed(0) + ' ming';
+    return num.toLocaleString('uz-UZ') + " so'm";
+};
 
 // ─── LOGIN ─────────────────────────────────────────────────────
 const LoginScreen = ({ onSuccess }) => {
@@ -153,16 +159,16 @@ const LoginScreen = ({ onSuccess }) => {
 
 // ─── STAT CARD ────────────────────────────────────────────────
 const StatCard = ({ icon, label, value, color, bg }) => (
-    <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 2px 10px rgba(0,0,0,0.06)"
-        display="flex" flexDir="column" gap="8px">
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-            <Box w="38px" h="38px" borderRadius="12px" bgColor={bg}
-                display="flex" alignItems="center" justifyContent="center" style={{ fontSize: '18px' }}>
-                {icon}
-            </Box>
+    <Box bgColor="white" borderRadius="16px" p="14px" boxShadow="0 2px 10px rgba(0,0,0,0.06)"
+        display="flex" alignItems="center" gap="12px">
+        <Box w="42px" h="42px" borderRadius="12px" bgColor={bg} flexShrink={0}
+            display="flex" alignItems="center" justifyContent="center" style={{ fontSize: '20px' }}>
+            {icon}
         </Box>
-        <Text fontWeight="800" style={{ fontSize: 'clamp(16px, 4vw, 20px)', color }}>{value}</Text>
-        <Text color="#9B8E8A" style={{ fontSize: '12px' }}>{label}</Text>
+        <Box minW={0}>
+            <Text color="#9B8E8A" style={{ fontSize: '11px' }}>{label}</Text>
+            <Text fontWeight="800" style={{ fontSize: '15px', color }} noOfLines={1}>{value}</Text>
+        </Box>
     </Box>
 );
 
@@ -209,6 +215,17 @@ const Dashboard = ({ onLogout }) => {
             if (r.ok) {
                 const d = await r.json();
                 const list = Array.isArray(d) ? d : [];
+                // localStorage dan qo'shimcha mijozlarni sanash
+                const phones = new Set(list.map(c => c.phone));
+                Object.keys(localStorage)
+                    .filter(k => k.startsWith('saved_customer_') || k.startsWith('customerInfo_'))
+                    .forEach(k => {
+                        try {
+                            const v = JSON.parse(localStorage.getItem(k));
+                            const p = v?.phone || v?.data?.phone;
+                            if (p && !phones.has(p)) { phones.add(p); list.push({ phone: p }); }
+                        } catch { }
+                    });
                 s.customers = list.length;
                 s.blockedCustomers = list.filter(c => c.isBlocked).length;
             }
@@ -285,7 +302,7 @@ const Dashboard = ({ onLogout }) => {
                 <Text fontWeight="800" color="#1C110D" mb="12px" style={{ fontSize: '15px' }}>
                     📊 Umumiy ko'rsatkichlar
                 </Text>
-                <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="10px" mb="24px">
+                <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap="10px" mb="24px">
                     {STATS.map((s, i) => (
                         <StatCard key={i} {...s} />
                     ))}
