@@ -99,9 +99,23 @@ const AdminOrdersPage = () => {
         }
     });
 
+    const handleDeleteOrder = async (id) => {
+        if (!window.confirm("Bu buyurtmani o'chirasizmi?")) return;
+        setOrders(prev => prev.filter(o => o._id !== id));
+        try { await fetch(`${API}/orders/${id}`, { method: 'DELETE' }); } catch { }
+    };
+
     const sendWarning = async (chefPhone) => {
-        alert(`Ogohlantirish yuborildi: ${chefPhone}`);
-        // TODO: backend notification endpoint
+        const msg = window.prompt(`${chefPhone} ga ogohlantirish xabari:`);
+        if (!msg?.trim()) return;
+        try {
+            const r = await fetch(`${API}/chefs/${chefPhone}/notify`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg.trim() }),
+            });
+            const d = await r.json();
+            alert(r.ok ? '✅ Xabar yuborildi!' : `❌ ${d.message}`);
+        } catch { alert('❌ Xato'); }
     };
 
     const blockChef = (chefPhone) => {
@@ -129,19 +143,6 @@ const AdminOrdersPage = () => {
                     border="1.5px solid #F5C5B0">
                     <FaSync style={{ color: '#C03F0C', fontSize: '11px' }} />
                     <Text color="#C03F0C" fontWeight="600" style={{ fontSize: '12px' }}>Yangilash</Text>
-                </Box>
-                <Box cursor="pointer" bgColor="#FEF2F2" borderRadius="10px"
-                    px="10px" py="6px" display="flex" alignItems="center" gap="6px"
-                    border="1.5px solid #FCA5A5"
-                    onClick={async () => {
-                        if (!window.confirm(`Barcha ${orders.length} ta buyurtmani o'chirasizmi? Bu qaytarib bo'lmaydi!`)) return;
-                        try {
-                            await fetch(`${API}/orders/admin/clear-all`, { method: 'DELETE' });
-                            setOrders([]);
-                        } catch { alert('Xato yuz berdi'); }
-                    }}>
-                    <FaTrash style={{ color: '#EF4444', fontSize: '11px' }} />
-                    <Text color="#EF4444" fontWeight="600" style={{ fontSize: '12px' }}>Tozalash</Text>
                 </Box>
             </Box>
 
@@ -280,6 +281,16 @@ const AdminOrdersPage = () => {
                                     <Text color="#6B6560" style={{ fontSize: '12px' }}>{o.note}</Text>
                                 </Box>
                             )}
+
+                            <Box display="flex" justifyContent="flex-end" mt="8px">
+                                <Box cursor="pointer" display="flex" alignItems="center" gap="5px"
+                                    bgColor="#FEF2F2" borderRadius="8px" px="10px" py="6px"
+                                    border="1px solid #FCA5A5"
+                                    onClick={() => handleDeleteOrder(o._id)}>
+                                    <FaTrash style={{ fontSize: '10px', color: '#EF4444' }} />
+                                    <Text color="#EF4444" fontWeight="700" style={{ fontSize: '11px' }}>O'chirish</Text>
+                                </Box>
+                            </Box>
                         </Box>
                     );
                 })}

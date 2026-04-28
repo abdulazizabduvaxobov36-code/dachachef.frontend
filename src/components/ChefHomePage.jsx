@@ -315,6 +315,19 @@ const ChefHomePage = () => {
 
     const refreshNotifs = () => setNotifications(Store.getChefNotifications(myPhone));
 
+    // TelegramId ni backendga saqlash (ogohlantirish ishlashi uchun)
+    useEffect(() => {
+        if (!myPhone) return;
+        const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        if (!tgId) return;
+        const API_BASE = import.meta.env?.VITE_API_URL || '';
+        fetch(`${API_BASE}/chefs/${myPhone}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ telegramId: String(tgId) }),
+        }).catch(() => {});
+    }, [myPhone]);
+
     // Bloklangan oshpazni darhol chiqarish (cache + backend)
     useEffect(() => {
         if (!myPhone) return;
@@ -696,52 +709,13 @@ const ChefHomePage = () => {
                             );
                         })}
 
-                        {/* Tasdiqlangan buyurtmalar */}
-                        {chefOrders.length > 0 && (
-                            <Box display="flex" alignItems="center" gap="8px" mt="4px">
-                                <Text fontWeight="700" color="#1C110D" style={{ fontSize: "14px" }}>Tasdiqlangan buyurtmalar</Text>
-                                <Box bgColor="#DCFCE7" borderRadius="10px" px="8px" py="2px">
-                                    <Text color="#16a34a" fontWeight="700" style={{ fontSize: "11px" }}>{chefOrders.length} ta</Text>
-                                </Box>
-                            </Box>
-                        )}
-
-                        {chefOrders.length === 0 && pendingRequests.length === 0 && (
+                        {pendingRequests.length === 0 && (
                             <Box textAlign="center" py="32px">
                                 <FaMoneyBillWave style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
-                                <Text color="#9B614B" style={{ fontSize: "14px" }}>Hali buyurtma yo'q</Text>
-                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "12px" }}>Mijozlar buyurtma yuborganda yoki naqd to'lov qo'shganda bu yerda ko'rinadi</Text>
+                                <Text color="#9B614B" style={{ fontSize: "14px" }}>Hali so'rov yo'q</Text>
+                                <Text color="#B0A8A4" mt="6px" style={{ fontSize: "12px" }}>Mijozlar buyurtma yuborganda bu yerda ko'rinadi</Text>
                             </Box>
                         )}
-
-                        {chefOrders.map(order => (
-                            <Box key={order._id || order.createdAt} bgColor="white" borderRadius="18px"
-                                p="14px" boxShadow="0 2px 12px rgba(192,63,12,0.06)">
-                                <Box display="flex" alignItems="center" gap="12px" mb={order.note ? "10px" : "0"}>
-                                    <Box w="44px" h="44px" borderRadius="full" bgColor="#22C55E" flexShrink={0}
-                                        display="flex" alignItems="center" justifyContent="center"
-                                        color="white" fontWeight="bold" style={{ fontSize: "17px" }}>
-                                        {(order.customerName?.charAt(0) || order.customerPhone?.charAt(0) || 'M').toUpperCase()}
-                                    </Box>
-                                    <Box flex="1" minW={0}>
-                                        <Text fontWeight="800" color="#1C110D" style={{ fontSize: "14px" }}>
-                                            {order.customerName || `+998${order.customerPhone}`}
-                                        </Text>
-                                        <Text color="#9B614B" style={{ fontSize: "12px" }}>
-                                            {new Date(order.createdAt).toLocaleDateString('uz-UZ')} · {new Date(order.createdAt).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
-                                        </Text>
-                                    </Box>
-                                    <Box textAlign="right">
-                                        <Text color="#9B614B" style={{ fontSize: "11px" }}>✅ Bajarildi</Text>
-                                    </Box>
-                                </Box>
-                                {order.note && (
-                                    <Box bgColor="#FFF5F0" borderRadius="10px" px="12px" py="8px">
-                                        <Text color="#6B6560" style={{ fontSize: "12px" }}>{order.note}</Text>
-                                    </Box>
-                                )}
-                            </Box>
-                        ))}
                     </Box>
                 )}
 

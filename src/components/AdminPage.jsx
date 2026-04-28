@@ -197,6 +197,7 @@ const Dashboard = ({ onLogout }) => {
     const navigate = useNavigate();
     const [stats, setStats] = useState({ chefs: 0, blockedChefs: 0, customers: 0, blockedCustomers: 0, orders: 0, revenue: 0, commission: 0 });
     const [loading, setLoading] = useState(false);
+    const [activity, setActivity] = useState([]);
 
     const loadStats = async () => {
         setLoading(true);
@@ -238,6 +239,34 @@ const Dashboard = ({ onLogout }) => {
                 s.orders = list.length;
                 s.revenue = list.reduce((a, o) => a + Number(o.amount || 0), 0);
                 s.commission = list.reduce((a, o) => a + Math.round(Number(o.amount || 0) * 0.1), 0);
+                // So'nggi faoliyat uchun buyurtmalar
+                const recentOrders = [...list]
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .slice(0, 5)
+                    .map(o => ({
+                        id: o._id,
+                        icon: o.source === 'customer' ? '👤' : '👨‍🍳',
+                        text: `${o.customerName || o.customerPhone} → ${o.chefName || o.chefPhone}`,
+                        sub: `${Number(o.amount || 0).toLocaleString('uz-UZ')} so'm`,
+                        time: o.createdAt,
+                        color: '#7C3AED',
+                    }));
+                const recentChefs = await fetch(`${API}/admin/chefs`).then(r => r.ok ? r.json() : []).catch(() => []);
+                const chefEvents = [...(Array.isArray(recentChefs) ? recentChefs : [])]
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .slice(0, 3)
+                    .map(c => ({
+                        id: c._id,
+                        icon: '👨‍🍳',
+                        text: `${c.name} ${c.surname} ro'yxatdan o'tdi`,
+                        sub: `+998${c.phone}`,
+                        time: c.createdAt,
+                        color: '#C03F0C',
+                    }));
+                const merged = [...recentOrders, ...chefEvents]
+                    .sort((a, b) => new Date(b.time) - new Date(a.time))
+                    .slice(0, 7);
+                setActivity(merged);
             }
         } catch { }
         setStats(s);
@@ -312,9 +341,39 @@ const Dashboard = ({ onLogout }) => {
                 <Text fontWeight="800" color="#1C110D" mb="12px" style={{ fontSize: '15px' }}>
                     🗂 Bo'limlar
                 </Text>
-                <Box display="flex" flexDir="column" gap="10px">
+                <Box display="flex" flexDir="column" gap="10px" mb="24px">
                     {NAV.map((item, i) => (
                         <NavCard key={i} {...item} onClick={() => navigate(item.route)} />
+                    ))}
+                </Box>
+
+                {/* Activity feed */}
+                <Text fontWeight="800" color="#1C110D" mb="12px" style={{ fontSize: '15px' }}>
+                    🕐 So'nggi faoliyat
+                </Text>
+                <Box bgColor="white" borderRadius="18px" boxShadow="0 2px 10px rgba(0,0,0,0.06)" overflow="hidden">
+                    {activity.length === 0 ? (
+                        <Box p="20px" textAlign="center">
+                            <Text color="#B0A8A4" style={{ fontSize: '13px' }}>Hali faoliyat yo'q</Text>
+                        </Box>
+                    ) : activity.map((a, i) => (
+                        <Box key={a.id || i} px="16px" py="12px"
+                            borderBottom={i < activity.length - 1 ? '1px solid #F5F0ED' : 'none'}
+                            display="flex" alignItems="center" gap="12px">
+                            <Box w="36px" h="36px" borderRadius="10px" flexShrink={0}
+                                bgColor="#F8F4F2" display="flex" alignItems="center"
+                                justifyContent="center" style={{ fontSize: '16px' }}>
+                                {a.icon}
+                            </Box>
+                            <Box flex="1" minW={0}>
+                                <Text fontWeight="700" color="#1C110D" style={{ fontSize: '12px' }}
+                                    noOfLines={1}>{a.text}</Text>
+                                <Text color="#9B8E8A" style={{ fontSize: '11px' }}>{a.sub}</Text>
+                            </Box>
+                            <Text color="#B0A8A4" style={{ fontSize: '10px', flexShrink: 0 }}>
+                                {a.time ? new Date(a.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}
+                            </Text>
+                        </Box>
                     ))}
                 </Box>
             </Box>

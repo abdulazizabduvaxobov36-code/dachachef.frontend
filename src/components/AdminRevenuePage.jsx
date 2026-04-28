@@ -62,28 +62,28 @@ const AdminRevenuePage = () => {
             {loading && <Box textAlign="center" py="20px"><Text color="#9B8E8A" style={{ fontSize: '13px' }}>Yuklanmoqda...</Text></Box>}
 
             <Box px="16px" pt="12px" pb="24px" display="flex" flexDir="column" gap="12px">
-                {commissionData ? (
+                {(commissionData || orders.length > 0) ? (
                     <>
-                        {/* Grand total */}
+                        {/* Grand total — har doim orders dan hisoblanadi */}
                         <Box bgColor="#C03F0C" borderRadius="16px" px="20px" py="16px"
                             display="flex" justifyContent="space-between" alignItems="center">
                             <Box>
                                 <Text color="rgba(255,255,255,0.85)" style={{ fontSize: '13px' }}>Jami komissiya (barcha oshpazlar)</Text>
-                                <Text color="white" fontWeight="800" style={{ fontSize: '26px' }}>{fmt(commissionData.grandTotalCommission)}</Text>
+                                <Text color="white" fontWeight="800" style={{ fontSize: '26px' }}>{fmt(totalCommission)}</Text>
                             </Box>
                             <Box textAlign="right">
                                 <Text color="rgba(255,255,255,0.75)" style={{ fontSize: '12px' }}>Komissiya foizi</Text>
-                                <Text color="white" fontWeight="800" style={{ fontSize: '22px' }}>{commissionData.commissionRate}</Text>
+                                <Text color="white" fontWeight="800" style={{ fontSize: '22px' }}>10%</Text>
                             </Box>
                         </Box>
 
                         {/* Summary grid */}
                         <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap="10px">
                             {[
-                                { label: 'Jami oshpazlar', value: commissionData.chefs?.length || 0, color: '#1C110D' },
-                                { label: 'Jami buyurtmalar', value: commissionData.chefs?.reduce((s, c) => s + c.ordersCount, 0) || 0, color: '#1C110D' },
-                                { label: 'Jami aylanma', value: fmt(commissionData.chefs?.reduce((s, c) => s + c.totalEarned, 0) || 0), color: '#22C55E' },
-                                { label: 'Bizga tushadi', value: fmt(commissionData.grandTotalCommission), color: '#C03F0C' },
+                                { label: 'Jami oshpazlar', value: commissionData?.chefs?.length || 0, color: '#1C110D' },
+                                { label: 'Jami buyurtmalar', value: orders.length, color: '#1C110D' },
+                                { label: 'Jami aylanma', value: fmt(totalRevenue), color: '#22C55E' },
+                                { label: 'Bizga tushadi', value: fmt(totalCommission), color: '#C03F0C' },
                             ].map((s, i) => (
                                 <Box key={i} bgColor="white" borderRadius="14px" p="14px"
                                     boxShadow="0 2px 8px rgba(0,0,0,0.06)">
