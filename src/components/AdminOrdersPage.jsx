@@ -1,7 +1,7 @@
 import { Box, Text } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaSync, FaExclamationTriangle } from 'react-icons/fa';
+import { FaArrowLeft, FaSync, FaExclamationTriangle, FaTrash } from 'react-icons/fa';
 
 const API = import.meta.env.VITE_API_URL || '';
 const fmt = (n) => Number(n || 0).toLocaleString('uz-UZ') + " so'm";
@@ -129,6 +129,19 @@ const AdminOrdersPage = () => {
                     border="1.5px solid #F5C5B0">
                     <FaSync style={{ color: '#C03F0C', fontSize: '11px' }} />
                     <Text color="#C03F0C" fontWeight="600" style={{ fontSize: '12px' }}>Yangilash</Text>
+                </Box>
+                <Box cursor="pointer" bgColor="#FEF2F2" borderRadius="10px"
+                    px="10px" py="6px" display="flex" alignItems="center" gap="6px"
+                    border="1.5px solid #FCA5A5"
+                    onClick={async () => {
+                        if (!window.confirm(`Barcha ${orders.length} ta buyurtmani o'chirasizmi? Bu qaytarib bo'lmaydi!`)) return;
+                        try {
+                            await fetch(`${API}/orders/admin/clear-all`, { method: 'DELETE' });
+                            setOrders([]);
+                        } catch { alert('Xato yuz berdi'); }
+                    }}>
+                    <FaTrash style={{ color: '#EF4444', fontSize: '11px' }} />
+                    <Text color="#EF4444" fontWeight="600" style={{ fontSize: '12px' }}>Tozalash</Text>
                 </Box>
             </Box>
 

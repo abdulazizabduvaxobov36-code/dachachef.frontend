@@ -1,7 +1,7 @@
 import { Box, Text } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaSync } from 'react-icons/fa';
+import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaSync, FaBell } from 'react-icons/fa';
 import Store from '../store';
 
 const API = import.meta.env.VITE_API_URL || '';
@@ -51,6 +51,23 @@ const AdminChefsPage = () => {
             }
         } catch {
             alert('Xato yuz berdi. Internet aloqasini tekshiring.');
+        }
+    };
+
+    const notifyChef = async (chef) => {
+        const msg = window.prompt(`${chef.name} ${chef.surname} ga ogohlantirish xabari yozing:`);
+        if (!msg?.trim()) return;
+        try {
+            const r = await fetch(`${API}/chefs/${chef.phone}/notify`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: msg.trim() }),
+            });
+            const d = await r.json();
+            if (r.ok) alert('✅ Xabar yuborildi!');
+            else alert(`❌ ${d.message}`);
+        } catch {
+            alert('❌ Xato yuz berdi');
         }
     };
 
@@ -176,7 +193,7 @@ const AdminChefsPage = () => {
                                 </Text>
                             </Box>
                         </Box>
-                        <Box display="flex" gap="8px">
+                        <Box display="flex" gap="8px" mb="8px">
                             <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
                                 bgColor={chef.isBlocked ? '#ECFDF5' : '#FEF2F2'}
                                 display="flex" alignItems="center" justifyContent="center" gap="6px"
@@ -192,6 +209,15 @@ const AdminChefsPage = () => {
                                 <FaTrash style={{ fontSize: '11px', color: '#C03F0C' }} />
                                 <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '12px' }}>O'chirish</Text>
                             </Box>
+                        </Box>
+                        <Box cursor="pointer" borderRadius="10px" py="8px"
+                            bgColor="#FFFBEB" border="1px solid #FDE68A"
+                            display="flex" alignItems="center" justifyContent="center" gap="6px"
+                            onClick={() => notifyChef(chef)}>
+                            <FaBell style={{ fontSize: '11px', color: '#D97706' }} />
+                            <Text color="#D97706" fontWeight="700" style={{ fontSize: '12px' }}>
+                                Ogohlantirish yuborish
+                            </Text>
                         </Box>
                     </Box>
                 ))}
