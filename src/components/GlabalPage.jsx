@@ -22,13 +22,7 @@ const GlabalPage = () => {
   const customerData = getCD();
   const myPhone = customerData.phone || 'guest';
 
-  const [chefs, setChefs] = useState(() => {
-    const initialChefs = Store.getChefs();
-    console.log('GlabalPage initial chefs:', initialChefs.length);
-    console.log('GlabalPage initial chefs data:', initialChefs);
-    console.log('GlabalPage initial localStorage:', localStorage.getItem('registeredChefs'));
-    return initialChefs;
-  });
+  const [chefs, setChefs] = useState(() => Store.getChefs());
   const [search, setSearch] = useState('');
   const [liked, setLiked] = useState(() => JSON.parse(localStorage.getItem('likedChefs') || '[]'));
   const [animIdx, setAnimIdx] = useState(null);
@@ -37,15 +31,35 @@ const GlabalPage = () => {
 
   const refreshAll = () => {
     const latest = Store.getChefs();
-    console.log('GlabalPage refreshAll - chefs updated:', latest.length);
-    console.log('GlabalPage refreshAll - chefs data:', latest);
-    console.log('GlabalPage refreshAll - localStorage chefs:', localStorage.getItem('registeredChefs'));
     setChefs([...latest]);
     setNotifs(Store.getCustomerNotifications(myPhone, latest));
   };
 
   useEffect(() => {
     if (customerData.phone) return Store.startHeartbeat('customer', customerData.phone);
+  }, []);
+
+  // Backend dan oshpazlarni yuklash — turli qurilmalardagi mijozlar ko'ra olsin
+  useEffect(() => {
+    const API_BASE = import.meta.env?.VITE_API_URL || '';
+    fetch(`${API_BASE}/chefs`)
+      .then(r => r.ok ? r.json() : [])
+      .then(backendChefs => {
+        if (!Array.isArray(backendChefs) || backendChefs.length === 0) return;
+        const local = JSON.parse(localStorage.getItem('registeredChefs') || '[]');
+        let changed = false;
+        backendChefs.forEach(sc => {
+          if (!sc.phone || !sc.name) return;
+          const i = local.findIndex(c => c.phone === sc.phone);
+          if (i < 0) { local.push(sc); changed = true; }
+          else { local[i] = { ...local[i], ...sc }; changed = true; }
+        });
+        if (changed) {
+          localStorage.setItem('registeredChefs', JSON.stringify(local));
+          setChefs(local.filter(c => c.phone && c.name));
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Bloklangan mijozni darhol chiqarish (cache + backend)

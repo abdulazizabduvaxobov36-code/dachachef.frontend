@@ -53,18 +53,13 @@ export const Store = {
   },
 
   addChef: async (chef) => {
-    console.log('Store.addChef - Input chef:', chef);
     const c = { ...chef, registeredAt: chef.registeredAt || Date.now() };
     const all = Store.getChefs();
-    console.log('Store.addChef - Current chefs:', all);
     const i = all.findIndex(x => x.phone === c.phone);
     if (i >= 0) all[i] = c; else all.push(c);
-    console.log('Store.addChef - Updated chefs:', all);
     local.set('registeredChefs', all);
-    console.log('Store.addChef - Saved to localStorage, checking:', localStorage.getItem('registeredChefs'));
     window.dispatchEvent(new Event('chefs-updated'));
     broadcast('chefs-updated');
-    api.post('/chefs', c);          // server sync (fon)
     return c;
   },
 

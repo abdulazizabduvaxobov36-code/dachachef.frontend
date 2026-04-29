@@ -50,26 +50,20 @@ const Chef = () => {
         return;
       }
       const d = { name, surname, phone, exp, image, bio, id: Date.now() };
-      console.log('Chef.jsx - Creating chef:', d);
       localStorage.setItem("chefProfile", JSON.stringify(d));
-      // Eski saved_chef_* kalitlarini tozalash — bir xil qurilmada eski cardlar qolmasin
       Object.keys(localStorage)
         .filter(k => k.startsWith('saved_chef_') && !k.endsWith(`_${phone}`))
         .forEach(k => localStorage.removeItem(k));
       Store.setSession("chef", d);
       Store.startHeartbeat("chef", phone);
-      console.log('Chef.jsx - Calling Store.addChef with:', d);
       await Store.addChef(d);
-      console.log('Chef.jsx - After Store.addChef, localStorage registeredChefs:', localStorage.getItem('registeredChefs'));
-      // Backend ga ham saqlash
-      try {
-        const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-        await fetch(`${AUTH_BASE}/chefs`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, surname, phone, exp, image, bio }),
-        });
-      } catch { }
+      // Backend ga ham saqlash — kutmasdan, fon rejimida
+      const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
+      fetch(`${AUTH_BASE}/chefs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, surname, phone, exp, image, bio }),
+      }).catch(() => {});
       navigate("/chef-home");
     }
   };
