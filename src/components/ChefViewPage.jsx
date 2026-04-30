@@ -178,6 +178,18 @@ const ChefViewPage = () => {
         setReviewSuccess(true);
         setTimeout(() => closeModal(), 1400);
 
+        // Oshpazga Telegram bildirish
+        fetch(`${API}/notify/chef-event`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chefPhone: chef.phone,
+                type: 'review',
+                fromName: customerName || customerPhone,
+                extra: { rating, comment: comment.trim() },
+            }),
+        }).catch(() => {});
+
         // Backend ga yuborishga harakat
         try {
             const res = await fetch(`${API}/reviews`, {
@@ -246,13 +258,23 @@ const ChefViewPage = () => {
         });
 
         // Backend ga yuborish (fire-and-forget)
-        try {
-            await fetch(`${API}/orders`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(orderData),
-            });
-        } catch { /* offline — localStorage da saqlanib qoldi */ }
+        fetch(`${API}/orders`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData),
+        }).catch(() => {});
+
+        // Oshpazga Telegram bildirish
+        fetch(`${API}/notify/chef-event`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chefPhone: chef.phone,
+                type: 'order',
+                fromName: customerName || customerPhone,
+                extra: { amount, note: orderNote.trim() },
+            }),
+        }).catch(() => {});
 
         setTimeout(() => {
             setShowOrderModal(false);

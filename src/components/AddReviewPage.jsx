@@ -42,6 +42,17 @@ const AddReviewPage = () => {
                 }),
             });
             if (res.ok) {
+                // Oshpazga Telegram bildirish
+                fetch(`${API}/notify/chef-event`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chefPhone,
+                        type: 'review',
+                        fromName: customerName || customerPhone,
+                        extra: { rating: isRating ? rating : 0, comment: comment.trim() },
+                    }),
+                }).catch(() => {});
                 setSuccess(true);
                 setTimeout(() => navigate(-1), 1500);
             } else {

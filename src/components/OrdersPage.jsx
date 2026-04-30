@@ -198,6 +198,18 @@ const OrdersPage = () => {
     setMessages(prev => ({ ...prev, [selectedChat.id]: Store.getMessages(selectedChat.id) }));
     setMessage('');
     setChats(getChats());
+    // Oshpaz offline bo'lsa — Telegram orqali xabardor qilish
+    if (!Store.isOnline('chef', selectedChat.chefPhone)) {
+      const API_BASE = import.meta.env?.VITE_API_URL || '';
+      const name = customerData.firstName
+        ? `${customerData.firstName} ${customerData.lastName || ''}`.trim()
+        : (customerData.name || myPhone);
+      fetch(`${API_BASE}/notify/chef-event`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chefPhone: selectedChat.chefPhone, type: 'message', fromName: name }),
+      }).catch(() => {});
+    }
   };
 
   const handleTyping = val => {

@@ -1,5 +1,5 @@
 import { Box, Text } from '@chakra-ui/react';
-import { FaArrowLeft, FaHeart, FaStar, FaUtensils } from 'react-icons/fa';
+import { FaArrowLeft, FaHeart, FaStar } from 'react-icons/fa';
 import { FiSearch } from 'react-icons/fi';
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ const ChefsPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [chefs, setChefs] = useState(() => Store.getChefs());
+  const [ratings, setRatings] = useState({});
   const [liked, setLiked] = useState(() => JSON.parse(localStorage.getItem('likedChefs') || '[]'));
   const [search, setSearch] = useState('');
   const [animKey, setAnimKey] = useState(null);
@@ -50,6 +51,22 @@ const ChefsPage = () => {
     };
   }, []);
 
+  // Baholari
+  useEffect(() => {
+    if (chefs.length === 0) return;
+    Promise.allSettled(
+      chefs.map(c =>
+        fetch(`${API_BASE}/reviews/${c.phone}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(d => ({ phone: c.phone, avg: d?.avgRating || 0 }))
+      )
+    ).then(results => {
+      const map = {};
+      results.forEach(r => { if (r.status === 'fulfilled' && r.value) map[r.value.phone] = r.value.avg; });
+      setRatings(map);
+    }).catch(() => {});
+  }, [chefs.length]);
+
   const toggleLike = (phone, e) => {
     e.stopPropagation();
     const upd = liked.includes(phone) ? liked.filter(p => p !== phone) : [...liked, phone];
@@ -67,7 +84,7 @@ const ChefsPage = () => {
     <Box bgColor="#FFF5F0" minH="100dvh" pb="32px">
       {/* Header */}
       <Box bgColor="#C03F0C" px="16px" pt="14px" pb="20px">
-        <Box display="flex" alignItems="center" gap="12px" mb="16px">
+        <Box display="flex" alignItems="center" gap="12px">
           <Box w="36px" h="36px" bgColor="rgba(255,255,255,0.18)" borderRadius="full"
             display="flex" alignItems="center" justifyContent="center"
             cursor="pointer" onClick={() => navigate('/glabal')} flexShrink={0}>
@@ -76,20 +93,6 @@ const ChefsPage = () => {
           <Text fontWeight="800" color="white" style={{ fontSize: '18px' }}>
             {t('chefsPage.title') || 'Barcha oshpazlar'}
           </Text>
-        </Box>
-        <Box display="flex" alignItems="center" gap="10px">
-          <Box bgColor="rgba(255,255,255,0.15)" borderRadius="12px" px="14px" py="8px"
-            display="flex" alignItems="center" gap="8px">
-            <FaUtensils style={{ color: 'white', fontSize: '13px' }} />
-            <Text color="white" fontWeight="700" style={{ fontSize: '13px' }}>
-              {chefs.length} oshpaz
-            </Text>
-          </Box>
-          <Box bgColor="rgba(255,255,255,0.15)" borderRadius="12px" px="14px" py="8px">
-            <Text color="white" fontWeight="700" style={{ fontSize: '13px' }}>
-              {chefs.filter(c => Store.isOnline('chef', c.phone)).length} online
-            </Text>
-          </Box>
         </Box>
       </Box>
 
@@ -163,8 +166,16 @@ const ChefsPage = () => {
                     </Box>
                   </Box>
                   <Box display="flex" alignItems="center" gap="3px" mt="4px">
-                    <FaStar color="#F4B400" style={{ fontSize: '11px' }} />
-                    <Text color="#9B8E8A" fontWeight="600" style={{ fontSize: '11px' }}>5.0</Text>
+                    {ratings[chef.phone] > 0 ? (
+                      <>
+                        <FaStar color="#F4B400" style={{ fontSize: '11px' }} />
+                        <Text color="#9B8E8A" fontWeight="600" style={{ fontSize: '11px' }}>{ratings[chef.phone]}</Text>
+                      </>
+                    ) : (
+                      <Box bgColor="#F0FFF4" borderRadius="6px" px="5px" py="1px">
+                        <Text color="#22C55E" fontWeight="700" style={{ fontSize: '9px' }}>YANGI</Text>
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 

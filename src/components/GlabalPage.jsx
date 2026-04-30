@@ -23,6 +23,7 @@ const GlabalPage = () => {
   const myPhone = customerData.phone || 'guest';
 
   const [chefs, setChefs] = useState(() => Store.getChefs());
+  const [ratings, setRatings] = useState({});
   const [search, setSearch] = useState('');
   const [liked, setLiked] = useState(() => JSON.parse(localStorage.getItem('likedChefs') || '[]'));
   const [animIdx, setAnimIdx] = useState(null);
@@ -61,6 +62,23 @@ const GlabalPage = () => {
       })
       .catch(() => {});
   }, []);
+
+  // Oshpazlar baholari
+  useEffect(() => {
+    if (chefs.length === 0) return;
+    const API_BASE = import.meta.env?.VITE_API_URL || '';
+    Promise.allSettled(
+      chefs.map(c =>
+        fetch(`${API_BASE}/reviews/${c.phone}`)
+          .then(r => r.ok ? r.json() : null)
+          .then(d => ({ phone: c.phone, avg: d?.avgRating || 0 }))
+      )
+    ).then(results => {
+      const map = {};
+      results.forEach(r => { if (r.status === 'fulfilled' && r.value) map[r.value.phone] = r.value.avg; });
+      setRatings(map);
+    }).catch(() => {});
+  }, [chefs.length]);
 
   // Bloklangan mijozni darhol chiqarish (cache + backend)
   useEffect(() => {
@@ -300,8 +318,16 @@ const GlabalPage = () => {
                     </Box>
                     <Text color="#C03F0C" fontWeight="600" style={{ fontSize: '12px' }}>{chef.exp} {t('common.experience')}</Text>
                     <Box display="flex" alignItems="center" gap="3px" mt="2px">
-                      <FaStar color="#F4B400" style={{ fontSize: '11px' }} />
-                      <Text color="#9B8E8A" style={{ fontSize: '11px' }}>5.0</Text>
+                      {ratings[chef.phone] > 0 ? (
+                        <>
+                          <FaStar color="#F4B400" style={{ fontSize: '11px' }} />
+                          <Text color="#9B8E8A" style={{ fontSize: '11px' }}>{ratings[chef.phone]}</Text>
+                        </>
+                      ) : (
+                        <Box bgColor="#F0FFF4" borderRadius="6px" px="5px" py="1px">
+                          <Text color="#22C55E" fontWeight="700" style={{ fontSize: '9px' }}>YANGI</Text>
+                        </Box>
+                      )}
                     </Box>
                   </Box>
                   <Box onClick={e => { e.stopPropagation(); toggleLike(chef.phone, realIdx); }}
