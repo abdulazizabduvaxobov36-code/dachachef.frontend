@@ -166,16 +166,10 @@ const ChefsPage = () => {
                     </Box>
                   </Box>
                   <Box display="flex" alignItems="center" gap="3px" mt="4px">
-                    {ratings[chef.phone] > 0 ? (
-                      <>
-                        <FaStar color="#F4B400" style={{ fontSize: '11px' }} />
-                        <Text color="#9B8E8A" fontWeight="600" style={{ fontSize: '11px' }}>{ratings[chef.phone]}</Text>
-                      </>
-                    ) : (
-                      <Box bgColor="#F0FFF4" borderRadius="6px" px="5px" py="1px">
-                        <Text color="#22C55E" fontWeight="700" style={{ fontSize: '9px' }}>YANGI</Text>
-                      </Box>
-                    )}
+                    <FaStar color="#F4B400" style={{ fontSize: '11px' }} />
+                    <Text color="#9B8E8A" fontWeight="600" style={{ fontSize: '11px' }}>
+                      {ratings[chef.phone] > 0 ? ratings[chef.phone] : '5.0'}
+                    </Text>
                   </Box>
                 </Box>
 
