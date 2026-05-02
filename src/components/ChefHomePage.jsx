@@ -419,13 +419,21 @@ const ChefHomePage = () => {
         setPublishLoading(true);
         setPostError("");
         try {
-            await Store.addPost({
+            const postData = {
                 chefPhone: chefProfile.phone || myPhone,
                 chefName: `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim(),
                 chefImage: chefProfile.image || null,
                 image: postImg,
                 dishName: postName.trim(),
-            });
+            };
+            await Store.addPost(postData);
+            // Backend ga ham saqlash — boshqa qurilmalarda ko'rinsin
+            const API_BASE = import.meta.env?.VITE_API_URL || '';
+            fetch(`${API_BASE}/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postData),
+            }).catch(() => {});
             setShowPostModal(false);
             setPostImg(null); setPostImgPreview(null); setPostName("");
         } catch (e) {
@@ -807,7 +815,11 @@ const ChefHomePage = () => {
                                     <Box position="absolute" top="6px" right="6px" w="22px" h="22px"
                                         bgColor="rgba(0,0,0,0.5)" borderRadius="full"
                                         display="flex" alignItems="center" justifyContent="center"
-                                        cursor="pointer" onClick={() => Store.deletePost(p.id)}>
+                                        cursor="pointer" onClick={() => {
+                                            Store.deletePost(p.id);
+                                            const API_BASE = import.meta.env?.VITE_API_URL || '';
+                                            fetch(`${API_BASE}/posts/${p.id}`, { method: 'DELETE' }).catch(() => {});
+                                        }}>
                                         <FaTimes style={{ fontSize: "9px", color: "white" }} />
                                     </Box>
                                 </Box>

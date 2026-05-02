@@ -58,6 +58,24 @@ const ChefViewPage = () => {
         if (!chef?.phone) return;
         setChefPosts(Store.getPosts().filter(p => p.chefPhone === chef.phone));
         const unsub = Store.listenPosts(all => setChefPosts(all.filter(p => p.chefPhone === chef.phone)));
+        // Backend dan ham yuklaymiz — boshqa qurilmadan qo'shilgan postlar
+        fetch(`${API}/posts/chef/${chef.phone}`)
+            .then(r => r.ok ? r.json() : [])
+            .then(backendPosts => {
+                if (!Array.isArray(backendPosts) || backendPosts.length === 0) return;
+                const local = Store.getPosts();
+                const localIds = new Set(local.map(p => p.id || p._id));
+                let changed = false;
+                backendPosts.forEach(bp => {
+                    const id = bp._id || bp.id;
+                    if (!localIds.has(id)) { local.push({ ...bp, id }); changed = true; }
+                });
+                if (changed) {
+                    localStorage.setItem('chefPosts', JSON.stringify(local));
+                    setChefPosts(local.filter(p => p.chefPhone === chef.phone));
+                }
+            })
+            .catch(() => {});
         return () => unsub?.();
     }, [chef?.phone]);
 

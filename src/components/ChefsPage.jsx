@@ -20,23 +20,22 @@ const ChefsPage = () => {
   const refresh = () => setChefs([...Store.getChefs()]);
 
   useEffect(() => {
-    // Backend dan oshpazlarni yuklash
+    // Backend dan oshpazlarni yuklash — o'chirilganlar ham localdan o'chadi
     fetch(`${API_BASE}/chefs`)
-      .then(r => r.ok ? r.json() : [])
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(backendChefs => {
-        if (!Array.isArray(backendChefs) || backendChefs.length === 0) return;
+        if (!Array.isArray(backendChefs)) return;
         const local = JSON.parse(localStorage.getItem('registeredChefs') || '[]');
-        let changed = false;
+        const backendPhones = new Set(backendChefs.map(c => c.phone).filter(Boolean));
+        let synced = local.filter(c => backendPhones.has(c.phone));
         backendChefs.forEach(sc => {
           if (!sc.phone || !sc.name) return;
-          const i = local.findIndex(c => c.phone === sc.phone);
-          if (i < 0) { local.push(sc); changed = true; }
-          else { local[i] = { ...local[i], ...sc }; changed = true; }
+          const i = synced.findIndex(c => c.phone === sc.phone);
+          if (i < 0) synced.push(sc);
+          else synced[i] = { ...synced[i], ...sc };
         });
-        if (changed) {
-          localStorage.setItem('registeredChefs', JSON.stringify(local));
-          setChefs(local.filter(c => c.phone && c.name));
-        }
+        localStorage.setItem('registeredChefs', JSON.stringify(synced));
+        setChefs(synced.filter(c => c.phone && c.name));
       })
       .catch(() => {});
 

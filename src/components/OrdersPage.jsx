@@ -162,6 +162,25 @@ const OrdersPage = () => {
     const fresh = Store.getMessages(selectedChat.id);
     setMessages(prev => ({ ...prev, [selectedChat.id]: fresh }));
     Store.clearUnread(selectedChat.id, myPhone);
+    // Backend dan ham yuklaymiz — oshpazning javoblari boshqa qurilmadan kelgan bo'lishi mumkin
+    const API_BASE = import.meta.env?.VITE_API_URL || '';
+    fetch(`${API_BASE}/chats/${selectedChat.id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(backendMsgs => {
+        if (!Array.isArray(backendMsgs) || backendMsgs.length === 0) return;
+        const local = Store.getMessages(selectedChat.id);
+        const localKeys = new Set(local.map(m => `${m.from}_${m.ts}_${m.text}`));
+        let changed = false;
+        backendMsgs.forEach(bm => {
+          const key = `${bm.from}_${bm.ts}_${bm.text}`;
+          if (!localKeys.has(key)) { local.push({ text: bm.text, sender: bm.sender, from: bm.from, to: bm.to, ts: bm.ts }); changed = true; }
+        });
+        if (changed) {
+          localStorage.setItem(`chat_${selectedChat.id}`, JSON.stringify(local));
+          setMessages(prev => ({ ...prev, [selectedChat.id]: local }));
+        }
+      })
+      .catch(() => {});
     const unsub = Store.listenMessages(selectedChat.id, msgs => {
       setMessages(prev => ({ ...prev, [selectedChat.id]: msgs }));
       Store.clearUnread(selectedChat.id, myPhone);
@@ -194,22 +213,19 @@ const OrdersPage = () => {
   const sendMsg = () => {
     if (!message.trim() || !selectedChat) return;
     localStorage.removeItem(`typing_${selectedChat.id}_customer`);
-    Store.sendMessage(selectedChat.id, { text: message, sender: 'customer', from: myPhone, to: selectedChat.chefPhone });
+    const API_BASE = import.meta.env?.VITE_API_URL || '';
+    const ts = new Date().toLocaleTimeString('uz', { hour: '2-digit', minute: '2-digit' });
+    const msgObj = { text: message, sender: 'customer', from: myPhone, to: selectedChat.chefPhone, ts };
+    Store.sendMessage(selectedChat.id, msgObj);
     setMessages(prev => ({ ...prev, [selectedChat.id]: Store.getMessages(selectedChat.id) }));
     setMessage('');
     setChats(getChats());
-    // Oshpaz offline bo'lsa — Telegram orqali xabardor qilish
-    if (!Store.isOnline('chef', selectedChat.chefPhone)) {
-      const API_BASE = import.meta.env?.VITE_API_URL || '';
-      const name = customerData.firstName
-        ? `${customerData.firstName} ${customerData.lastName || ''}`.trim()
-        : (customerData.name || myPhone);
-      fetch(`${API_BASE}/notify/chef-event`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chefPhone: selectedChat.chefPhone, type: 'message', fromName: name }),
-      }).catch(() => {});
-    }
+    // Backend ga saqlash — oshpaz boshqa qurilmadan o'qiy olsin
+    fetch(`${API_BASE}/chats/${selectedChat.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(msgObj),
+    }).catch(() => {});
   };
 
   const handleTyping = val => {

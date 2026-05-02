@@ -40,27 +40,28 @@ const GlabalPage = () => {
     if (customerData.phone) return Store.startHeartbeat('customer', customerData.phone);
   }, []);
 
-  // Backend dan oshpazlarni yuklash — turli qurilmalardagi mijozlar ko'ra olsin
+  // Backend dan oshpazlarni yuklash — o'chirilganlar ham localdan o'chadi
   useEffect(() => {
     const API_BASE = import.meta.env?.VITE_API_URL || '';
     fetch(`${API_BASE}/chefs`)
-      .then(r => r.ok ? r.json() : [])
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(backendChefs => {
-        if (!Array.isArray(backendChefs) || backendChefs.length === 0) return;
+        if (!Array.isArray(backendChefs)) return;
         const local = JSON.parse(localStorage.getItem('registeredChefs') || '[]');
-        let changed = false;
+        const backendPhones = new Set(backendChefs.map(c => c.phone).filter(Boolean));
+        // Backend da yo'q bo'lganlarni o'chirib tashlash (o'chirilgan/bloklangan)
+        let synced = local.filter(c => backendPhones.has(c.phone));
+        // Qo'shish yoki yangilash
         backendChefs.forEach(sc => {
           if (!sc.phone || !sc.name) return;
-          const i = local.findIndex(c => c.phone === sc.phone);
-          if (i < 0) { local.push(sc); changed = true; }
-          else { local[i] = { ...local[i], ...sc }; changed = true; }
+          const i = synced.findIndex(c => c.phone === sc.phone);
+          if (i < 0) synced.push(sc);
+          else synced[i] = { ...synced[i], ...sc };
         });
-        if (changed) {
-          localStorage.setItem('registeredChefs', JSON.stringify(local));
-          setChefs(local.filter(c => c.phone && c.name));
-        }
+        localStorage.setItem('registeredChefs', JSON.stringify(synced));
+        setChefs(synced.filter(c => c.phone && c.name));
       })
-      .catch(() => {});
+      .catch(() => {}); // tarmoq xatosi — localdan foydalaniladi
   }, []);
 
   // Oshpazlar baholari

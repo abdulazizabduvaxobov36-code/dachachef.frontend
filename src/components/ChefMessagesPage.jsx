@@ -6,6 +6,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Store from '../store';
 
+const API_BASE = import.meta.env?.VITE_API_URL || '';
+
 const ChefMessagesPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -21,9 +23,9 @@ const ChefMessagesPage = () => {
   const myPhone = chefProfile.phone || '';
   const navState = location.state;
 
-  const getChats = () => {
+  const getLocalChats = () => {
     return Object.keys(localStorage)
-      .filter(k => k.startsWith('chat_') && k.includes(`_${myPhone}`))
+      .filter(k => k.startsWith('chat_') && k.endsWith(`_${myPhone}`))
       .map(k => {
         const chatId = k.replace('chat_', '');
         const msgs = Store.getMessages(chatId);
@@ -39,10 +41,46 @@ const ChefMessagesPage = () => {
           lastMsg: last.text, time: last.ts, unread,
           lastSender: last.sender,
         };
-      }).filter(Boolean).sort((a, b) => b.unread - a.unread);
+      }).filter(Boolean);
   };
 
+  const getChats = () => getLocalChats().sort((a, b) => b.unread - a.unread);
+
   const [chats, setChats] = useState(getChats);
+
+  // Backend dan chatlarni yuklash
+  const loadChatsFromBackend = () => {
+    if (!myPhone) return;
+    fetch(`${API_BASE}/chats/chef/${myPhone}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(backendChats => {
+        if (!Array.isArray(backendChats) || backendChats.length === 0) return;
+        // Local chatlar bilan birlashtirish
+        setChats(prev => {
+          const localIds = new Set(prev.map(c => c.id));
+          const merged = [...prev];
+          backendChats.forEach(bc => {
+            if (!localIds.has(bc.chatId)) {
+              merged.push({
+                id: bc.chatId,
+                customerPhone: bc.customerPhone,
+                customerName: null,
+                customerImage: null,
+                lastMsg: bc.lastMsg,
+                time: bc.time,
+                unread: bc.unread,
+                lastSender: bc.lastSender,
+              });
+            } else {
+              const i = merged.findIndex(c => c.id === bc.chatId);
+              if (i >= 0 && bc.unread > merged[i].unread) merged[i].unread = bc.unread;
+            }
+          });
+          return merged.sort((a, b) => (b.unread || 0) - (a.unread || 0));
+        });
+      })
+      .catch(() => {});
+  };
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState({});
   const [message, setMessage] = useState('');
@@ -62,6 +100,7 @@ const ChefMessagesPage = () => {
   }, [navState]);
 
   useEffect(() => {
+    loadChatsFromBackend();
     const onMsg = (e) => {
       setChats(getChats());
       if (e.detail?.chatId && e.detail.chatId !== selectedChat?.id) {
@@ -72,7 +111,7 @@ const ChefMessagesPage = () => {
     window.addEventListener('message-received', onMsg);
     const onStorage = (e) => { if (e.key?.startsWith('chat_')) setChats(getChats()); };
     window.addEventListener('storage', onStorage);
-    const poll = setInterval(() => setChats(getChats()), 1000);
+    const poll = setInterval(() => { setChats(getChats()); loadChatsFromBackend(); }, 5000);
     return () => {
       window.removeEventListener('message-received', onMsg);
       window.removeEventListener('storage', onStorage);
@@ -82,8 +121,35 @@ const ChefMessagesPage = () => {
 
   useEffect(() => {
     if (!selectedChat) return;
+    // Local xabarlarni darhol ko'rsatish
     setMessages(prev => ({ ...prev, [selectedChat.id]: Store.getMessages(selectedChat.id) }));
     Store.clearUnread(selectedChat.id, myPhone);
+    // Backend dan ham yuklaymiz — boshqa qurilmadan kelgan xabarlar
+    fetch(`${API_BASE}/chats/${selectedChat.id}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(backendMsgs => {
+        if (!Array.isArray(backendMsgs) || backendMsgs.length === 0) return;
+        // Local va backend xabarlarni birlashtirish (takrorlanmaslik uchun ts + from bo'yicha)
+        const local = Store.getMessages(selectedChat.id);
+        const localKeys = new Set(local.map(m => `${m.from}_${m.ts}_${m.text}`));
+        let changed = false;
+        backendMsgs.forEach(bm => {
+          const key = `${bm.from}_${bm.ts}_${bm.text}`;
+          if (!localKeys.has(key)) { local.push({ text: bm.text, sender: bm.sender, from: bm.from, to: bm.to, ts: bm.ts, id: bm._id }); changed = true; }
+        });
+        if (changed) {
+          local.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+          localStorage.setItem(`chat_${selectedChat.id}`, JSON.stringify(local));
+          setMessages(prev => ({ ...prev, [selectedChat.id]: local }));
+        }
+        // O'qildi deb belgilash
+        fetch(`${API_BASE}/chats/${selectedChat.id}/read`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ readerPhone: myPhone }),
+        }).catch(() => {});
+      })
+      .catch(() => {});
+
     const unsub = Store.listenMessages(selectedChat.id, msgs => {
       setMessages(prev => ({ ...prev, [selectedChat.id]: msgs }));
       Store.clearUnread(selectedChat.id, myPhone);
@@ -115,11 +181,18 @@ const ChefMessagesPage = () => {
   const sendMsg = async () => {
     if (!message.trim() || !selectedChat) return;
     localStorage.removeItem(`typing_${selectedChat.id}_chef`);
-    const newMsg = { text: message, sender: 'chef', from: myPhone, to: selectedChat.customerPhone };
+    const ts = new Date().toLocaleTimeString('uz', { hour: '2-digit', minute: '2-digit' });
+    const newMsg = { text: message, sender: 'chef', from: myPhone, to: selectedChat.customerPhone, ts };
     setMessage('');
     await Store.sendMessage(selectedChat.id, newMsg);
     setMessages(prev => ({ ...prev, [selectedChat.id]: Store.getMessages(selectedChat.id) }));
     setChats(getChats());
+    // Backend ga saqlash — mijoz boshqa qurilmadan o'qiy olsin
+    fetch(`${API_BASE}/chats/${selectedChat.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newMsg),
+    }).catch(() => {});
   };
 
   const handleTyping = val => {
