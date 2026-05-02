@@ -27,6 +27,8 @@ const AdminOrdersPage = () => {
     const [loading, setLoading] = useState(false);
     const [sourceFilter, setSourceFilter] = useState('');
     const [search, setSearch] = useState('');
+    const [confirmDelete, setConfirmDelete] = useState(null);
+    const [confirmBlock, setConfirmBlock] = useState(null);
 
     useEffect(() => {
         if (sessionStorage.getItem('adminAuthed') !== '1') { navigate('/admin'); return; }
@@ -100,7 +102,8 @@ const AdminOrdersPage = () => {
     });
 
     const handleDeleteOrder = async (id) => {
-        if (!window.confirm("Bu buyurtmani o'chirasizmi?")) return;
+        if (confirmDelete !== id) { setConfirmDelete(id); return; }
+        setConfirmDelete(null);
         setOrders(prev => prev.filter(o => o._id !== id));
         try { await fetch(`${API}/orders/${id}`, { method: 'DELETE' }); } catch { }
     };
@@ -269,8 +272,13 @@ const AdminOrdersPage = () => {
                                         </Box>
                                         <Box cursor="pointer" bgColor="#FEE2E2" borderRadius="8px" px="10px" py="6px"
                                             border="1px solid #FCA5A5"
-                                            onClick={() => { if (window.confirm(`${o.chefName || o.chefPhone} ni bloklaysizmi?`)) blockChef(o.chefPhone); }}>
-                                            <Text color="#EF4444" fontWeight="700" style={{ fontSize: '11px' }}>🚫 Bloklash</Text>
+                                            onClick={() => {
+                                                if (confirmBlock !== o.chefPhone) { setConfirmBlock(o.chefPhone); return; }
+                                                setConfirmBlock(null); blockChef(o.chefPhone);
+                                            }}>
+                                            <Text color="#EF4444" fontWeight="700" style={{ fontSize: '11px' }}>
+                                                {confirmBlock === o.chefPhone ? '❗ Tasdiqlash' : '🚫 Bloklash'}
+                                            </Text>
                                         </Box>
                                     </Box>
                                 </Box>
@@ -282,13 +290,24 @@ const AdminOrdersPage = () => {
                                 </Box>
                             )}
 
-                            <Box display="flex" justifyContent="flex-end" mt="8px">
+                            <Box display="flex" justifyContent="flex-end" mt="8px" gap="6px">
+                                {confirmDelete === o._id && (
+                                    <Box cursor="pointer" display="flex" alignItems="center" gap="5px"
+                                        bgColor="#F5F5F5" borderRadius="8px" px="10px" py="6px"
+                                        border="1px solid #D1D5DB"
+                                        onClick={() => setConfirmDelete(null)}>
+                                        <Text color="#6B7280" fontWeight="700" style={{ fontSize: '11px' }}>Bekor</Text>
+                                    </Box>
+                                )}
                                 <Box cursor="pointer" display="flex" alignItems="center" gap="5px"
-                                    bgColor="#FEF2F2" borderRadius="8px" px="10px" py="6px"
-                                    border="1px solid #FCA5A5"
+                                    bgColor={confirmDelete === o._id ? '#EF4444' : '#FEF2F2'}
+                                    borderRadius="8px" px="10px" py="6px"
+                                    border={`1px solid ${confirmDelete === o._id ? '#EF4444' : '#FCA5A5'}`}
                                     onClick={() => handleDeleteOrder(o._id)}>
-                                    <FaTrash style={{ fontSize: '10px', color: '#EF4444' }} />
-                                    <Text color="#EF4444" fontWeight="700" style={{ fontSize: '11px' }}>O'chirish</Text>
+                                    <FaTrash style={{ fontSize: '10px', color: confirmDelete === o._id ? 'white' : '#EF4444' }} />
+                                    <Text color={confirmDelete === o._id ? 'white' : '#EF4444'} fontWeight="700" style={{ fontSize: '11px' }}>
+                                        {confirmDelete === o._id ? "Ha, o'chirish" : "O'chirish"}
+                                    </Text>
                                 </Box>
                             </Box>
                         </Box>

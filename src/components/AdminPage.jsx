@@ -198,6 +198,7 @@ const Dashboard = ({ onLogout }) => {
     const [stats, setStats] = useState({ chefs: 0, blockedChefs: 0, customers: 0, blockedCustomers: 0, orders: 0, revenue: 0, commission: 0 });
     const [loading, setLoading] = useState(false);
     const [activity, setActivity] = useState([]);
+    const [confirmLogout, setConfirmLogout] = useState(false);
     const [seenIds, setSeenIds] = useState(() => {
         try { return new Set(JSON.parse(localStorage.getItem('adminSeenActivity') || '[]')); }
         catch { return new Set(); }
@@ -328,11 +329,17 @@ const Dashboard = ({ onLogout }) => {
                         <FaSync style={{ fontSize: '13px', color: loading ? '#C03F0C' : '#9B8E8A' }} />
                     </Box>
                     <Box cursor="pointer" borderRadius="10px" px="12px" py="7px"
-                        bgColor="#FEF2F2" border="1.5px solid #FCA5A5"
+                        bgColor={confirmLogout ? '#EF4444' : '#FEF2F2'}
+                        border={`1.5px solid ${confirmLogout ? '#EF4444' : '#FCA5A5'}`}
                         display="flex" alignItems="center" gap="6px"
-                        onClick={onLogout}>
-                        <FaSignOutAlt style={{ fontSize: '12px', color: '#EF4444' }} />
-                        <Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Chiqish</Text>
+                        onClick={() => {
+                            if (!confirmLogout) { setConfirmLogout(true); setTimeout(() => setConfirmLogout(false), 3000); return; }
+                            onLogout();
+                        }}>
+                        <FaSignOutAlt style={{ fontSize: '12px', color: confirmLogout ? 'white' : '#EF4444' }} />
+                        <Text color={confirmLogout ? 'white' : '#EF4444'} fontWeight="700" style={{ fontSize: '12px' }}>
+                            {confirmLogout ? 'Tasdiqlash?' : 'Chiqish'}
+                        </Text>
                     </Box>
                 </Box>
             </Box>
@@ -358,75 +365,71 @@ const Dashboard = ({ onLogout }) => {
                     ))}
                 </Box>
 
-                {/* Activity feed */}
+                {/* Activity feed — faqat o'qilmaganlar, max 3 ta */}
                 {(() => {
-                    const unread = activity.filter(a => a.id && !seenIds.has(String(a.id))).length;
+                    const unreadItems = activity.filter(a => a.id && !seenIds.has(String(a.id))).slice(0, 3);
                     return (
-                        <Box display="flex" alignItems="center" justifyContent="space-between" mb="12px">
-                            <Box display="flex" alignItems="center" gap="8px">
-                                <Text fontWeight="800" color="#1C110D" style={{ fontSize: '15px' }}>🕐 So'nggi faoliyat</Text>
-                                {unread > 0 && (
-                                    <Box bgColor="#C03F0C" borderRadius="full" minW="20px" h="20px" px="5px"
-                                        display="flex" alignItems="center" justifyContent="center">
-                                        <Text color="white" fontWeight="800" style={{ fontSize: '10px' }}>{unread}</Text>
+                        <>
+                            <Box display="flex" alignItems="center" justifyContent="space-between" mb="12px">
+                                <Box display="flex" alignItems="center" gap="8px">
+                                    <Text fontWeight="800" color="#1C110D" style={{ fontSize: '15px' }}>🕐 So'nggi faoliyat</Text>
+                                    {unreadItems.length > 0 && (
+                                        <Box bgColor="#C03F0C" borderRadius="full" minW="20px" h="20px" px="5px"
+                                            display="flex" alignItems="center" justifyContent="center">
+                                            <Text color="white" fontWeight="800" style={{ fontSize: '10px' }}>{unreadItems.length}</Text>
+                                        </Box>
+                                    )}
+                                </Box>
+                                {unreadItems.length > 0 && (
+                                    <Box cursor="pointer" onClick={markAllRead}
+                                        bgColor="#FFF0EC" border="1.5px solid #F5C5B0"
+                                        borderRadius="10px" px="10px" py="5px">
+                                        <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '11px' }}>✓ O'qildi</Text>
                                     </Box>
                                 )}
                             </Box>
-                            {unread > 0 && (
-                                <Box cursor="pointer" onClick={markAllRead}
-                                    bgColor="#FFF0EC" border="1.5px solid #F5C5B0"
-                                    borderRadius="10px" px="10px" py="5px">
-                                    <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '11px' }}>✓ O'qildi</Text>
-                                </Box>
-                            )}
-                        </Box>
+                            <Box bgColor="white" borderRadius="18px" boxShadow="0 2px 10px rgba(0,0,0,0.06)" overflow="hidden">
+                                {unreadItems.length === 0 ? (
+                                    <Box p="20px" textAlign="center">
+                                        <Text color="#B0A8A4" style={{ fontSize: '13px' }}>Yangi faoliyat yo'q</Text>
+                                    </Box>
+                                ) : unreadItems.map((a, i) => (
+                                    <Box key={a.id || i} px="16px" py="12px"
+                                        borderBottom={i < unreadItems.length - 1 ? '1px solid #F5F0ED' : 'none'}
+                                        bgColor="#FFFAF8"
+                                        display="flex" alignItems="center" gap="12px"
+                                        cursor="pointer"
+                                        onClick={() => {
+                                            if (a.id) {
+                                                const updated = new Set([...seenIds, String(a.id)]);
+                                                setSeenIds(updated);
+                                                localStorage.setItem('adminSeenActivity', JSON.stringify([...updated]));
+                                            }
+                                        }}>
+                                        <Box position="relative" flexShrink={0}>
+                                            <Box w="36px" h="36px" borderRadius="10px" bgColor="#FFF0EC"
+                                                display="flex" alignItems="center"
+                                                justifyContent="center" style={{ fontSize: '16px' }}>
+                                                {a.icon}
+                                            </Box>
+                                            <Box position="absolute" top="-3px" right="-3px"
+                                                w="9px" h="9px" borderRadius="full"
+                                                bgColor="#C03F0C" border="1.5px solid white" />
+                                        </Box>
+                                        <Box flex="1" minW={0}>
+                                            <Text fontWeight="800" color="#1C110D"
+                                                style={{ fontSize: '12px' }} noOfLines={1}>{a.text}</Text>
+                                            <Text color="#9B8E8A" style={{ fontSize: '11px' }}>{a.sub}</Text>
+                                        </Box>
+                                        <Text color="#B0A8A4" style={{ fontSize: '10px', flexShrink: 0 }}>
+                                            {a.time ? new Date(a.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}
+                                        </Text>
+                                    </Box>
+                                ))}
+                            </Box>
+                        </>
                     );
                 })()}
-                <Box bgColor="white" borderRadius="18px" boxShadow="0 2px 10px rgba(0,0,0,0.06)" overflow="hidden">
-                    {activity.length === 0 ? (
-                        <Box p="20px" textAlign="center">
-                            <Text color="#B0A8A4" style={{ fontSize: '13px' }}>Hali faoliyat yo'q</Text>
-                        </Box>
-                    ) : activity.map((a, i) => {
-                        const isUnread = a.id && !seenIds.has(String(a.id));
-                        return (
-                            <Box key={a.id || i} px="16px" py="12px"
-                                borderBottom={i < activity.length - 1 ? '1px solid #F5F0ED' : 'none'}
-                                bgColor={isUnread ? '#FFFAF8' : 'white'}
-                                display="flex" alignItems="center" gap="12px"
-                                cursor="pointer"
-                                onClick={() => {
-                                    if (isUnread && a.id) {
-                                        const updated = new Set([...seenIds, String(a.id)]);
-                                        setSeenIds(updated);
-                                        localStorage.setItem('adminSeenActivity', JSON.stringify([...updated]));
-                                    }
-                                }}>
-                                <Box position="relative" flexShrink={0}>
-                                    <Box w="36px" h="36px" borderRadius="10px"
-                                        bgColor={isUnread ? '#FFF0EC' : '#F8F4F2'}
-                                        display="flex" alignItems="center"
-                                        justifyContent="center" style={{ fontSize: '16px' }}>
-                                        {a.icon}
-                                    </Box>
-                                    {isUnread && (
-                                        <Box position="absolute" top="-3px" right="-3px"
-                                            w="9px" h="9px" borderRadius="full"
-                                            bgColor="#C03F0C" border="1.5px solid white" />
-                                    )}
-                                </Box>
-                                <Box flex="1" minW={0}>
-                                    <Text fontWeight={isUnread ? '800' : '700'} color="#1C110D"
-                                        style={{ fontSize: '12px' }} noOfLines={1}>{a.text}</Text>
-                                    <Text color="#9B8E8A" style={{ fontSize: '11px' }}>{a.sub}</Text>
-                                </Box>
-                                <Text color="#B0A8A4" style={{ fontSize: '10px', flexShrink: 0 }}>
-                                    {a.time ? new Date(a.time).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' }) : ''}
-                                </Text>
-                            </Box>
-                        );
-                    })}
-                </Box>
             </Box>
         </Box>
     );
@@ -437,7 +440,6 @@ const AdminPage = () => {
     const [authed, setAuthed] = useState(() => sessionStorage.getItem('adminAuthed') === '1');
 
     const handleLogout = () => {
-        if (!window.confirm('Chiqishni xohlaysizmi?')) return;
         sessionStorage.removeItem('adminAuthed');
         setAuthed(false);
     };
