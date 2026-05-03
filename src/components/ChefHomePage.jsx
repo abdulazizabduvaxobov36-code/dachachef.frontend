@@ -1,5 +1,5 @@
 import { Box, Text, Button } from '@chakra-ui/react';
-import { FaHome, FaCommentDots, FaUser, FaBell, FaTimes, FaPhone, FaPlus, FaImage, FaMoneyBillWave } from 'react-icons/fa';
+import { FaHome, FaCommentDots, FaUser, FaBell, FaPhone, FaMoneyBillWave } from 'react-icons/fa';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -9,7 +9,6 @@ const ChefHomePage = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { t } = useTranslation();
-    const fileRef = useRef();
     const notifRef = useRef();
 
     const session = Store.getSession();
@@ -22,15 +21,9 @@ const ChefHomePage = () => {
     const chefProfile = JSON.parse(localStorage.getItem("chefProfile")) || (session?.role === 'chef' ? session.data : {});
     const myPhone = chefProfile.phone || "";
 
-    const [posts, setPosts] = useState([]);
-    const [showPostModal, setShowPostModal] = useState(false);
-    const [postImg, setPostImg] = useState(null);
-    const [postName, setPostName] = useState("");
-    const [postImgPreview, setPostImgPreview] = useState(null);
     const [activeTab, setActiveTab] = useState('sorovlar');
     const [showNotifPanel, setShowNotifPanel] = useState(false);
     const [notifications, setNotifications] = useState([]);
-    const [publishLoading, setPublishLoading] = useState(false);
     const [reviewNotifs, setReviewNotifs] = useState([]);
     const [newReviewToast, setNewReviewToast] = useState(null);
     const [unseenReviews, setUnseenReviews] = useState([]);
@@ -354,41 +347,9 @@ const ChefHomePage = () => {
     }, [myPhone]);
 
     useEffect(() => {
-        const refresh = () => {
-            if (!myPhone) return;
-            setPosts(Store.getPosts().filter(p => p.chefPhone === myPhone));
-        };
-        const unsub = Store.listenPosts((allPosts) => {
-            if (!myPhone) return;
-            setPosts(allPosts.filter(p => p.chefPhone === myPhone));
-        });
-        window.addEventListener('posts-updated', refresh);
-        refresh();
         fetchChefTotalEarned();
         fetchReviewNotifs();
         fetchPendingRequests();
-        // Backend dan postlarni ham yuklaymiz — real-time
-        const syncPosts = () => {
-            if (!myPhone) return;
-            const API_BASE = import.meta.env?.VITE_API_URL || '';
-            fetch(`${API_BASE}/posts/chef/${myPhone}`)
-                .then(r => r.ok ? r.json() : [])
-                .then(bp => {
-                    if (!Array.isArray(bp) || bp.length === 0) return;
-                    const mapped = bp.map(p => ({ ...p, id: p._id || p.id }));
-                    const local = Store.getPosts();
-                    const localIds = new Set(local.map(p => p.id || p._id));
-                    let changed = false;
-                    mapped.forEach(p => { if (!localIds.has(p.id)) { local.push(p); changed = true; } });
-                    if (changed) {
-                        localStorage.setItem('chefPosts', JSON.stringify(local));
-                        setPosts(local.filter(p => p.chefPhone === myPhone));
-                    }
-                }).catch(() => {});
-        };
-        syncPosts();
-        const iv = setInterval(syncPosts, 5000);
-        return () => { unsub && unsub(); window.removeEventListener('posts-updated', refresh); clearInterval(iv); };
     }, [myPhone]);
 
     useEffect(() => {
@@ -422,46 +383,6 @@ const ChefHomePage = () => {
 
     const totalUnread = notifications.reduce((s, n) => s + n.unread, 0);
 
-    const handleImageSelect = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = () => { setPostImg(reader.result); setPostImgPreview(reader.result); };
-        reader.readAsDataURL(file);
-    };
-
-    const [postError, setPostError] = useState("");
-
-    const handlePublish = async () => {
-        if (!postImg || !postName.trim()) {
-            setPostError(t('chefHome.postRequired') || "Iltimos, rasm va taom nomini kiriting.");
-            return;
-        }
-        setPublishLoading(true);
-        setPostError("");
-        try {
-            const postData = {
-                chefPhone: chefProfile.phone || myPhone,
-                chefName: `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim(),
-                chefImage: chefProfile.image || null,
-                image: postImg,
-                dishName: postName.trim(),
-            };
-            await Store.addPost(postData);
-            // Backend ga ham saqlash — boshqa qurilmalarda ko'rinsin
-            const API_BASE = import.meta.env?.VITE_API_URL || '';
-            fetch(`${API_BASE}/posts`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(postData),
-            }).catch(() => {});
-            setShowPostModal(false);
-            setPostImg(null); setPostImgPreview(null); setPostName("");
-        } catch (e) {
-            setPostError(t('chefHome.postError') || "Postni saqlab bo'lmadi.");
-        }
-        setPublishLoading(false);
-    };
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column">
@@ -619,14 +540,10 @@ const ChefHomePage = () => {
 
             <Box flex="1" pb="80px">
                 {/* Tabs */}
-                <Box display="flex" alignItems="center" pt="14px" pb="10px">
-                    {/* Scrollable tab buttons */}
-                    <Box className="tabs-scroll" display="flex" gap="8px" overflowX="auto" flex="1" pl="16px" pr="4px"
-                        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', WebkitOverflowScrolling: 'touch' }}>
+                <Box display="flex" alignItems="center" pt="14px" pb="10px" px="16px" gap="8px">
                     {[
                         { key: 'sorovlar', label: `So'rovlar${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
                         { key: 'reviews', label: `${t("chefHome.reviews")}${reviewNotifs.length > 0 ? ` (${reviewNotifs.length})` : ""}` },
-                        { key: 'posts', label: `${t("chefHome.posts")}${posts.length > 0 ? ` (${posts.length})` : ""}` }
                     ].map(tab => (
                         <Button key={tab.key} borderRadius="20px" fontWeight="600" flexShrink={0}
                             bgColor={activeTab === tab.key ? '#C03F0C' : 'white'}
@@ -637,17 +554,6 @@ const ChefHomePage = () => {
                             {tab.label}
                         </Button>
                     ))}
-                    </Box>
-                    {/* Post button — outside scrollable area, always visible */}
-                    <Box px="8px" flexShrink={0}>
-                        <Button bgColor="#FFF0EC" color="#C03F0C"
-                            border="1.5px solid #F5C5B0" borderRadius="20px" fontWeight="600"
-                            _hover={{ bgColor: '#FFE0D0' }}
-                            style={{ height: "38px", fontSize: "13px", padding: "0 14px", whiteSpace: "nowrap" }}
-                            onClick={() => setShowPostModal(true)}>
-                            <FaPlus style={{ marginRight: "5px", fontSize: "10px" }} /> Post
-                        </Button>
-                    </Box>
                 </Box>
 
                 {/* SO'ROVLAR + HISOBOT — bitta sahifada */}
@@ -814,47 +720,6 @@ const ChefHomePage = () => {
                     </Box>
                 )}
 
-                {/* POSTLAR */}
-                {activeTab === 'posts' && (
-                    <Box px="16px">
-                        {posts.length === 0 && (
-                            <Box textAlign="center" py="40px">
-                                <FaImage style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
-                                <Text color="#9B614B" style={{ fontSize: "14px" }}>{t("chefHome.noPost")}</Text>
-                            </Box>
-                        )}
-                        {/* Scroll container: 6 tadan oshiq bo'lsa pastga scroll */}
-                        <Box overflowY="auto"
-                            style={{ maxHeight: 'calc((100vw - 44px) / 3 * 2 + 14px)', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-                            <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="6px">
-                                {posts.map(p => (
-                                    <Box key={p.id || p._id} position="relative" borderRadius="12px" overflow="hidden">
-                                        {/* padding-bottom trick — barcha WebView'larda ishlaydi */}
-                                        <Box style={{ paddingBottom: '100%', position: 'relative', background: '#F0E6E0' }}>
-                                            <img src={p.image} alt={p.dishName}
-                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                        </Box>
-                                        <Box position="absolute" bottom="0" left="0" right="0"
-                                            bgColor="rgba(0,0,0,0.55)" px="6px" py="4px">
-                                            <Text color="white" fontWeight="600" noOfLines={1}
-                                                style={{ fontSize: '11px' }}>{p.dishName}</Text>
-                                        </Box>
-                                        <Box position="absolute" top="4px" right="4px" w="20px" h="20px"
-                                            bgColor="rgba(0,0,0,0.6)" borderRadius="full"
-                                            display="flex" alignItems="center" justifyContent="center"
-                                            cursor="pointer" onClick={() => {
-                                                Store.deletePost(p.id);
-                                                const API_BASE = import.meta.env?.VITE_API_URL || '';
-                                                fetch(`${API_BASE}/posts/${p.id}`, { method: 'DELETE' }).catch(() => {});
-                                            }}>
-                                            <FaTimes style={{ fontSize: "8px", color: "white" }} />
-                                        </Box>
-                                    </Box>
-                                ))}
-                            </Box>
-                        </Box>
-                    </Box>
-                )}
             </Box>
 
             {/* BUYURTMA QO'SHISH MODAL */}
@@ -959,65 +824,6 @@ const ChefHomePage = () => {
                                 style={{ height: "50px", fontSize: "14px" }}
                                 onClick={handleAddOrder}>
                                 {t('order.saveBtn') || "Saqlash"}
-                            </Button>
-                        </Box>
-                    </Box>
-                </Box>
-            )}
-
-            {/* Post Modal */}
-            {showPostModal && (
-                <Box position="fixed" inset="0" bgColor="rgba(0,0,0,0.6)" zIndex={200}
-                    display="flex" alignItems="flex-end" justifyContent="center"
-                    onClick={() => setShowPostModal(false)}>
-                    <Box bgColor="white" w="100%" maxW="430px" className="bottom-sheet"
-                        onClick={e => e.stopPropagation()}>
-                        <Text fontWeight="bold" color="#1C110D" mb={{ base: "14px", sm: "16px" }}
-                            style={{ fontSize: "clamp(16px, 4.5vw, 18px)" }}>
-                            {t("chefHome.newPost")}
-                        </Text>
-                        <Box w="100%" borderRadius="14px" border="2px dashed #F0E6E0" bgColor="#FAFAFA"
-                            display="flex" alignItems="center" justifyContent="center"
-                            cursor="pointer" overflow="hidden" onClick={() => fileRef.current?.click()}
-                            style={{ height: "clamp(150px, 40vw, 190px)" }}>
-                            {postImgPreview ? (
-                                <img src={postImgPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                            ) : (
-                                <Box textAlign="center">
-                                    <FaImage style={{ fontSize: "clamp(26px, 7vw, 32px)", color: "#C03F0C", margin: "0 auto 8px" }} />
-                                    <Text color="#9B614B" style={{ fontSize: "clamp(12px, 3.2vw, 13px)" }}>{t("chefHome.selectImage")}</Text>
-                                </Box>
-                            )}
-                        </Box>
-                        <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleImageSelect} />
-                        <Box mt="12px">
-                            <Text fontWeight="600" color="#9B614B" mb="6px" style={{ fontSize: "clamp(12px, 3.2vw, 13px)" }}>{t("chefHome.dishName")}</Text>
-                            <Box display="flex" alignItems="center" bgColor="#FFF5F0" borderRadius="14px"
-                                px="14px" border="1.5px solid #F0E6E0" style={{ height: "clamp(42px, 11vw, 48px)" }}>
-                                <input value={postName} onChange={e => setPostName(e.target.value)}
-                                    placeholder={t("chefHome.dishPlaceholder")}
-                                    style={{ width: "100%", border: "none", outline: "none", fontSize: "16px", color: "#1C110D", background: "transparent" }} />
-                            </Box>
-                        </Box>
-                        {postError && (
-                            <Box mt="10px" px="10px" py="8px" bgColor="#FFF5F5" border="1px solid #F5C2C7" borderRadius="12px">
-                                <Text fontSize="13px" color="#C53030">{postError}</Text>
-                            </Box>
-                        )}
-                        <Box display="flex" gap={{ base: "8px", sm: "10px" }} mt={{ base: "14px", sm: "16px" }}>
-                            <Button flex="1" bgColor="#F5F0EE" color="#9B614B" borderRadius="26px"
-                                style={{ height: "50px", fontSize: "14px" }}
-                                onClick={() => { setShowPostModal(false); setPostImg(null); setPostImgPreview(null); setPostName(""); }}>
-                                {t("chefHome.cancel")}
-                            </Button>
-                            <Button flex="1"
-                                bgColor={postImg && postName.trim() ? "#C03F0C" : "#E8D6CF"}
-                                color="white" borderRadius="26px" fontWeight="700"
-                                isLoading={publishLoading}
-                                loadingText={t("chefHome.loading")}
-                                style={{ height: "50px", fontSize: "14px" }}
-                                onClick={handlePublish} isDisabled={!postImg || !postName.trim() || publishLoading}>
-                                {t("chefHome.publish")}
                             </Button>
                         </Box>
                     </Box>

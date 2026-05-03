@@ -1,8 +1,8 @@
 import { Box, Text, Button } from '@chakra-ui/react';
-import { FaHome, FaCommentDots, FaUser, FaEdit, FaSignOutAlt, FaGlobe, FaImage } from 'react-icons/fa';
+import { FaHome, FaCommentDots, FaUser, FaEdit, FaSignOutAlt, FaGlobe, FaImage, FaPlus, FaTimes } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import HeroHeader from '/images/Hero Header.png';
 import Store from '../store';
 
@@ -15,74 +15,75 @@ const ChefProfileOwnPage = () => {
     const [averageRating, setAverageRating] = useState(0);
     const [ordersCount, setOrdersCount] = useState(0);
 
+    // Post modal
+    const fileRef = useRef();
+    const [showPostModal, setShowPostModal] = useState(false);
+    const [postImg, setPostImg] = useState(null);
+    const [postName, setPostName] = useState('');
+    const [postImgPreview, setPostImgPreview] = useState(null);
+    const [publishLoading, setPublishLoading] = useState(false);
+    const [postError, setPostError] = useState('');
+
+    const myPhone = chefProfile.phone || '';
+
+    const fetchPosts = (phone) => {
+        if (!phone) return;
+        const API = import.meta.env?.VITE_API_URL || '';
+        fetch(`${API}/posts/chef/${phone}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(bp => {
+                if (!Array.isArray(bp)) return;
+                setPosts(bp.map(p => ({ ...p, id: p._id || p.id })));
+            }).catch(() => {});
+    };
+
     useEffect(() => {
         const raw = JSON.parse(localStorage.getItem("chefProfile") || "null");
         const sess = Store.getSession();
         const p = (raw?.phone ? raw : (sess?.role === "chef" && sess?.data?.phone ? sess.data : {}));
         if (p.phone) localStorage.setItem("chefProfile", JSON.stringify(p));
         setChefProfile(p);
-        if (p.phone) {
-            setPosts(Store.getPosts().filter(x => x.chefPhone === p.phone));
-            fetchRatings(); // Baholarni yuklash
-        }
+        if (p.phone) fetchPosts(p.phone);
     }, []);
+
     useEffect(() => {
         const onUpdate = () => {
             const raw = JSON.parse(localStorage.getItem("chefProfile") || "null");
             const sess2 = Store.getSession();
             const p = (raw?.phone ? raw : (sess2?.role === "chef" ? sess2.data : {}));
             setChefProfile(p);
-            if (p.phone) {
-                setPosts(Store.getPosts().filter(x => x.chefPhone === p.phone));
-                fetchRatings(); // Baholarni yuklash
-            }
         };
-        const onRatingsUpdate = () => {
-            fetchRatings(); // Baholarni yangilash
-        };
-        const unsub = Store.listenPosts(all => { const p = JSON.parse(localStorage.getItem("chefProfile")) || {}; setPosts(all.filter(x => x.chefPhone === p.phone)); });
         window.addEventListener("chefs-updated", onUpdate);
-        window.addEventListener("ratings-updated", onRatingsUpdate);
-        return () => {
-            window.removeEventListener("chefs-updated", onUpdate);
-            window.removeEventListener("ratings-updated", onRatingsUpdate);
-            unsub?.();
-        };
+        return () => window.removeEventListener("chefs-updated", onUpdate);
     }, []);
 
-    // Baholarni olish
-    const fetchRatings = async () => {
-        if (!chefProfile.phone) return;
+    // Posts polling
+    useEffect(() => {
+        if (!myPhone) return;
+        fetchPosts(myPhone);
+        const iv = setInterval(() => fetchPosts(myPhone), 5000);
+        return () => clearInterval(iv);
+    }, [myPhone]);
+
+    const fetchRatings = async (phone) => {
+        if (!phone) return;
         const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-        const lsKey = `reviews_${chefProfile.phone}`;
-        const localReviews = JSON.parse(localStorage.getItem(lsKey) || '[]');
         try {
-            const response = await fetch(`${AUTH_BASE}/reviews/${chefProfile.phone}`);
+            const response = await fetch(`${AUTH_BASE}/reviews/${phone}`);
             if (response.ok) {
                 const data = await response.json();
                 const serverReviews = data.reviews || [];
-                const merged = [
-                    ...localReviews.filter(lr =>
-                        !serverReviews.some(sr => sr.createdAt === lr.createdAt && sr.customerPhone === lr.customerPhone)
-                    ),
-                    ...serverReviews,
-                ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                const rated = merged.filter(r => r.rating > 0);
+                const rated = serverReviews.filter(r => r.rating > 0);
                 setAverageRating(rated.length > 0 ? +(rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : data.avgRating || 0);
             }
-        } catch {
-            if (localReviews.length > 0) {
-                const rated = localReviews.filter(r => r.rating > 0);
-                setAverageRating(rated.length > 0 ? +(rated.reduce((s, r) => s + r.rating, 0) / rated.length).toFixed(1) : 0);
-            }
-        }
+        } catch { }
     };
 
-    const fetchOrdersCount = async () => {
-        if (!chefProfile.phone) return;
+    const fetchOrdersCount = async (phone) => {
+        if (!phone) return;
         try {
             const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-            const res = await fetch(`${AUTH_BASE}/orders/chef/${chefProfile.phone}`);
+            const res = await fetch(`${AUTH_BASE}/orders/chef/${phone}`);
             if (!res.ok) return;
             const data = await res.json();
             if (Array.isArray(data?.orders)) setOrdersCount(data.orders.length);
@@ -90,12 +91,54 @@ const ChefProfileOwnPage = () => {
     };
 
     useEffect(() => {
-        if (!chefProfile.phone) return;
-        fetchRatings();
-        fetchOrdersCount();
-        const iv = setInterval(() => { fetchRatings(); fetchOrdersCount(); }, 5000);
+        if (!myPhone) return;
+        fetchRatings(myPhone);
+        fetchOrdersCount(myPhone);
+        const iv = setInterval(() => { fetchRatings(myPhone); fetchOrdersCount(myPhone); }, 5000);
         return () => clearInterval(iv);
-    }, [chefProfile.phone]);
+    }, [myPhone]);
+
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => { setPostImg(reader.result); setPostImgPreview(reader.result); };
+        reader.readAsDataURL(file);
+    };
+
+    const handlePublish = async () => {
+        if (!postImg || !postName.trim()) { setPostError("Iltimos, rasm va taom nomini kiriting."); return; }
+        setPublishLoading(true);
+        setPostError('');
+        const API = import.meta.env?.VITE_API_URL || '';
+        const postData = {
+            chefPhone: myPhone,
+            chefName: `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim(),
+            chefImage: chefProfile.image || null,
+            image: postImg,
+            dishName: postName.trim(),
+        };
+        try {
+            const res = await fetch(`${API}/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postData),
+            });
+            if (!res.ok) throw new Error();
+            await fetchPosts(myPhone);
+            setShowPostModal(false);
+            setPostImg(null); setPostImgPreview(null); setPostName('');
+        } catch {
+            setPostError("Postni saqlab bo'lmadi. Internetni tekshiring.");
+        }
+        setPublishLoading(false);
+    };
+
+    const handleDeletePost = (post) => {
+        setPosts(prev => prev.filter(x => (x.id || x._id) !== (post.id || post._id)));
+        const API = import.meta.env?.VITE_API_URL || '';
+        fetch(`${API}/posts/${post.id || post._id}`, { method: 'DELETE' }).catch(() => {});
+    };
 
     const fullName = chefProfile.name ? `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim() : t("chefProfileOwn.defaultName");
     const exp = chefProfile.exp ? String(chefProfile.exp) : '';
@@ -163,18 +206,43 @@ const ChefProfileOwnPage = () => {
                 {/* Gallery */}
                 <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 1px 6px rgba(0,0,0,0.05)">
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb="12px">
-                        <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>{t("chefProfileOwn.gallery")}</Text>
-                        {posts.length > 0 && <Text color="#9B8E8A" style={{ fontSize: "12px" }}>{posts.length} ta</Text>}
+                        <Box display="flex" alignItems="center" gap="8px">
+                            <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>{t("chefProfileOwn.gallery")}</Text>
+                            {posts.length > 0 && (
+                                <Box bgColor="#FFF0EC" borderRadius="8px" px="8px" py="2px">
+                                    <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "11px" }}>{posts.length} ta</Text>
+                                </Box>
+                            )}
+                        </Box>
+                        <Box cursor="pointer" display="flex" alignItems="center" gap="5px"
+                            bgColor="#C03F0C" borderRadius="10px" px="10px" py="6px"
+                            onClick={() => setShowPostModal(true)}>
+                            <FaPlus style={{ fontSize: "10px", color: "white" }} />
+                            <Text color="white" fontWeight="700" style={{ fontSize: "12px" }}>Post</Text>
+                        </Box>
                     </Box>
                     {posts.length === 0
                         ? <Box textAlign="center" py="24px">
                             <FaImage style={{ fontSize: "32px", color: "#E0DAD7", margin: "0 auto 8px", display: "block" }} />
                             <Text color="#B0A8A4" style={{ fontSize: "13px" }}>{t("chefProfileOwn.noPost")}</Text>
                         </Box>
-                        : <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="6px">
+                        : <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="8px">
                             {posts.map((p, i) => (
-                                <Box key={i} borderRadius="10px" overflow="hidden">
-                                    <img src={p.image} alt={p.dishName} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
+                                <Box key={p.id || p._id || i} position="relative" borderRadius="10px" overflow="hidden">
+                                    <Box style={{ paddingBottom: '100%', position: 'relative', background: '#F0E6E0' }}>
+                                        <img src={p.image} alt={p.dishName}
+                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                    </Box>
+                                    <Box position="absolute" bottom="0" left="0" right="0"
+                                        bgColor="rgba(0,0,0,0.5)" px="5px" py="3px">
+                                        <Text color="white" fontWeight="600" noOfLines={1} style={{ fontSize: '10px' }}>{p.dishName}</Text>
+                                    </Box>
+                                    <Box position="absolute" top="4px" right="4px" w="20px" h="20px"
+                                        bgColor="rgba(0,0,0,0.6)" borderRadius="full"
+                                        display="flex" alignItems="center" justifyContent="center"
+                                        cursor="pointer" onClick={() => handleDeletePost(p)}>
+                                        <FaTimes style={{ fontSize: "8px", color: "white" }} />
+                                    </Box>
                                 </Box>
                             ))}
                         </Box>
@@ -209,6 +277,61 @@ const ChefProfileOwnPage = () => {
                     {t("chefProfileOwn.logout")}
                 </Button>
             </Box>
+
+            {/* Post Modal */}
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleImageSelect} />
+            {showPostModal && (
+                <Box position="fixed" inset="0" bgColor="rgba(0,0,0,0.6)" zIndex={200}
+                    display="flex" alignItems="flex-end" justifyContent="center"
+                    onClick={() => { setShowPostModal(false); setPostImg(null); setPostImgPreview(null); setPostName(''); setPostError(''); }}>
+                    <Box bgColor="white" w="100%" maxW="430px" borderRadius="24px 24px 0 0"
+                        p="24px" onClick={e => e.stopPropagation()}>
+                        <Text fontWeight="800" color="#1C110D" mb="16px" style={{ fontSize: "18px" }}>
+                            Yangi post
+                        </Text>
+                        <Box w="100%" borderRadius="14px" border="2px dashed #F0E6E0" bgColor="#FAFAFA"
+                            display="flex" alignItems="center" justifyContent="center"
+                            cursor="pointer" overflow="hidden" onClick={() => fileRef.current?.click()}
+                            style={{ height: "180px" }}>
+                            {postImgPreview
+                                ? <img src={postImgPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                : <Box textAlign="center">
+                                    <FaImage style={{ fontSize: "32px", color: "#C03F0C", margin: "0 auto 8px" }} />
+                                    <Text color="#9B614B" style={{ fontSize: "13px" }}>Rasm tanlash</Text>
+                                </Box>
+                            }
+                        </Box>
+                        <Box mt="12px">
+                            <Box display="flex" alignItems="center" bgColor="#FFF5F0" borderRadius="14px"
+                                px="14px" border="1.5px solid #F0E6E0" style={{ height: "48px" }}>
+                                <input value={postName} onChange={e => setPostName(e.target.value)}
+                                    placeholder="Taom nomi"
+                                    style={{ width: "100%", border: "none", outline: "none", fontSize: "15px", color: "#1C110D", background: "transparent" }} />
+                            </Box>
+                        </Box>
+                        {postError && (
+                            <Box mt="8px" px="10px" py="8px" bgColor="#FFF5F5" border="1px solid #F5C2C7" borderRadius="12px">
+                                <Text style={{ fontSize: "13px", color: "#C53030" }}>{postError}</Text>
+                            </Box>
+                        )}
+                        <Box display="flex" gap="10px" mt="16px">
+                            <Button flex="1" bgColor="#F5F0EE" color="#9B614B" borderRadius="26px"
+                                style={{ height: "50px", fontSize: "14px" }}
+                                onClick={() => { setShowPostModal(false); setPostImg(null); setPostImgPreview(null); setPostName(''); setPostError(''); }}>
+                                Bekor
+                            </Button>
+                            <Button flex="1"
+                                bgColor={postImg && postName.trim() ? "#C03F0C" : "#E8D6CF"}
+                                color="white" borderRadius="26px" fontWeight="700"
+                                isLoading={publishLoading}
+                                style={{ height: "50px", fontSize: "14px" }}
+                                onClick={handlePublish} isDisabled={!postImg || !postName.trim() || publishLoading}>
+                                Nashr etish
+                            </Button>
+                        </Box>
+                    </Box>
+                </Box>
+            )}
 
             {/* Bottom Nav */}
             <Box className="fixed-bottom" borderTop="1px solid #EBEBEB"

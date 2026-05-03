@@ -591,31 +591,22 @@ const ChefViewPage = () => {
                         <Text fontWeight="700" color="#1C110D" style={{ fontSize: '15px' }}>{t('chefView.dishes')}</Text>
                         <Text color="#9B8E8A" style={{ fontSize: '12px' }}>{chefPosts.length} {t('chefView.dishCount')}</Text>
                     </Box>
-                    {/* 6 tadan ko'p bo'lsa scroll, aks holda hammasi ko'rinadi */}
-                    <Box
-                        overflowY={chefPosts.length > 6 ? 'auto' : 'visible'}
-                        style={chefPosts.length > 6 ? {
-                            maxHeight: 'calc((100vw - 44px) / 3 * 2 + 14px)',
-                            scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch'
-                        } : {}}>
-                        <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="6px">
-                            {chefPosts.map((post, i) => (
-                                <Box key={post.id || post._id || i} borderRadius="12px" overflow="hidden"
-                                    cursor="pointer" position="relative" onClick={() => setZoomed(post.image)}>
-                                    {/* padding-bottom trick — barcha WebView'larda 1:1 nisbat */}
-                                    <Box style={{ paddingBottom: '100%', position: 'relative', background: '#F0E6E0' }}>
-                                        <img src={post.image} alt={post.dishName}
-                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                                    </Box>
-                                    <Box position="absolute" bottom="0" left="0" right="0"
-                                        bgColor="rgba(0,0,0,0.55)" px="6px" py="4px">
-                                        <Text color="white" fontWeight="600" noOfLines={1} style={{ fontSize: '11px' }}>
-                                            {post.dishName}
-                                        </Text>
-                                    </Box>
+                    <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="6px">
+                        {chefPosts.map((post, i) => (
+                            <Box key={post.id || post._id || i} borderRadius="12px" overflow="hidden"
+                                cursor="pointer" position="relative" onClick={() => setZoomed(post.image)}>
+                                <Box style={{ paddingBottom: '100%', position: 'relative', background: '#F0E6E0' }}>
+                                    <img src={post.image} alt={post.dishName}
+                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                                 </Box>
-                            ))}
-                        </Box>
+                                <Box position="absolute" bottom="0" left="0" right="0"
+                                    bgColor="rgba(0,0,0,0.55)" px="6px" py="4px">
+                                    <Text color="white" fontWeight="600" noOfLines={1} style={{ fontSize: '11px' }}>
+                                        {post.dishName}
+                                    </Text>
+                                </Box>
+                            </Box>
+                        ))}
                     </Box>
                 </Box>
             )}
