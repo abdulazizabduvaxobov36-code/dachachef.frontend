@@ -367,7 +367,28 @@ const ChefHomePage = () => {
         fetchChefTotalEarned();
         fetchReviewNotifs();
         fetchPendingRequests();
-        return () => { unsub && unsub(); window.removeEventListener('posts-updated', refresh); };
+        // Backend dan postlarni ham yuklaymiz — real-time
+        const syncPosts = () => {
+            if (!myPhone) return;
+            const API_BASE = import.meta.env?.VITE_API_URL || '';
+            fetch(`${API_BASE}/posts/chef/${myPhone}`)
+                .then(r => r.ok ? r.json() : [])
+                .then(bp => {
+                    if (!Array.isArray(bp) || bp.length === 0) return;
+                    const mapped = bp.map(p => ({ ...p, id: p._id || p.id }));
+                    const local = Store.getPosts();
+                    const localIds = new Set(local.map(p => p.id || p._id));
+                    let changed = false;
+                    mapped.forEach(p => { if (!localIds.has(p.id)) { local.push(p); changed = true; } });
+                    if (changed) {
+                        localStorage.setItem('chefPosts', JSON.stringify(local));
+                        setPosts(local.filter(p => p.chefPhone === myPhone));
+                    }
+                }).catch(() => {});
+        };
+        syncPosts();
+        const iv = setInterval(syncPosts, 5000);
+        return () => { unsub && unsub(); window.removeEventListener('posts-updated', refresh); clearInterval(iv); };
     }, [myPhone]);
 
     useEffect(() => {
@@ -799,31 +820,38 @@ const ChefHomePage = () => {
                         {posts.length === 0 && (
                             <Box textAlign="center" py="40px">
                                 <FaImage style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
-                                <Text color="#9B614B" style={{ fontSize: "clamp(13px, 3.5vw, 14px)" }}>{t("chefHome.noPost")}</Text>
+                                <Text color="#9B614B" style={{ fontSize: "14px" }}>{t("chefHome.noPost")}</Text>
                             </Box>
                         )}
-                        <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap="10px">
-                            {posts.map(p => (
-                                <Box key={p.id} borderRadius="16px" overflow="hidden" bgColor="white"
-                                    boxShadow="0 2px 10px rgba(192,63,12,0.08)" position="relative">
-                                    <img src={p.image} alt={p.dishName}
-                                        style={{ width: "100%", aspectRatio: "1", objectFit: "cover", display: "block" }} />
-                                    <Box px="10px" py="8px">
-                                        <Text fontWeight="600" color="#1C110D" noOfLines={1}
-                                            style={{ fontSize: "clamp(12px, 3.2vw, 13px)" }}>{p.dishName}</Text>
+                        {/* Scroll container: 6 tadan oshiq bo'lsa pastga scroll */}
+                        <Box overflowY="auto"
+                            style={{ maxHeight: 'calc((100vw - 44px) / 3 * 2 + 14px)', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+                            <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="6px">
+                                {posts.map(p => (
+                                    <Box key={p.id || p._id} position="relative" borderRadius="12px" overflow="hidden">
+                                        {/* padding-bottom trick — barcha WebView'larda ishlaydi */}
+                                        <Box style={{ paddingBottom: '100%', position: 'relative', background: '#F0E6E0' }}>
+                                            <img src={p.image} alt={p.dishName}
+                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                        </Box>
+                                        <Box position="absolute" bottom="0" left="0" right="0"
+                                            bgColor="rgba(0,0,0,0.55)" px="6px" py="4px">
+                                            <Text color="white" fontWeight="600" noOfLines={1}
+                                                style={{ fontSize: '11px' }}>{p.dishName}</Text>
+                                        </Box>
+                                        <Box position="absolute" top="4px" right="4px" w="20px" h="20px"
+                                            bgColor="rgba(0,0,0,0.6)" borderRadius="full"
+                                            display="flex" alignItems="center" justifyContent="center"
+                                            cursor="pointer" onClick={() => {
+                                                Store.deletePost(p.id);
+                                                const API_BASE = import.meta.env?.VITE_API_URL || '';
+                                                fetch(`${API_BASE}/posts/${p.id}`, { method: 'DELETE' }).catch(() => {});
+                                            }}>
+                                            <FaTimes style={{ fontSize: "8px", color: "white" }} />
+                                        </Box>
                                     </Box>
-                                    <Box position="absolute" top="6px" right="6px" w="22px" h="22px"
-                                        bgColor="rgba(0,0,0,0.5)" borderRadius="full"
-                                        display="flex" alignItems="center" justifyContent="center"
-                                        cursor="pointer" onClick={() => {
-                                            Store.deletePost(p.id);
-                                            const API_BASE = import.meta.env?.VITE_API_URL || '';
-                                            fetch(`${API_BASE}/posts/${p.id}`, { method: 'DELETE' }).catch(() => {});
-                                        }}>
-                                        <FaTimes style={{ fontSize: "9px", color: "white" }} />
-                                    </Box>
-                                </Box>
-                            ))}
+                                ))}
+                            </Box>
                         </Box>
                     </Box>
                 )}
