@@ -1,5 +1,5 @@
 import { Box, Text, Button } from '@chakra-ui/react';
-import { FaHome, FaCommentDots, FaUser, FaBell, FaPhone, FaMoneyBillWave } from 'react-icons/fa';
+import { FaHome, FaCommentDots, FaUser, FaBell, FaPhone, FaMoneyBillWave, FaPlus, FaImage } from 'react-icons/fa';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,14 @@ const ChefHomePage = () => {
     const location = useLocation();
     const { t } = useTranslation();
     const notifRef = useRef();
+    const fileRef = useRef();
+
+    const [showPostModal, setShowPostModal] = useState(false);
+    const [postImg, setPostImg] = useState(null);
+    const [postName, setPostName] = useState('');
+    const [postImgPreview, setPostImgPreview] = useState(null);
+    const [publishLoading, setPublishLoading] = useState(false);
+    const [postError, setPostError] = useState('');
 
     const session = Store.getSession();
     if (session?.role === 'chef' && session?.data) {
@@ -383,6 +391,40 @@ const ChefHomePage = () => {
 
     const totalUnread = notifications.reduce((s, n) => s + n.unread, 0);
 
+    const handleImageSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => { setPostImg(reader.result); setPostImgPreview(reader.result); };
+        reader.readAsDataURL(file);
+    };
+
+    const handlePublish = async () => {
+        if (!postImg || !postName.trim()) { setPostError(t('chefHome.postRequired') || "Rasm va taom nomini kiriting."); return; }
+        setPublishLoading(true);
+        setPostError('');
+        const API_BASE = import.meta.env?.VITE_API_URL || '';
+        const postData = {
+            chefPhone: myPhone,
+            chefName: `${chefProfile.name || ''} ${chefProfile.surname || ''}`.trim(),
+            chefImage: chefProfile.image || null,
+            image: postImg,
+            dishName: postName.trim(),
+        };
+        try {
+            const res = await fetch(`${API_BASE}/posts`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(postData),
+            });
+            if (!res.ok) throw new Error();
+            setShowPostModal(false);
+            setPostImg(null); setPostImgPreview(null); setPostName('');
+        } catch {
+            setPostError("Postni saqlab bo'lmadi.");
+        }
+        setPublishLoading(false);
+    };
 
     return (
         <Box minH="100dvh" bgColor="#FFF5F0" display="flex" flexDir="column">
@@ -540,20 +582,29 @@ const ChefHomePage = () => {
 
             <Box flex="1" pb="80px">
                 {/* Tabs */}
-                <Box display="flex" alignItems="center" pt="14px" pb="10px" px="16px" gap="8px">
-                    {[
-                        { key: 'sorovlar', label: `So'rovlar${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
-                        { key: 'reviews', label: `${t("chefHome.reviews")}${reviewNotifs.length > 0 ? ` (${reviewNotifs.length})` : ""}` },
-                    ].map(tab => (
-                        <Button key={tab.key} borderRadius="20px" fontWeight="600" flexShrink={0}
-                            bgColor={activeTab === tab.key ? '#C03F0C' : 'white'}
-                            color={activeTab === tab.key ? 'white' : '#9B614B'}
-                            border="1.5px solid" borderColor={activeTab === tab.key ? '#C03F0C' : '#F0E6E0'}
-                            _hover={{ opacity: 0.9 }} onClick={() => setActiveTab(tab.key)}
-                            style={{ height: "38px", fontSize: "13px", padding: "0 16px", borderRadius: "20px" }}>
-                            {tab.label}
-                        </Button>
-                    ))}
+                <Box display="flex" alignItems="center" pt="14px" pb="10px" pl="16px" pr="8px" gap="8px">
+                    <Box display="flex" gap="8px" flex="1">
+                        {[
+                            { key: 'sorovlar', label: `So'rovlar${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
+                            { key: 'reviews', label: `${t("chefHome.reviews")}${reviewNotifs.length > 0 ? ` (${reviewNotifs.length})` : ""}` },
+                        ].map(tab => (
+                            <Button key={tab.key} borderRadius="20px" fontWeight="600" flexShrink={0}
+                                bgColor={activeTab === tab.key ? '#C03F0C' : 'white'}
+                                color={activeTab === tab.key ? 'white' : '#9B614B'}
+                                border="1.5px solid" borderColor={activeTab === tab.key ? '#C03F0C' : '#F0E6E0'}
+                                _hover={{ opacity: 0.9 }} onClick={() => setActiveTab(tab.key)}
+                                style={{ height: "38px", fontSize: "13px", padding: "0 16px", borderRadius: "20px" }}>
+                                {tab.label}
+                            </Button>
+                        ))}
+                    </Box>
+                    <Button flexShrink={0} bgColor="#FFF0EC" color="#C03F0C"
+                        border="1.5px solid #F5C5B0" borderRadius="20px" fontWeight="600"
+                        _hover={{ bgColor: '#FFE0D0' }}
+                        style={{ height: "38px", fontSize: "13px", padding: "0 14px" }}
+                        onClick={() => setShowPostModal(true)}>
+                        <FaPlus style={{ marginRight: "5px", fontSize: "10px" }} /> Post
+                    </Button>
                 </Box>
 
                 {/* SO'ROVLAR + HISOBOT — bitta sahifada */}
@@ -824,6 +875,61 @@ const ChefHomePage = () => {
                                 style={{ height: "50px", fontSize: "14px" }}
                                 onClick={handleAddOrder}>
                                 {t('order.saveBtn') || "Saqlash"}
+                            </Button>
+                        </Box>
+                    </Box>
+                </Box>
+            )}
+
+            {/* Post Modal */}
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleImageSelect} />
+            {showPostModal && (
+                <Box position="fixed" inset="0" bgColor="rgba(0,0,0,0.6)" zIndex={200}
+                    display="flex" alignItems="flex-end" justifyContent="center"
+                    onClick={() => { setShowPostModal(false); setPostImg(null); setPostImgPreview(null); setPostName(''); setPostError(''); }}>
+                    <Box bgColor="white" w="100%" maxW="430px" borderRadius="24px 24px 0 0"
+                        p="24px" onClick={e => e.stopPropagation()}>
+                        <Text fontWeight="800" color="#1C110D" mb="16px" style={{ fontSize: "18px" }}>
+                            {t("chefHome.newPost")}
+                        </Text>
+                        <Box w="100%" borderRadius="14px" border="2px dashed #F0E6E0" bgColor="#FAFAFA"
+                            display="flex" alignItems="center" justifyContent="center"
+                            cursor="pointer" overflow="hidden" onClick={() => fileRef.current?.click()}
+                            style={{ height: "180px" }}>
+                            {postImgPreview
+                                ? <img src={postImgPreview} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                                : <Box textAlign="center">
+                                    <FaImage style={{ fontSize: "32px", color: "#C03F0C", margin: "0 auto 8px" }} />
+                                    <Text color="#9B614B" style={{ fontSize: "13px" }}>{t("chefHome.selectImage")}</Text>
+                                </Box>
+                            }
+                        </Box>
+                        <Box mt="12px">
+                            <Box display="flex" alignItems="center" bgColor="#FFF5F0" borderRadius="14px"
+                                px="14px" border="1.5px solid #F0E6E0" style={{ height: "48px" }}>
+                                <input value={postName} onChange={e => setPostName(e.target.value)}
+                                    placeholder={t("chefHome.dishPlaceholder") || "Taom nomi"}
+                                    style={{ width: "100%", border: "none", outline: "none", fontSize: "15px", color: "#1C110D", background: "transparent" }} />
+                            </Box>
+                        </Box>
+                        {postError && (
+                            <Box mt="8px" px="10px" py="8px" bgColor="#FFF5F5" border="1px solid #F5C2C7" borderRadius="12px">
+                                <Text style={{ fontSize: "13px", color: "#C53030" }}>{postError}</Text>
+                            </Box>
+                        )}
+                        <Box display="flex" gap="10px" mt="16px">
+                            <Button flex="1" bgColor="#F5F0EE" color="#9B614B" borderRadius="26px"
+                                style={{ height: "50px", fontSize: "14px" }}
+                                onClick={() => { setShowPostModal(false); setPostImg(null); setPostImgPreview(null); setPostName(''); setPostError(''); }}>
+                                {t("chefHome.cancel")}
+                            </Button>
+                            <Button flex="1"
+                                bgColor={postImg && postName.trim() ? "#C03F0C" : "#E8D6CF"}
+                                color="white" borderRadius="26px" fontWeight="700"
+                                isLoading={publishLoading}
+                                style={{ height: "50px", fontSize: "14px" }}
+                                onClick={handlePublish} isDisabled={!postImg || !postName.trim() || publishLoading}>
+                                {t("chefHome.publish")}
                             </Button>
                         </Box>
                     </Box>

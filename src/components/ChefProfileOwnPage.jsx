@@ -206,45 +206,40 @@ const ChefProfileOwnPage = () => {
                 {/* Gallery */}
                 <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 1px 6px rgba(0,0,0,0.05)">
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb="12px">
-                        <Box display="flex" alignItems="center" gap="8px">
-                            <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>{t("chefProfileOwn.gallery")}</Text>
-                            {posts.length > 0 && (
-                                <Box bgColor="#FFF0EC" borderRadius="8px" px="8px" py="2px">
-                                    <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "11px" }}>{posts.length} ta</Text>
-                                </Box>
-                            )}
-                        </Box>
-                        <Box cursor="pointer" display="flex" alignItems="center" gap="5px"
-                            bgColor="#C03F0C" borderRadius="10px" px="10px" py="6px"
-                            onClick={() => setShowPostModal(true)}>
-                            <FaPlus style={{ fontSize: "10px", color: "white" }} />
-                            <Text color="white" fontWeight="700" style={{ fontSize: "12px" }}>Post</Text>
-                        </Box>
+                        <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>{t("chefProfileOwn.gallery")}</Text>
+                        {posts.length > 0 && <Text color="#9B8E8A" style={{ fontSize: "12px" }}>{posts.length} ta</Text>}
                     </Box>
                     {posts.length === 0
                         ? <Box textAlign="center" py="24px">
                             <FaImage style={{ fontSize: "32px", color: "#E0DAD7", margin: "0 auto 8px", display: "block" }} />
                             <Text color="#B0A8A4" style={{ fontSize: "13px" }}>{t("chefProfileOwn.noPost")}</Text>
                         </Box>
-                        : <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="8px">
-                            {posts.map((p, i) => (
-                                <Box key={p.id || p._id || i} position="relative" borderRadius="10px" overflow="hidden">
-                                    <Box style={{ paddingBottom: '100%', position: 'relative', background: '#F0E6E0' }}>
-                                        <img src={p.image} alt={p.dishName}
-                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        : <Box
+                            style={posts.length > 6 ? {
+                                maxHeight: 'calc((100vw - 96px) / 3 * 2 + 8px)',
+                                overflowY: 'scroll',
+                                WebkitOverflowScrolling: 'touch',
+                            } : {}}>
+                            <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="8px">
+                                {posts.map((p, i) => (
+                                    <Box key={p.id || p._id || i} position="relative" borderRadius="10px" overflow="hidden">
+                                        <Box style={{ paddingBottom: '100%', position: 'relative', background: '#F0E6E0' }}>
+                                            <img src={p.image} alt={p.dishName}
+                                                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                        </Box>
+                                        <Box position="absolute" bottom="0" left="0" right="0"
+                                            bgColor="rgba(0,0,0,0.5)" px="5px" py="3px">
+                                            <Text color="white" fontWeight="600" noOfLines={1} style={{ fontSize: '10px' }}>{p.dishName}</Text>
+                                        </Box>
+                                        <Box position="absolute" top="4px" right="4px" w="20px" h="20px"
+                                            bgColor="rgba(0,0,0,0.6)" borderRadius="full"
+                                            display="flex" alignItems="center" justifyContent="center"
+                                            cursor="pointer" onClick={() => handleDeletePost(p)}>
+                                            <FaTimes style={{ fontSize: "8px", color: "white" }} />
+                                        </Box>
                                     </Box>
-                                    <Box position="absolute" bottom="0" left="0" right="0"
-                                        bgColor="rgba(0,0,0,0.5)" px="5px" py="3px">
-                                        <Text color="white" fontWeight="600" noOfLines={1} style={{ fontSize: '10px' }}>{p.dishName}</Text>
-                                    </Box>
-                                    <Box position="absolute" top="4px" right="4px" w="20px" h="20px"
-                                        bgColor="rgba(0,0,0,0.6)" borderRadius="full"
-                                        display="flex" alignItems="center" justifyContent="center"
-                                        cursor="pointer" onClick={() => handleDeletePost(p)}>
-                                        <FaTimes style={{ fontSize: "8px", color: "white" }} />
-                                    </Box>
-                                </Box>
-                            ))}
+                                ))}
+                            </Box>
                         </Box>
                     }
                 </Box>
