@@ -23,6 +23,7 @@ import AdminChefsPage from "./components/AdminChefsPage";
 import AdminCustomersPage from "./components/AdminCustomersPage";
 import AdminOrdersPage from "./components/AdminOrdersPage";
 import AdminRevenuePage from "./components/AdminRevenuePage";
+import AdminChefDetailPage from "./components/AdminChefDetailPage";
 import BlockedPage from "./components/BlockedPage";
 
 const App = () => {
@@ -53,6 +54,7 @@ const App = () => {
       <Route path="/add-review" element={<AddReviewPage />} />
       <Route path="/admin" element={<AdminPage />} />
       <Route path="/admin/chefs" element={<AdminChefsPage />} />
+      <Route path="/admin/chefs/:phone" element={<AdminChefDetailPage />} />
       <Route path="/admin/customers" element={<AdminCustomersPage />} />
       <Route path="/admin/orders" element={<AdminOrdersPage />} />
       <Route path="/admin/revenue" element={<AdminRevenuePage />} />

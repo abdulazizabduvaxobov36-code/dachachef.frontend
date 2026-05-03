@@ -1,7 +1,7 @@
 import { Box, Text } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaSync, FaBell } from 'react-icons/fa';
+import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaSync, FaEye } from 'react-icons/fa';
 import Store from '../store';
 
 const API = import.meta.env.VITE_API_URL || '';
@@ -17,7 +17,11 @@ const AdminChefsPage = () => {
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
     const [tab, setTab] = useState('all');
+    const [confirmBlock, setConfirmBlock] = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState(null);
     const deletedRef = useRef(new Set());
+    const blockTimerRef = useRef(null);
+    const deleteTimerRef = useRef(null);
 
     useEffect(() => {
         if (sessionStorage.getItem('adminAuthed') !== '1') { navigate('/admin'); return; }
@@ -40,39 +44,30 @@ const AdminChefsPage = () => {
     };
 
     const toggleBlock = async (chef) => {
-        const wasBlocked = !!chef.isBlocked;
-        const action = wasBlocked ? 'blokdan chiqarasizmi' : 'bloklamoqchimisiz';
-        if (!window.confirm(`${chef.name} ${chef.surname} ni ${action}?`)) return;
+        if (confirmBlock !== chef.phone) {
+            setConfirmBlock(chef.phone);
+            clearTimeout(blockTimerRef.current);
+            blockTimerRef.current = setTimeout(() => setConfirmBlock(null), 3000);
+            return;
+        }
+        setConfirmBlock(null);
         try {
             const r = await fetch(`${API}/chefs/${chef.phone}/block`, { method: 'PATCH' });
             if (r.ok) {
                 const { isBlocked } = await r.json();
                 setChefs(prev => prev.map(c => c.phone === chef.phone ? { ...c, isBlocked } : c));
             }
-        } catch {
-            alert('Xato yuz berdi. Internet aloqasini tekshiring.');
-        }
-    };
-
-    const notifyChef = async (chef) => {
-        const msg = window.prompt(`${chef.name} ${chef.surname} ga ogohlantirish xabari yozing:`);
-        if (!msg?.trim()) return;
-        try {
-            const r = await fetch(`${API}/chefs/${chef.phone}/notify`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: msg.trim() }),
-            });
-            const d = await r.json();
-            if (r.ok) alert('✅ Xabar yuborildi!');
-            else alert(`❌ ${d.message}`);
-        } catch {
-            alert('❌ Xato yuz berdi');
-        }
+        } catch { }
     };
 
     const deleteChef = async (chef) => {
-        if (!window.confirm(`${chef.name} ${chef.surname} ni o'chirasizmi? Bu amal qaytarib bo'lmaydi.`)) return;
+        if (confirmDelete !== chef.phone) {
+            setConfirmDelete(chef.phone);
+            clearTimeout(deleteTimerRef.current);
+            deleteTimerRef.current = setTimeout(() => setConfirmDelete(null), 3000);
+            return;
+        }
+        setConfirmDelete(null);
         deletedRef.current.add(chef.phone);
         Store.removeChef(chef.phone);
         localStorage.removeItem(`chef_${chef.phone}`);
@@ -168,7 +163,8 @@ const AdminChefsPage = () => {
                     <Box key={chef.phone || i} bgColor="white" borderRadius="16px" p="14px"
                         boxShadow="0 2px 8px rgba(0,0,0,0.05)"
                         border={chef.isBlocked ? '1.5px solid #FCA5A5' : '1.5px solid transparent'}>
-                        <Box display="flex" alignItems="center" gap="12px" mb="10px">
+                        <Box display="flex" alignItems="center" gap="12px" mb="10px"
+                            cursor="pointer" onClick={() => navigate(`/admin/chefs/${chef.phone}`)}>
                             <Box w="46px" h="46px" borderRadius="12px" flexShrink={0}
                                 overflow="hidden" bgColor="#F0E6E0"
                                 display="flex" alignItems="center" justifyContent="center">
@@ -192,32 +188,33 @@ const AdminChefsPage = () => {
                                     {chef.exp ? `${chef.exp} yil tajriba` : ''}{chef.registeredAt ? ` · ${dateStr(chef.registeredAt)}` : ''}
                                 </Text>
                             </Box>
+                            <Box bgColor="#FFF5F0" borderRadius="10px" px="10px" py="6px"
+                                display="flex" alignItems="center" gap="5px" flexShrink={0}>
+                                <FaEye style={{ fontSize: '11px', color: '#C03F0C' }} />
+                                <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '11px' }}>Ko'rish</Text>
+                            </Box>
                         </Box>
-                        <Box display="flex" gap="8px" mb="8px">
+                        <Box display="flex" gap="8px">
                             <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
-                                bgColor={chef.isBlocked ? '#ECFDF5' : '#FEF2F2'}
+                                bgColor={confirmBlock === chef.phone ? '#FEF2F2' : (chef.isBlocked ? '#ECFDF5' : '#FEF2F2')}
+                                border={confirmBlock === chef.phone ? '1.5px solid #EF4444' : '1.5px solid transparent'}
                                 display="flex" alignItems="center" justifyContent="center" gap="6px"
                                 onClick={() => toggleBlock(chef)}>
-                                {chef.isBlocked
-                                    ? <><FaUnlock style={{ fontSize: '11px', color: '#22C55E' }} /><Text color="#22C55E" fontWeight="700" style={{ fontSize: '12px' }}>Blokdan chiqar</Text></>
-                                    : <><FaLock style={{ fontSize: '11px', color: '#EF4444' }} /><Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Bloklash</Text></>}
+                                {confirmBlock === chef.phone
+                                    ? <Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>❗ Tasdiqlash</Text>
+                                    : chef.isBlocked
+                                        ? <><FaUnlock style={{ fontSize: '11px', color: '#22C55E' }} /><Text color="#22C55E" fontWeight="700" style={{ fontSize: '12px' }}>Blokdan chiqar</Text></>
+                                        : <><FaLock style={{ fontSize: '11px', color: '#EF4444' }} /><Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Bloklash</Text></>}
                             </Box>
                             <Box flex="1" cursor="pointer" borderRadius="10px" py="8px"
-                                bgColor="#FFF5F0"
+                                bgColor={confirmDelete === chef.phone ? '#FEE2E2' : '#FFF5F0'}
+                                border={confirmDelete === chef.phone ? '1.5px solid #EF4444' : '1.5px solid transparent'}
                                 display="flex" alignItems="center" justifyContent="center" gap="6px"
                                 onClick={() => deleteChef(chef)}>
-                                <FaTrash style={{ fontSize: '11px', color: '#C03F0C' }} />
-                                <Text color="#C03F0C" fontWeight="700" style={{ fontSize: '12px' }}>O'chirish</Text>
+                                {confirmDelete === chef.phone
+                                    ? <Text color="#EF4444" fontWeight="700" style={{ fontSize: '12px' }}>Ha, o'chirish</Text>
+                                    : <><FaTrash style={{ fontSize: '11px', color: '#C03F0C' }} /><Text color="#C03F0C" fontWeight="700" style={{ fontSize: '12px' }}>O'chirish</Text></>}
                             </Box>
-                        </Box>
-                        <Box cursor="pointer" borderRadius="10px" py="8px"
-                            bgColor="#FFFBEB" border="1px solid #FDE68A"
-                            display="flex" alignItems="center" justifyContent="center" gap="6px"
-                            onClick={() => notifyChef(chef)}>
-                            <FaBell style={{ fontSize: '11px', color: '#D97706' }} />
-                            <Text color="#D97706" fontWeight="700" style={{ fontSize: '12px' }}>
-                                Ogohlantirish yuborish
-                            </Text>
                         </Box>
                     </Box>
                 ))}
