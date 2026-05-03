@@ -321,8 +321,8 @@ const ChefHomePage = () => {
         const tgId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
         if (!tgId) return;
         const API_BASE = import.meta.env?.VITE_API_URL || '';
-        fetch(`${API_BASE}/chefs/${myPhone}`, {
-            method: 'PUT',
+        fetch(`${API_BASE}/chefs/${myPhone}/link-telegram`, {
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ telegramId: String(tgId) }),
         }).catch(() => {});

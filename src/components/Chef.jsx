@@ -49,7 +49,8 @@ const Chef = () => {
         setTouched(prev => ({ ...prev, phone: true }));
         return;
       }
-      const d = { name, surname, phone, exp, image, bio, id: Date.now() };
+      const tgId = String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '');
+      const d = { name, surname, phone, exp, image, bio, id: Date.now(), telegramId: tgId };
       localStorage.setItem("chefProfile", JSON.stringify(d));
       Object.keys(localStorage)
         .filter(k => k.startsWith('saved_chef_') && !k.endsWith(`_${phone}`))
@@ -62,7 +63,7 @@ const Chef = () => {
       fetch(`${AUTH_BASE}/chefs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, surname, phone, exp, image, bio }),
+        body: JSON.stringify({ name, surname, phone, exp, image, bio, telegramId: tgId }),
       }).catch(() => {});
       navigate("/chef-home");
     }

@@ -198,6 +198,31 @@ const OrdersPage = () => {
     return () => { unsub?.(); window.removeEventListener('storage', onStorage); };
   }, [selectedChat?.id]);
 
+  // Real-time: chat ochiq bo'lganda har 3s da backenddan yangi xabarlarni olish
+  useEffect(() => {
+    if (!selectedChat) return;
+    const API_BASE = import.meta.env?.VITE_API_URL || '';
+    const poll = setInterval(() => {
+      fetch(`${API_BASE}/chats/${selectedChat.id}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(backendMsgs => {
+          if (!Array.isArray(backendMsgs) || backendMsgs.length === 0) return;
+          const local = Store.getMessages(selectedChat.id);
+          const localKeys = new Set(local.map(m => `${m.from}_${m.ts}_${m.text}`));
+          let changed = false;
+          backendMsgs.forEach(bm => {
+            const key = `${bm.from}_${bm.ts}_${bm.text}`;
+            if (!localKeys.has(key)) { local.push({ text: bm.text, sender: bm.sender, from: bm.from, to: bm.to, ts: bm.ts }); changed = true; }
+          });
+          if (changed) {
+            localStorage.setItem(`chat_${selectedChat.id}`, JSON.stringify(local));
+            setMessages(prev => ({ ...prev, [selectedChat.id]: [...local] }));
+          }
+        }).catch(() => {});
+    }, 3000);
+    return () => clearInterval(poll);
+  }, [selectedChat?.id]);
+
   // Typing indicator
   useEffect(() => {
     if (!selectedChat) return;
@@ -225,6 +250,14 @@ const OrdersPage = () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(msgObj),
+    }).catch(() => {});
+    // Oshpazga Telegram bildirish
+    const cData = JSON.parse(localStorage.getItem('customerData') || 'null') || {};
+    const fromName = cData.firstName ? `${cData.firstName} ${cData.lastName || ''}`.trim() : myPhone;
+    fetch(`${API_BASE}/notify/chef-event`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chefPhone: selectedChat.chefPhone, type: 'message', fromName, extra: { text: message } }),
     }).catch(() => {});
   };
 

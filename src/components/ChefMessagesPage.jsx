@@ -167,6 +167,30 @@ const ChefMessagesPage = () => {
     return () => { unsub?.(); window.removeEventListener('storage', onStorage); };
   }, [selectedChat?.id]);
 
+  // Real-time: chat ochiq bo'lganda har 3s da backenddan yangi xabarlarni olish
+  useEffect(() => {
+    if (!selectedChat) return;
+    const poll = setInterval(() => {
+      fetch(`${API_BASE}/chats/${selectedChat.id}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(backendMsgs => {
+          if (!Array.isArray(backendMsgs) || backendMsgs.length === 0) return;
+          const local = Store.getMessages(selectedChat.id);
+          const localKeys = new Set(local.map(m => `${m.from}_${m.ts}_${m.text}`));
+          let changed = false;
+          backendMsgs.forEach(bm => {
+            const key = `${bm.from}_${bm.ts}_${bm.text}`;
+            if (!localKeys.has(key)) { local.push({ text: bm.text, sender: bm.sender, from: bm.from, to: bm.to, ts: bm.ts, id: bm._id }); changed = true; }
+          });
+          if (changed) {
+            localStorage.setItem(`chat_${selectedChat.id}`, JSON.stringify(local));
+            setMessages(prev => ({ ...prev, [selectedChat.id]: [...local] }));
+          }
+        }).catch(() => {});
+    }, 3000);
+    return () => clearInterval(poll);
+  }, [selectedChat?.id]);
+
   useEffect(() => {
     if (!selectedChat) return;
     const id = setInterval(() => {
