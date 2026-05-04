@@ -420,6 +420,7 @@ const ChefHomePage = () => {
             if (!res.ok) throw new Error();
             setShowPostModal(false);
             setPostImg(null); setPostImgPreview(null); setPostName('');
+            navigate('/chef-profile');
         } catch {
             setPostError("Postni saqlab bo'lmadi.");
         }
