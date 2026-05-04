@@ -591,7 +591,7 @@ const ChefViewPage = () => {
                         <Text fontWeight="700" color="#1C110D" style={{ fontSize: '15px' }}>{t('chefView.dishes')}</Text>
                         <Text color="#9B8E8A" style={{ fontSize: '12px' }}>{chefPosts.length} {t('chefView.dishCount')}</Text>
                     </Box>
-                    <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="6px">
+                    <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="8px">
                         {chefPosts.map((post, i) => (
                             <Box key={post.id || post._id || i} borderRadius="12px" overflow="hidden"
                                 cursor="pointer" position="relative" onClick={() => setZoomed(post.image)}>

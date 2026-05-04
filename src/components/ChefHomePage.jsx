@@ -1,5 +1,5 @@
 import { Box, Text, Button } from '@chakra-ui/react';
-import { FaHome, FaCommentDots, FaUser, FaBell, FaPhone, FaMoneyBillWave, FaPlus, FaImage } from 'react-icons/fa';
+import { FaHome, FaCommentDots, FaUser, FaBell, FaPhone, FaMoneyBillWave, FaPlus, FaImage, FaTimes } from 'react-icons/fa';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -12,6 +12,7 @@ const ChefHomePage = () => {
     const notifRef = useRef();
     const fileRef = useRef();
 
+    const [posts, setPosts] = useState([]);
     const [showPostModal, setShowPostModal] = useState(false);
     const [postImg, setPostImg] = useState(null);
     const [postName, setPostName] = useState('');
@@ -354,10 +355,22 @@ const ChefHomePage = () => {
             .catch(() => { });
     }, [myPhone]);
 
+    const syncPosts = () => {
+        if (!myPhone) return;
+        const API_BASE = import.meta.env?.VITE_API_URL || '';
+        fetch(`${API_BASE}/posts/chef/${myPhone}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(bp => { if (Array.isArray(bp)) setPosts(bp.map(p => ({ ...p, id: p._id || p.id }))); })
+            .catch(() => {});
+    };
+
     useEffect(() => {
         fetchChefTotalEarned();
         fetchReviewNotifs();
         fetchPendingRequests();
+        syncPosts();
+        const iv = setInterval(syncPosts, 5000);
+        return () => clearInterval(iv);
     }, [myPhone]);
 
     useEffect(() => {
@@ -420,7 +433,8 @@ const ChefHomePage = () => {
             if (!res.ok) throw new Error();
             setShowPostModal(false);
             setPostImg(null); setPostImgPreview(null); setPostName('');
-            navigate('/chef-profile');
+            setActiveTab('posts');
+            syncPosts();
         } catch {
             setPostError("Postni saqlab bo'lmadi.");
         }
@@ -583,11 +597,14 @@ const ChefHomePage = () => {
 
             <Box flex="1" pb="80px">
                 {/* Tabs */}
-                <Box display="flex" alignItems="center" pt="14px" pb="10px" pl="16px" pr="8px" gap="8px">
-                    <Box display="flex" gap="8px" flex="1">
+                <Box display="flex" alignItems="center" pt="14px" pb="10px" gap="0">
+                    <Box display="flex" gap="8px" pl="16px" pr="8px"
+                        overflowX="auto" flex="1"
+                        style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
                         {[
                             { key: 'sorovlar', label: `So'rovlar${pendingRequests.length > 0 ? ` (${pendingRequests.length})` : ""}` },
                             { key: 'reviews', label: `${t("chefHome.reviews")}${reviewNotifs.length > 0 ? ` (${reviewNotifs.length})` : ""}` },
+                            { key: 'posts', label: `${t("chefHome.posts") || "Postlar"}${posts.length > 0 ? ` (${posts.length})` : ""}` },
                         ].map(tab => (
                             <Button key={tab.key} borderRadius="20px" fontWeight="600" flexShrink={0}
                                 bgColor={activeTab === tab.key ? '#C03F0C' : 'white'}
@@ -599,13 +616,15 @@ const ChefHomePage = () => {
                             </Button>
                         ))}
                     </Box>
-                    <Button flexShrink={0} bgColor="#FFF0EC" color="#C03F0C"
-                        border="1.5px solid #F5C5B0" borderRadius="20px" fontWeight="600"
-                        _hover={{ bgColor: '#FFE0D0' }}
-                        style={{ height: "38px", fontSize: "13px", padding: "0 14px" }}
-                        onClick={() => setShowPostModal(true)}>
-                        <FaPlus style={{ marginRight: "5px", fontSize: "10px" }} /> Post
-                    </Button>
+                    <Box pr="12px" flexShrink={0}>
+                        <Button bgColor="#FFF0EC" color="#C03F0C"
+                            border="1.5px solid #F5C5B0" borderRadius="20px" fontWeight="600"
+                            _hover={{ bgColor: '#FFE0D0' }}
+                            style={{ height: "38px", fontSize: "13px", padding: "0 14px" }}
+                            onClick={() => setShowPostModal(true)}>
+                            <FaPlus style={{ marginRight: "5px", fontSize: "10px" }} /> Post
+                        </Button>
+                    </Box>
                 </Box>
 
                 {/* SO'ROVLAR + HISOBOT — bitta sahifada */}
@@ -769,6 +788,42 @@ const ChefHomePage = () => {
                                 )}
                             </Box>
                         ))}
+                    </Box>
+                )}
+
+                {/* POSTLAR */}
+                {activeTab === 'posts' && (
+                    <Box px="16px" pb="8px">
+                        {posts.length === 0 && (
+                            <Box textAlign="center" py="40px">
+                                <FaImage style={{ fontSize: "36px", color: "#E8D6CF", display: "block", margin: "0 auto 12px" }} />
+                                <Text color="#9B614B" style={{ fontSize: "14px" }}>Hali post yo'q</Text>
+                            </Box>
+                        )}
+                        <Box display="grid" gridTemplateColumns="repeat(3, 1fr)" gap="8px">
+                            {posts.map(p => (
+                                <Box key={p.id || p._id} position="relative" borderRadius="12px" overflow="hidden">
+                                    <Box style={{ paddingBottom: '100%', position: 'relative', background: '#F0E6E0' }}>
+                                        <img src={p.image} alt={p.dishName}
+                                            style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                    </Box>
+                                    <Box position="absolute" bottom="0" left="0" right="0"
+                                        bgColor="rgba(0,0,0,0.55)" px="6px" py="4px">
+                                        <Text color="white" fontWeight="600" noOfLines={1} style={{ fontSize: '11px' }}>{p.dishName}</Text>
+                                    </Box>
+                                    <Box position="absolute" top="4px" right="4px" w="20px" h="20px"
+                                        bgColor="rgba(0,0,0,0.6)" borderRadius="full"
+                                        display="flex" alignItems="center" justifyContent="center"
+                                        cursor="pointer" onClick={() => {
+                                            setPosts(prev => prev.filter(x => (x.id || x._id) !== (p.id || p._id)));
+                                            const API_BASE = import.meta.env?.VITE_API_URL || '';
+                                            fetch(`${API_BASE}/posts/${p.id || p._id}`, { method: 'DELETE' }).catch(() => {});
+                                        }}>
+                                        <FaTimes style={{ fontSize: "8px", color: "white" }} />
+                                    </Box>
+                                </Box>
+                            ))}
+                        </Box>
                     </Box>
                 )}
 
