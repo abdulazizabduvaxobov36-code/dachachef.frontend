@@ -55,7 +55,6 @@ const ChefMessagesPage = () => {
       .then(r => r.ok ? r.json() : [])
       .then(backendChats => {
         if (!Array.isArray(backendChats) || backendChats.length === 0) return;
-        // Local chatlar bilan birlashtirish
         setChats(prev => {
           const localIds = new Set(prev.map(c => c.id));
           const merged = [...prev];
@@ -68,12 +67,20 @@ const ChefMessagesPage = () => {
                 customerImage: null,
                 lastMsg: bc.lastMsg,
                 time: bc.time,
-                unread: bc.unread,
+                unread: bc.unread || 0,
                 lastSender: bc.lastSender,
               });
             } else {
               const i = merged.findIndex(c => c.id === bc.chatId);
-              if (i >= 0 && bc.unread > merged[i].unread) merged[i].unread = bc.unread;
+              if (i >= 0) {
+                merged[i] = {
+                  ...merged[i],
+                  lastMsg: bc.lastMsg,
+                  time: bc.time,
+                  lastSender: bc.lastSender,
+                  unread: bc.unread || 0,
+                };
+              }
             }
           });
           return merged.sort((a, b) => (b.unread || 0) - (a.unread || 0));
@@ -102,16 +109,16 @@ const ChefMessagesPage = () => {
   useEffect(() => {
     loadChatsFromBackend();
     const onMsg = (e) => {
-      setChats(getChats());
+      loadChatsFromBackend();
       if (e.detail?.chatId && e.detail.chatId !== selectedChat?.id) {
         setNewMsgChatId(e.detail.chatId);
         setTimeout(() => setNewMsgChatId(null), 3000);
       }
     };
     window.addEventListener('message-received', onMsg);
-    const onStorage = (e) => { if (e.key?.startsWith('chat_')) setChats(getChats()); };
+    const onStorage = (e) => { if (e.key?.startsWith('chat_')) loadChatsFromBackend(); };
     window.addEventListener('storage', onStorage);
-    const poll = setInterval(() => { setChats(getChats()); loadChatsFromBackend(); }, 2000);
+    const poll = setInterval(() => { loadChatsFromBackend(); }, 2000);
     return () => {
       window.removeEventListener('message-received', onMsg);
       window.removeEventListener('storage', onStorage);
@@ -153,14 +160,14 @@ const ChefMessagesPage = () => {
     const unsub = Store.listenMessages(selectedChat.id, msgs => {
       setMessages(prev => ({ ...prev, [selectedChat.id]: msgs }));
       Store.clearUnread(selectedChat.id, myPhone);
-      setChats(getChats());
+      setChats(prev => prev.map(c => c.id === selectedChat.id ? { ...c, unread: 0 } : c));
     });
     const onStorage = (e) => {
       if (e.key === `chat_${selectedChat.id}`) {
         const msgs = Store.getMessages(selectedChat.id);
         setMessages(prev => ({ ...prev, [selectedChat.id]: msgs }));
         Store.clearUnread(selectedChat.id, myPhone);
-        setChats(getChats());
+        setChats(prev => prev.map(c => c.id === selectedChat.id ? { ...c, unread: 0 } : c));
       }
     };
     window.addEventListener('storage', onStorage);
@@ -210,7 +217,7 @@ const ChefMessagesPage = () => {
     setMessage('');
     await Store.sendMessage(selectedChat.id, newMsg);
     setMessages(prev => ({ ...prev, [selectedChat.id]: Store.getMessages(selectedChat.id) }));
-    setChats(getChats());
+    loadChatsFromBackend();
     // Backend ga saqlash — mijoz boshqa qurilmadan o'qiy olsin
     fetch(`${API_BASE}/chats/${selectedChat.id}`, {
       method: 'POST',
@@ -234,7 +241,7 @@ const ChefMessagesPage = () => {
 
   const doDelete = (chatId) => {
     localStorage.removeItem(`chat_${chatId}`);
-    setChats(getChats());
+    setChats(prev => prev.filter(c => c.id !== chatId));
     setDeletingId(null);
     if (selectedChat?.id === chatId) setSelectedChat(null);
   };
@@ -300,7 +307,7 @@ const ChefMessagesPage = () => {
         <Box bgColor="white" px="16px" pt="14px" pb="12px"
           display="flex" alignItems="center" gap="12px"
           boxShadow="0 1px 0 #F0EBE6" flexShrink={0}>
-          <Box cursor="pointer" onClick={() => { setSelectedChat(null); setChats(getChats()); }}
+          <Box cursor="pointer" onClick={() => { setSelectedChat(null); loadChatsFromBackend(); }}
             w="36px" h="36px" bgColor="#FFF0EC" borderRadius="full"
             display="flex" alignItems="center" justifyContent="center" flexShrink={0}>
             <FaArrowLeft style={{ fontSize: '14px', color: '#C03F0C' }} />
@@ -407,7 +414,7 @@ const ChefMessagesPage = () => {
               border={isHighlight ? "1.5px solid #F5C5B0" : isNew ? "1px solid #FFE8DC" : "1px solid transparent"}
               transition="all 0.3s"
               cursor="pointer"
-              onClick={() => { setSelectedChat(chat); Store.clearUnread(chat.id, myPhone); setChats(getChats()); }}>
+              onClick={() => { setSelectedChat(chat); Store.clearUnread(chat.id, myPhone); setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unread: 0 } : c)); }}>
 
               {/* Avatar */}
               <Box position="relative" flexShrink={0}>
