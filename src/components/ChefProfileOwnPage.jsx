@@ -206,20 +206,8 @@ const ChefProfileOwnPage = () => {
                 {/* Gallery */}
                 <Box bgColor="white" borderRadius="18px" p="16px" boxShadow="0 1px 6px rgba(0,0,0,0.05)">
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb="12px">
-                        <Box display="flex" alignItems="center" gap="8px">
-                            <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>{t("chefProfileOwn.gallery")}</Text>
-                            {posts.length > 0 && (
-                                <Box bgColor="#FFF0EC" borderRadius="8px" px="7px" py="2px">
-                                    <Text color="#C03F0C" fontWeight="700" style={{ fontSize: "11px" }}>{posts.length} ta</Text>
-                                </Box>
-                            )}
-                        </Box>
-                        <Box cursor="pointer" display="flex" alignItems="center" gap="5px"
-                            bgColor="#C03F0C" borderRadius="10px" px="10px" py="6px"
-                            onClick={() => setShowPostModal(true)}>
-                            <FaPlus style={{ fontSize: "10px", color: "white" }} />
-                            <Text color="white" fontWeight="700" style={{ fontSize: "12px" }}>Post</Text>
-                        </Box>
+                        <Text fontWeight="700" color="#1C110D" style={{ fontSize: "15px" }}>{t("chefProfileOwn.gallery")}</Text>
+                        {posts.length > 0 && <Text color="#9B8E8A" style={{ fontSize: "12px" }}>{posts.length} ta</Text>}
                     </Box>
                     {posts.length === 0
                         ? <Box textAlign="center" py="24px">

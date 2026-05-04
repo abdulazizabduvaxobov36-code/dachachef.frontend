@@ -76,7 +76,7 @@ const ChefViewPage = () => {
                 .catch(() => {});
         };
         fetchPosts();
-        const iv = setInterval(fetchPosts, 5000);
+        const iv = setInterval(fetchPosts, 3000);
         return () => { clearInterval(iv); unsub?.(); };
     }, [chef?.phone]);
 
@@ -98,7 +98,7 @@ const ChefViewPage = () => {
             } catch { }
         };
         fetchOrders();
-        const iv = setInterval(fetchOrders, 10000);
+        const iv = setInterval(fetchOrders, 3000);
         return () => clearInterval(iv);
     }, [chef?.phone]);
 

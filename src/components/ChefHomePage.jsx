@@ -369,7 +369,7 @@ const ChefHomePage = () => {
         fetchReviewNotifs();
         fetchPendingRequests();
         syncPosts();
-        const iv = setInterval(syncPosts, 5000);
+        const iv = setInterval(syncPosts, 3000);
         return () => clearInterval(iv);
     }, [myPhone]);
 

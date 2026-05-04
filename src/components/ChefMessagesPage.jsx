@@ -111,7 +111,7 @@ const ChefMessagesPage = () => {
     window.addEventListener('message-received', onMsg);
     const onStorage = (e) => { if (e.key?.startsWith('chat_')) setChats(getChats()); };
     window.addEventListener('storage', onStorage);
-    const poll = setInterval(() => { setChats(getChats()); loadChatsFromBackend(); }, 5000);
+    const poll = setInterval(() => { setChats(getChats()); loadChatsFromBackend(); }, 2000);
     return () => {
       window.removeEventListener('message-received', onMsg);
       window.removeEventListener('storage', onStorage);

@@ -94,8 +94,7 @@ const OrdersPage = () => {
 
   useEffect(() => {
     fetchOrders();
-    // Real-time: har 5 soniyada yangilansin
-    const iv = setInterval(fetchOrders, 5000);
+    const iv = setInterval(fetchOrders, 3000);
     return () => clearInterval(iv);
   }, [fetchOrders]);
 
