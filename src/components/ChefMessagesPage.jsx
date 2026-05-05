@@ -112,6 +112,8 @@ const ChefMessagesPage = () => {
 
   useEffect(() => {
     loadChatsFromBackend();
+    // Sahifa ochilganda darhol onlayn signal
+    if (myPhone) fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
     const onMsg = (e) => {
       loadChatsFromBackend();
       if (e.detail?.chatId && e.detail.chatId !== selectedChat?.id) {
@@ -122,7 +124,13 @@ const ChefMessagesPage = () => {
     window.addEventListener('message-received', onMsg);
     const onStorage = (e) => { if (e.key?.startsWith('chat_')) loadChatsFromBackend(); };
     window.addEventListener('storage', onStorage);
-    const poll = setInterval(() => { loadChatsFromBackend(); }, 2000);
+    let pollCount = 0;
+    const poll = setInterval(() => {
+      loadChatsFromBackend();
+      pollCount++;
+      // Har 30s onlayn signal
+      if (myPhone && pollCount % 15 === 0) fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
+    }, 2000);
     return () => {
       window.removeEventListener('message-received', onMsg);
       window.removeEventListener('storage', onStorage);
