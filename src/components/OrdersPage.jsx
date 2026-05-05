@@ -269,7 +269,14 @@ const OrdersPage = () => {
   };
 
   const confirmDelete = (chatId) => { setDeletingId(chatId); setTimeout(() => setDeletingId(null), 3000); };
-  const doDelete = (chatId) => { localStorage.removeItem(`chat_${chatId}`); setChats(getChats()); setDeletingId(null); if (selectedChat?.id === chatId) setSelectedChat(null); };
+  const doDelete = (chatId) => {
+    const API_BASE = import.meta.env?.VITE_API_URL || '';
+    localStorage.removeItem(`chat_${chatId}`);
+    setChats(getChats());
+    setDeletingId(null);
+    if (selectedChat?.id === chatId) setSelectedChat(null);
+    fetch(`${API_BASE}/chats/${chatId}`, { method: 'DELETE' }).catch(() => {});
+  };
 
   const isOnline = phone => phone ? Store.isOnline('chef', phone) : false;
 

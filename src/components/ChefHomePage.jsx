@@ -33,6 +33,7 @@ const ChefHomePage = () => {
     const [activeTab, setActiveTab] = useState('sorovlar');
     const [showNotifPanel, setShowNotifPanel] = useState(false);
     const [notifications, setNotifications] = useState([]);
+    const [backendMsgUnread, setBackendMsgUnread] = useState(0);
     const [reviewNotifs, setReviewNotifs] = useState([]);
     const [newReviewToast, setNewReviewToast] = useState(null);
     const [unseenReviews, setUnseenReviews] = useState([]);
@@ -381,11 +382,20 @@ const ChefHomePage = () => {
             const cleanup = Store.startHeartbeat("chef", myPhone);
             let lastNotifsKey = JSON.stringify(Store.getChefNotifications(myPhone).map(n => n.chatId + n.unread));
             let reviewPollCount = 0;
+            const API_BASE = import.meta.env?.VITE_API_URL || '';
             const pollOrders = setInterval(() => {
                 const newNotifs = Store.getChefNotifications(myPhone);
                 const newNKey = JSON.stringify(newNotifs.map(n => n.chatId + n.unread));
                 if (newNKey !== lastNotifsKey) { lastNotifsKey = newNKey; setNotifications(newNotifs); }
                 reviewPollCount++;
+                if (reviewPollCount % 2 === 0) {
+                    fetch(`${API_BASE}/chats/chef/${myPhone}`)
+                        .then(r => r.ok ? r.json() : [])
+                        .then(chats => {
+                            if (Array.isArray(chats))
+                                setBackendMsgUnread(chats.reduce((s, c) => s + (c.unread || 0), 0));
+                        }).catch(() => {});
+                }
                 if (reviewPollCount % 5 === 0) { fetchReviewNotifs(); fetchChefTotalEarned(); }
                 if (reviewPollCount % 3 === 0) { fetchPendingRequests(); }
             }, 1000);
@@ -402,7 +412,7 @@ const ChefHomePage = () => {
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    const totalUnread = notifications.reduce((s, n) => s + n.unread, 0);
+    const totalUnread = Math.max(notifications.reduce((s, n) => s + n.unread, 0), backendMsgUnread);
 
     const handleImageSelect = (e) => {
         const file = e.target.files[0];

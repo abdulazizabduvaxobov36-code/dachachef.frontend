@@ -49,52 +49,56 @@ const ChefMessagesPage = () => {
   const [chats, setChats] = useState(getChats);
 
   // Backend dan chatlarni yuklash
-  const loadChatsFromBackend = () => {
-    if (!myPhone) return;
-    fetch(`${API_BASE}/chats/chef/${myPhone}`)
-      .then(r => r.ok ? r.json() : [])
-      .then(backendChats => {
-        if (!Array.isArray(backendChats) || backendChats.length === 0) return;
-        setChats(prev => {
-          const localIds = new Set(prev.map(c => c.id));
-          const merged = [...prev];
-          backendChats.forEach(bc => {
-            if (!localIds.has(bc.chatId)) {
-              merged.push({
-                id: bc.chatId,
-                customerPhone: bc.customerPhone,
-                customerName: null,
-                customerImage: null,
-                lastMsg: bc.lastMsg,
-                time: bc.time,
-                unread: bc.unread || 0,
-                lastSender: bc.lastSender,
-              });
-            } else {
-              const i = merged.findIndex(c => c.id === bc.chatId);
-              if (i >= 0) {
-                merged[i] = {
-                  ...merged[i],
-                  lastMsg: bc.lastMsg,
-                  time: bc.time,
-                  lastSender: bc.lastSender,
-                  unread: bc.unread || 0,
-                };
-              }
-            }
-          });
-          return merged.sort((a, b) => (b.unread || 0) - (a.unread || 0));
-        });
-      })
-      .catch(() => {});
+  const customerInfoCache = useRef({});
+
+  const getCustomerInfoCached = async (phone) => {
+    if (customerInfoCache.current[phone]) return customerInfoCache.current[phone];
+    const cached = Store.getCustomerInfo(phone);
+    if (cached?.firstName || cached?.image) { customerInfoCache.current[phone] = cached; return cached; }
+    try {
+      const r = await fetch(`${API_BASE}/customers/${phone}`);
+      if (r.ok) {
+        const data = await r.json();
+        if (data?.phone) { Store.saveCustomerInfo(phone, data); customerInfoCache.current[phone] = data; }
+        return data;
+      }
+    } catch {}
+    return null;
   };
+
+  const loadChatsFromBackend = async () => {
+    if (!myPhone) return;
+    try {
+      const r = await fetch(`${API_BASE}/chats/chef/${myPhone}`);
+      if (!r.ok) return;
+      const backendChats = await r.json();
+      if (!Array.isArray(backendChats)) return;
+      if (backendChats.length === 0) { setChats([]); return; }
+      await Promise.all(backendChats.map(bc => getCustomerInfoCached(bc.customerPhone)));
+      const newChats = backendChats.map(bc => {
+        const ci = customerInfoCache.current[bc.customerPhone];
+        return {
+          id: bc.chatId,
+          customerPhone: bc.customerPhone,
+          customerName: ci ? (`${ci.firstName || ''} ${ci.lastName || ''}`.trim() || null) : null,
+          customerImage: ci?.image || null,
+          lastMsg: bc.lastMsg,
+          time: bc.time,
+          unread: bc.unread || 0,
+          lastSender: bc.lastSender,
+        };
+      }).sort((a, b) => (b.unread || 0) - (a.unread || 0));
+      setChats(newChats);
+    } catch {}
+  };
+
   const [selectedChat, setSelectedChat] = useState(null);
   const [messages, setMessages] = useState({});
   const [message, setMessage] = useState('');
   const [typingTimeout, setTypingTimeout] = useState(null);
   const [customerTyping, setCustomerTyping] = useState(false);
   const [newMsgChatId, setNewMsgChatId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null); // o'chirish tasdiq
+  const [deletingId, setDeletingId] = useState(null);
   const endRef = useRef(null);
   const [autoOpened, setAutoOpened] = useState(false);
 
@@ -244,6 +248,7 @@ const ChefMessagesPage = () => {
     setChats(prev => prev.filter(c => c.id !== chatId));
     setDeletingId(null);
     if (selectedChat?.id === chatId) setSelectedChat(null);
+    fetch(`${API_BASE}/chats/${chatId}`, { method: 'DELETE' }).catch(() => {});
   };
 
   const isOnline = phone => phone ? Store.isOnline('customer', phone) : false;
