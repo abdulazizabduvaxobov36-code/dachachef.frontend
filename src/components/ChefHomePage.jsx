@@ -390,7 +390,8 @@ const ChefHomePage = () => {
                 const newNKey = JSON.stringify(newNotifs.map(n => n.chatId + n.unread));
                 if (newNKey !== lastNotifsKey) { lastNotifsKey = newNKey; setNotifications(newNotifs); }
                 reviewPollCount++;
-                if (reviewPollCount % 2 === 0) {
+                // Har 3s backenddan unread sonini olish (badge uchun)
+                if (reviewPollCount % 3 === 0) {
                     fetch(`${API_BASE}/chats/chef/${myPhone}`)
                         .then(r => r.ok ? r.json() : [])
                         .then(chats => {
@@ -398,8 +399,8 @@ const ChefHomePage = () => {
                                 setBackendMsgUnread(chats.reduce((s, c) => s + (c.unread || 0), 0));
                         }).catch(() => {});
                 }
-                // Har 30s backendga onlayn signal
-                if (reviewPollCount % 30 === 0) {
+                // Har 20s backendga onlayn signal
+                if (reviewPollCount % 20 === 0) {
                     fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
                 }
                 if (reviewPollCount % 5 === 0) { fetchReviewNotifs(); fetchChefTotalEarned(); }

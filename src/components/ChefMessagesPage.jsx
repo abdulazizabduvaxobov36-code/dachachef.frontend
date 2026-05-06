@@ -128,8 +128,8 @@ const ChefMessagesPage = () => {
     const poll = setInterval(() => {
       loadChatsFromBackend();
       pollCount++;
-      // Har 30s onlayn signal
-      if (myPhone && pollCount % 15 === 0) fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
+      // Har 20s onlayn signal
+      if (myPhone && pollCount % 10 === 0) fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
     }, 2000);
     return () => {
       window.removeEventListener('message-received', onMsg);
