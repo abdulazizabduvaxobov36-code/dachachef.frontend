@@ -34,6 +34,7 @@ const ChefHomePage = () => {
     const [showNotifPanel, setShowNotifPanel] = useState(false);
     const [notifications, setNotifications] = useState([]);
     const [backendMsgUnread, setBackendMsgUnread] = useState(0);
+    const [backendMsgChats, setBackendMsgChats] = useState([]);
     const [reviewNotifs, setReviewNotifs] = useState([]);
     const [newReviewToast, setNewReviewToast] = useState(null);
     const [unseenReviews, setUnseenReviews] = useState([]);
@@ -390,13 +391,15 @@ const ChefHomePage = () => {
                 const newNKey = JSON.stringify(newNotifs.map(n => n.chatId + n.unread));
                 if (newNKey !== lastNotifsKey) { lastNotifsKey = newNKey; setNotifications(newNotifs); }
                 reviewPollCount++;
-                // Har 3s backenddan unread sonini olish (badge uchun)
+                // Har 3s backenddan unread sonini olish (badge + panel kartalar uchun)
                 if (reviewPollCount % 3 === 0) {
                     fetch(`${API_BASE}/chats/chef/${myPhone}`)
                         .then(r => r.ok ? r.json() : [])
                         .then(chats => {
-                            if (Array.isArray(chats))
+                            if (Array.isArray(chats)) {
                                 setBackendMsgUnread(chats.reduce((s, c) => s + (c.unread || 0), 0));
+                                setBackendMsgChats(chats.filter(c => (c.unread || 0) > 0));
+                            }
                         }).catch(() => {});
                 }
                 // Har 20s backendga onlayn signal
@@ -550,7 +553,7 @@ const ChefHomePage = () => {
                                             style={{ fontSize: "10px", fontWeight: "bold" }}>{totalUnread} {t("chefHome.newMsg")}</Box>
                                     )}
                                 </Box>
-                                {notifications.length === 0 && unseenReviews.length === 0 ? (
+                                {notifications.length === 0 && unseenReviews.length === 0 && backendMsgChats.length === 0 ? (
                                     <Box py="20px" textAlign="center">
                                         <Text color="#9B614B" style={{ fontSize: "clamp(11px, 3vw, 12px)" }}>{t("glabal.noNotif")}</Text>
                                     </Box>
@@ -583,29 +586,43 @@ const ChefHomePage = () => {
                                         </Box>
                                     </Box>
                                 ))}
-                                {notifications.map((n, i) => (
-                                    <Box key={i} display="flex" alignItems="center" gap="10px"
-                                        px="12px" py="10px" cursor="pointer"
-                                        borderBottom={i < notifications.length - 1 ? "1px solid #F5F5F5" : "none"}
-                                        _hover={{ bgColor: "#FFF5F2" }}
-                                        onClick={() => { setShowNotifPanel(false); navigate('/chef-messages', { state: { chatId: n.chatId, customerPhone: n.customerPhone } }); }}>
-                                        <Box borderRadius="full" bgColor="#C03F0C" flexShrink={0}
-                                            display="flex" alignItems="center" justifyContent="center"
-                                            color="white" fontWeight="bold"
-                                            style={{ width: "clamp(34px, 9vw, 40px)", height: "clamp(34px, 9vw, 40px)", fontSize: "clamp(13px, 3.5vw, 15px)" }}>
-                                            {n.customerPhone?.charAt(0) || "M"}
+                                {/* Backend dan kelgan xabar kartalar */}
+                                {backendMsgChats.map((n, i) => {
+                                    const cInfo = (() => { try { return JSON.parse(localStorage.getItem(`customerInfo_${n.customerPhone}`)); } catch { return null; } })();
+                                    const cName = cInfo ? `${cInfo.firstName || ''} ${cInfo.lastName || ''}`.trim() : null;
+                                    const letter = cName?.charAt(0)?.toUpperCase() || n.customerPhone?.charAt(0) || 'M';
+                                    return (
+                                        <Box key={`msg-${i}`} display="flex" alignItems="center" gap="10px"
+                                            px="12px" py="10px" cursor="pointer"
+                                            borderBottom={i < backendMsgChats.length - 1 ? "1px solid #F5F5F5" : "none"}
+                                            bgColor="#FFF8F5"
+                                            _hover={{ bgColor: "#FFF0EC" }}
+                                            onClick={() => {
+                                                setShowNotifPanel(false);
+                                                navigate('/chef-messages', { state: { chatId: n.chatId, customerPhone: n.customerPhone } });
+                                            }}>
+                                            <Box borderRadius="full" bgColor="#C03F0C" flexShrink={0}
+                                                display="flex" alignItems="center" justifyContent="center"
+                                                color="white" fontWeight="bold"
+                                                style={{ width: "36px", height: "36px", fontSize: "15px" }}>
+                                                {cInfo?.image
+                                                    ? <img src={cInfo.image} alt="" style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
+                                                    : letter}
+                                            </Box>
+                                            <Box flex="1" minW={0}>
+                                                <Text fontWeight="700" color="#1C110D" style={{ fontSize: "13px" }}>
+                                                    {cName || `+998${n.customerPhone}`}
+                                                </Text>
+                                                <Text color="#9B614B" noOfLines={1} style={{ fontSize: "11px" }}>{n.lastMsg}</Text>
+                                            </Box>
+                                            <Box bgColor="#C03F0C" color="white" borderRadius="full" fontWeight="bold"
+                                                minW="20px" h="20px" display="flex" alignItems="center" justifyContent="center"
+                                                px="3px" flexShrink={0} style={{ fontSize: "10px" }}>
+                                                {n.unread > 9 ? "9+" : n.unread}
+                                            </Box>
                                         </Box>
-                                        <Box flex="1" minW={0}>
-                                            <Text fontWeight="bold" color="#1C110D" style={{ fontSize: "clamp(12px, 3.2vw, 13px)" }}>+998{n.customerPhone}</Text>
-                                            <Text color="#9B614B" noOfLines={1} style={{ fontSize: "clamp(10px, 2.5vw, 11px)" }}>{n.lastMsg}</Text>
-                                        </Box>
-                                        <Box bgColor="#C03F0C" color="white" borderRadius="full" fontWeight="bold"
-                                            minW="20px" h="20px" display="flex" alignItems="center" justifyContent="center"
-                                            px="3px" flexShrink={0} style={{ fontSize: "10px" }}>
-                                            {n.unread > 9 ? "9+" : n.unread}
-                                        </Box>
-                                    </Box>
-                                ))}
+                                    );
+                                })}
                             </Box>
                         )}
                     </Box>
