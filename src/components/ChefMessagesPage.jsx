@@ -129,8 +129,8 @@ const ChefMessagesPage = () => {
       loadChatsFromBackend();
       pollCount++;
       // Har 20s onlayn signal
-      if (myPhone && pollCount % 10 === 0) fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
-    }, 2000);
+      if (myPhone && pollCount % 20 === 0) fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
+    }, 1000);
     return () => {
       window.removeEventListener('message-received', onMsg);
       window.removeEventListener('storage', onStorage);
@@ -186,7 +186,7 @@ const ChefMessagesPage = () => {
     return () => { unsub?.(); window.removeEventListener('storage', onStorage); };
   }, [selectedChat?.id]);
 
-  // Real-time: chat ochiq bo'lganda har 3s da backenddan yangi xabarlarni olish
+  // Real-time: chat ochiq bo'lganda har 1.5s da backenddan yangi xabarlarni olish
   useEffect(() => {
     if (!selectedChat) return;
     const poll = setInterval(() => {
@@ -206,7 +206,7 @@ const ChefMessagesPage = () => {
             setMessages(prev => ({ ...prev, [selectedChat.id]: [...local] }));
           }
         }).catch(() => {});
-    }, 3000);
+    }, 1500);
     return () => clearInterval(poll);
   }, [selectedChat?.id]);
 

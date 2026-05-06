@@ -218,7 +218,7 @@ const OrdersPage = () => {
             setMessages(prev => ({ ...prev, [selectedChat.id]: [...local] }));
           }
         }).catch(() => {});
-    }, 3000);
+    }, 1500);
     return () => clearInterval(poll);
   }, [selectedChat?.id]);
 
@@ -250,9 +250,17 @@ const OrdersPage = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(msgObj),
     }).catch(() => {});
-    // Oshpazga Telegram bildirish
     const cData = JSON.parse(localStorage.getItem('customerData') || 'null') || {};
     const fromName = cData.firstName ? `${cData.firstName} ${cData.lastName || ''}`.trim() : myPhone;
+    // Mijoz ma'lumotlarini backendga saqlash (oshpaz chat da ismni ko'rsin)
+    if (cData.phone) {
+      fetch(`${API_BASE}/customers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cData.phone, firstName: cData.firstName || '', lastName: cData.lastName || '', image: cData.image || '' }),
+      }).catch(() => {});
+    }
+    // Oshpazga Telegram bildirish
     fetch(`${API_BASE}/notify/chef-event`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
