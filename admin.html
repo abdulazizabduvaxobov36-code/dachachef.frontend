@@ -286,6 +286,8 @@
             <button class="tab active" onclick="showTab('commissions')">💰 Komissiyalar</button>
             <button class="tab" onclick="showTab('pairs')">👥 Mijoz-Oshpaz Juftliklari</button>
             <button class="tab" onclick="showTab('orders')">📋 Buyurtmalar</button>
+            <button class="tab" onclick="showTab('customer-feedback')">💬 Mijoz xabarlari <span id="customer-fb-badge" class="badge" style="display:none"></span></button>
+            <button class="tab" onclick="showTab('chef-feedback')">👨‍🍳 Oshpaz xabarlari <span id="chef-fb-badge" class="badge" style="display:none"></span></button>
             <button class="refresh-btn" onclick="loadAll()">🔄 Yangilash</button>
         </div>
 
@@ -324,21 +326,34 @@
                 <div class="loading">Yuklanmoqda...</div>
             </div>
         </div>
+
+        <!-- MIJOZ XABARLARI -->
+        <div id="tab-customer-feedback" style="display:none">
+            <div class="section-title">Mijozlardan xabarlar</div>
+            <div id="customer-feedback-box"><div class="loading">Yuklanmoqda...</div></div>
+        </div>
+
+        <!-- OSHPAZ XABARLARI -->
+        <div id="tab-chef-feedback" style="display:none">
+            <div class="section-title">Oshpazlardan xabarlar</div>
+            <div id="chef-feedback-box"><div class="loading">Yuklanmoqda...</div></div>
+        </div>
     </div>
 
     <script>
         const BASE = 'http://localhost:5000';
 
         function showTab(name) {
-            document.getElementById('tab-commissions').style.display = name === 'commissions' ? '' : 'none';
-            document.getElementById('tab-pairs').style.display = name === 'pairs' ? '' : 'none';
-            document.getElementById('tab-orders').style.display = name === 'orders' ? '' : 'none';
+            const allTabs = ['commissions', 'pairs', 'orders', 'customer-feedback', 'chef-feedback'];
+            allTabs.forEach(t => document.getElementById('tab-' + t).style.display = t === name ? '' : 'none');
             document.querySelectorAll('.tab').forEach((t, i) => {
-                t.classList.toggle('active', (i === 0 && name === 'commissions') || (i === 1 && name === 'pairs') || (i === 2 && name === 'orders'));
+                t.classList.toggle('active', allTabs[i] === name);
             });
             if (name === 'commissions') loadCommissions();
             if (name === 'pairs') loadPairs();
             if (name === 'orders') loadOrders();
+            if (name === 'customer-feedback') loadCustomerFeedbacks();
+            if (name === 'chef-feedback') loadChefFeedbacks();
         }
 
         function formatMoney(n) {
@@ -507,7 +522,65 @@
             setTimeout(() => el.style.display = 'none', 5000);
         }
 
-        function loadAll() { loadCommissions(); }
+        function renderFeedbacks(feedbacks, boxId, role) {
+            const box = document.getElementById(boxId);
+            if (!feedbacks.length) {
+                box.innerHTML = '<div class="loading">Hali xabar yo\'q</div>';
+                return;
+            }
+            box.innerHTML = feedbacks.map(f => `
+              <div class="chef-card" id="fb-${f._id}" style="border-left:4px solid ${f.isRead ? '#E8D5CC' : '#C03F0C'}">
+                <div class="chef-header">
+                  <div>
+                    <div class="chef-name">${f.name || 'Noma\'lum'} <span style="font-size:11px;color:#9B614B">· ${f.phone}</span></div>
+                    <div style="font-size:12px;color:#9B614B;margin-top:2px">${new Date(f.createdAt).toLocaleString('uz-UZ')}</div>
+                  </div>
+                  <div style="display:flex;gap:8px">
+                    ${!f.isRead ? `<button onclick="markFbRead('${f._id}','${role}')" style="padding:4px 10px;border-radius:8px;border:none;background:#C03F0C;color:#fff;font-size:12px;cursor:pointer">O'qildi</button>` : ''}
+                    <button onclick="deleteFb('${f._id}','${role}')" style="padding:4px 10px;border-radius:8px;border:none;background:#F0E6E0;color:#C03F0C;font-size:12px;cursor:pointer">O'chirish</button>
+                  </div>
+                </div>
+                <div style="margin-top:10px;font-size:14px;color:#1C110D;line-height:1.5">${f.message}</div>
+              </div>`).join('');
+        }
+
+        async function loadCustomerFeedbacks() {
+            document.getElementById('customer-feedback-box').innerHTML = '<div class="loading">Yuklanmoqda...</div>';
+            try {
+                const res = await fetch(`${BASE}/feedback/admin/customers`);
+                const data = await res.json();
+                const badge = document.getElementById('customer-fb-badge');
+                if (data.unreadCount > 0) { badge.textContent = data.unreadCount; badge.style.display = ''; }
+                else badge.style.display = 'none';
+                renderFeedbacks(data.feedbacks, 'customer-feedback-box', 'customer-feedback');
+            } catch (e) { showError('Mijoz xabarlarini yuklab bo\'lmadi: ' + e.message); }
+        }
+
+        async function loadChefFeedbacks() {
+            document.getElementById('chef-feedback-box').innerHTML = '<div class="loading">Yuklanmoqda...</div>';
+            try {
+                const res = await fetch(`${BASE}/feedback/admin/chefs`);
+                const data = await res.json();
+                const badge = document.getElementById('chef-fb-badge');
+                if (data.unreadCount > 0) { badge.textContent = data.unreadCount; badge.style.display = ''; }
+                else badge.style.display = 'none';
+                renderFeedbacks(data.feedbacks, 'chef-feedback-box', 'chef-feedback');
+            } catch (e) { showError('Oshpaz xabarlarini yuklab bo\'lmadi: ' + e.message); }
+        }
+
+        async function markFbRead(id, role) {
+            await fetch(`${BASE}/feedback/admin/${id}/read`, { method: 'PATCH' });
+            if (role === 'customer-feedback') loadCustomerFeedbacks();
+            else loadChefFeedbacks();
+        }
+
+        async function deleteFb(id, role) {
+            await fetch(`${BASE}/feedback/admin/${id}`, { method: 'DELETE' });
+            if (role === 'customer-feedback') loadCustomerFeedbacks();
+            else loadChefFeedbacks();
+        }
+
+        function loadAll() { loadCommissions(); loadCustomerFeedbacks(); loadChefFeedbacks(); }
 
         loadAll();
     </script>
