@@ -39,6 +39,7 @@ const ProfilePage = () => {
         }
         localStorage.removeItem("customerData");
         Store.clearSession();
+        sessionStorage.setItem('tg_logout', '1');
         navigate("/");
     };
 

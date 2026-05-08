@@ -26,7 +26,7 @@ const Chef = () => {
   const [image, setImage] = useState(null);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
-  const [loadingPhone, setLoadingPhone] = useState(true);
+  const [loadingPhone, setLoadingPhone] = useState(false);
 
   // Bot orqali saqlangan telefon raqamini olish
   useEffect(() => {
@@ -40,8 +40,8 @@ const Chef = () => {
           setPhoneFromBot(true);
         }
       })
-      .catch(() => {})
-      .finally(() => setLoadingPhone(false));
+      .catch(() => {});
+    setLoadingPhone(false);
   }, []);
 
   const onlyLetters = v => /^[A-Za-zА-Яа-яЁёʻʼ\s]*$/.test(v);
@@ -119,14 +119,6 @@ const Chef = () => {
       {hasErr(key) && <Text color="#E53E3E" mt="4px" style={{ fontSize: "12px" }}>⚠ {errors[key]}</Text>}
     </Box>
   );
-
-  if (loadingPhone) {
-    return (
-      <Box minH="100dvh" bgColor="#FFF5F0" display="flex" alignItems="center" justifyContent="center">
-        <Text color="#9B614B" style={{ fontSize: "15px" }}>Yuklanmoqda...</Text>
-      </Box>
-    );
-  }
 
   return (
     <Box minH="100dvh" bgColor="#FFF5F0">

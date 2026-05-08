@@ -15,7 +15,7 @@ const Entrance = () => {
             const API = import.meta.env?.VITE_API_URL || '';
             const tgId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
 
-            if (tgId) {
+            if (tgId && !sessionStorage.getItem('tg_logout')) {
                 // Telegram ID orqali tekshir — faqat shu foydalanuvchining akkauntiga kir
                 try {
                     const pr = await fetch(`${API}/auth/phone-by-telegram/${tgId}`);

@@ -148,6 +148,7 @@ const ChefProfileOwnPage = () => {
         if (chefProfile.phone) Store.setOffline("chef", chefProfile.phone);
         localStorage.removeItem("chefProfile");
         Store.clearSession();
+        sessionStorage.setItem('tg_logout', '1');
         navigate("/");
     };
 
