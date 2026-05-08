@@ -1,5 +1,5 @@
 import { Box, Button, Text } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from "react-i18next";
 import { FaPhoneAlt, FaUser, FaArrowLeft, FaTelegram } from "react-icons/fa";
@@ -22,6 +22,7 @@ const Customer = () => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneFromBot, setPhoneFromBot] = useState(false); // bot orqali keldi
   const [smsCode, setSmsCode] = useState('');
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
@@ -30,6 +31,23 @@ const Customer = () => {
   const [otpError, setOtpError] = useState('');
   const [needBot, setNeedBot] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
+  const [loadingPhone, setLoadingPhone] = useState(true);
+
+  // Bot orqali saqlangan telefon raqamini olish
+  useEffect(() => {
+    const tgId = getTelegramUserId();
+    if (!tgId) { setLoadingPhone(false); return; }
+    fetch(`${API_BASE}/auth/phone-by-telegram/${tgId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.phone) {
+          setPhone(data.phone);
+          setPhoneFromBot(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPhone(false));
+  }, []);
 
   const onlyLetters = v => /^[A-Za-zА-Яа-яЁёʻʼ\s]*$/.test(v);
 
@@ -41,8 +59,10 @@ const Customer = () => {
     if (!lastName.trim()) e.lastName = "Familiya kiritish shart";
     else if (!onlyLetters(lastName)) e.lastName = t("errors.onlyLetters");
     else if (lastName.trim().length < 2) e.lastName = t("errors.minLength");
-    if (!phone.trim()) e.phone = "Telefon raqami kiritish shart";
-    else if (phone.length !== 9) e.phone = t("errors.phoneLength");
+    if (!phoneFromBot) {
+      if (!phone.trim()) e.phone = "Telefon raqami kiritish shart";
+      else if (phone.length !== 9) e.phone = t("errors.phoneLength");
+    }
     return e;
   };
 
@@ -67,20 +87,42 @@ const Customer = () => {
       if (data.devCode) setSmsCode(String(data.devCode));
       startResendTimer(); setSendingOtp(false); return true;
     } catch {
-      // Server bilan aloqa yo'q — baribir step 2 ga o'tish
       startResendTimer(); setSendingOtp(false); return true;
     }
+  };
+
+  const registerCustomer = async (ph, fn, ln) => {
+    const d = { firstName: fn, lastName: ln, phone: ph };
+    localStorage.setItem("customerData", JSON.stringify(d));
+    Store.setSession("customer", { phone: ph, firstName: fn, lastName: ln });
+    Store.startHeartbeat("customer", ph);
+    Store.saveCustomerInfo(ph, { firstName: fn, lastName: ln, image: null });
+    try {
+      await fetch(`${API_BASE}/customers`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: ph, firstName: fn, lastName: ln }),
+      });
+    } catch { }
+    navigate("/glabal");
   };
 
   const step1 = async () => {
     const e = validate1(); setErrors(e);
     setTouched({ firstName: true, lastName: true, phone: true });
     if (Object.keys(e).length) return;
+
     const check = Store.isPhoneRegistered(phone);
     if (check.registered && check.role === 'chef') {
       setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsChef') || 'Bu raqam oshpaz sifatida ro\'yxatdan o\'tgan.' }));
       return;
     }
+
+    // Bot orqali telefon tasdiqlangan — OTP kerak emas
+    if (phoneFromBot) {
+      await registerCustomer(phone, firstName, lastName);
+      return;
+    }
+
     const ok = await sendOtp();
     if (ok) setStep(2);
   };
@@ -98,20 +140,8 @@ const Customer = () => {
       const data = await res.json();
       if (!res.ok) { setOtpError(data.message || 'Kod noto\'g\'ri'); setVerifyingOtp(false); return; }
     } catch { }
-
-    const d = { firstName, lastName, phone };
-    localStorage.setItem("customerData", JSON.stringify(d));
-    Store.setSession("customer", { phone, firstName, lastName });
-    Store.startHeartbeat("customer", phone);
-    Store.saveCustomerInfo(phone, { firstName, lastName, image: null });
-    try {
-      await fetch(`${API_BASE}/customers`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, firstName, lastName }),
-      });
-    } catch { }
     setVerifyingOtp(false);
-    navigate("/glabal");
+    await registerCustomer(phone, firstName, lastName);
   };
 
   const hasErr = k => errors[k] && touched[k];
@@ -137,6 +167,14 @@ const Customer = () => {
     </Box>
   );
 
+  if (loadingPhone) {
+    return (
+      <Box minH="100dvh" bgColor="#FFF5F0" display="flex" alignItems="center" justifyContent="center">
+        <Text color="#9B614B" style={{ fontSize: "15px" }}>Yuklanmoqda...</Text>
+      </Box>
+    );
+  }
+
   return (
     <Box minH="100dvh" bgColor="#FFF5F0">
       <Box bgColor="white" px="16px" pt="14px" pb="14px" display="flex" alignItems="center" gap="12px"
@@ -147,12 +185,14 @@ const Customer = () => {
           <FaArrowLeft style={{ color: "#C03F0C", fontSize: "14px" }} />
         </Box>
         <Text fontWeight="700" color="#1C110D" style={{ fontSize: "17px" }}>{t("entrance.userBtn")}</Text>
-        <Box ml="auto" display="flex" gap="6px">
-          {[1, 2].map(s => (
-            <Box key={s} w="28px" h="4px" borderRadius="full"
-              bgColor={step >= s ? '#C03F0C' : '#F0E6E0'} transition="background 0.3s" />
-          ))}
-        </Box>
+        {!phoneFromBot && (
+          <Box ml="auto" display="flex" gap="6px">
+            {[1, 2].map(s => (
+              <Box key={s} w="28px" h="4px" borderRadius="full"
+                bgColor={step >= s ? '#C03F0C' : '#F0E6E0'} transition="background 0.3s" />
+            ))}
+          </Box>
+        )}
       </Box>
 
       <Box maxW="400px" mx="auto" px="20px" pt="24px" pb="100px">
@@ -164,7 +204,20 @@ const Customer = () => {
             <>
               {renderField("firstName", t("customer.firstName"), <FaUser size={14} />, firstName, setFirstName)}
               {renderField("lastName", t("customer.lastName"), <FaUser size={14} />, lastName, setLastName)}
-              {renderField("phone", t("customer.phone"), <FaPhoneAlt size={14} />, phone, setPhone, true, 9, "+998")}
+
+              {/* Telefon — faqat botdan kelmagan bo'lsa ko'rsatamiz */}
+              {phoneFromBot ? (
+                <Box bgColor="#F0FFF4" borderRadius="14px" px="14px" py="12px" mb="4px"
+                  border="1.5px solid #86EFAC" display="flex" alignItems="center" gap="10px">
+                  <FaPhoneAlt style={{ color: "#16A34A", fontSize: "14px", flexShrink: 0 }} />
+                  <Box>
+                    <Text color="#15803D" fontWeight="700" style={{ fontSize: "13px" }}>✅ Telefon tasdiqlangan</Text>
+                    <Text color="#16A34A" style={{ fontSize: "14px", fontWeight: "600" }}>+998{phone}</Text>
+                  </Box>
+                </Box>
+              ) : (
+                renderField("phone", t("customer.phone"), <FaPhoneAlt size={14} />, phone, setPhone, true, 9, "+998")
+              )}
 
               {needBot && (
                 <Box bgColor="#EFF6FF" borderRadius="14px" px="14px" py="12px" mt="4px"

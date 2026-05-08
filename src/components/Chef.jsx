@@ -1,10 +1,17 @@
 import { Box, Button, Text } from '@chakra-ui/react';
 import { useNavigate } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from "react-i18next";
 import { IoChevronForward } from "react-icons/io5";
-import { FaCamera, FaUser, FaArrowLeft } from "react-icons/fa";
+import { FaCamera, FaUser, FaArrowLeft, FaPhoneAlt } from "react-icons/fa";
 import Store from '../store';
+
+const API_BASE = import.meta.env?.VITE_API_URL || '';
+
+const getTelegramUserId = () => {
+  try { return window?.Telegram?.WebApp?.initDataUnsafe?.user?.id || null; }
+  catch { return null; }
+};
 
 const Chef = () => {
   const { t } = useTranslation();
@@ -13,11 +20,29 @@ const Chef = () => {
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneFromBot, setPhoneFromBot] = useState(false);
   const [exp, setExp] = useState("");
   const [bio, setBio] = useState("");
   const [image, setImage] = useState(null);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+  const [loadingPhone, setLoadingPhone] = useState(true);
+
+  // Bot orqali saqlangan telefon raqamini olish
+  useEffect(() => {
+    const tgId = getTelegramUserId();
+    if (!tgId) { setLoadingPhone(false); return; }
+    fetch(`${API_BASE}/auth/phone-by-telegram/${tgId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.phone) {
+          setPhone(data.phone);
+          setPhoneFromBot(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingPhone(false));
+  }, []);
 
   const onlyLetters = v => /^[A-Za-zА-Яа-яЁёʻʼ\s]*$/.test(v);
 
@@ -29,9 +54,11 @@ const Chef = () => {
     if (!surname.trim()) e.surname = "Familiya kiritish shart";
     else if (!onlyLetters(surname)) e.surname = "Familiya faqat harflardan iborat bo'lishi kerak";
     else if (surname.trim().length < 2) e.surname = "Familiya kamida 2 ta harfdan iborat bo'lishi kerak";
-    if (!phone.trim()) e.phone = "Telefon raqami kiritish shart";
-    else if (phone.length !== 9) e.phone = "Telefon raqami 9 ta raqamdan iborat bo'lishi kerak";
-    else if (!/^\d{9}$/.test(phone)) e.phone = "Telefon raqami faqat raqamlardan iborat bo'lishi kerak";
+    if (!phoneFromBot) {
+      if (!phone.trim()) e.phone = "Telefon raqami kiritish shart";
+      else if (phone.length !== 9) e.phone = "Telefon raqami 9 ta raqamdan iborat bo'lishi kerak";
+      else if (!/^\d{9}$/.test(phone)) e.phone = "Telefon raqami faqat raqamlardan iborat bo'lishi kerak";
+    }
     if (!exp.trim()) e.exp = "Tajriba kiritish shart";
     else if (Number(exp) < 1 || Number(exp) > 60) e.exp = "Tajriba 1 dan 60 yilgacha bo'lishi mumkin";
     return e;
@@ -41,37 +68,34 @@ const Chef = () => {
     const e = validate();
     setErrors(e);
     setTouched({ name: true, surname: true, phone: true, exp: true });
-    if (!Object.keys(e).length) {
-      // Bitta TG — bitta akk tekshiruvi
-      const check = Store.isPhoneRegistered(phone);
-      if (check.registered && check.role === 'customer') {
-        setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsCustomer') || 'Bu telefon raqami mijoz sifatida ro\'yxatdan o\'tgan. Bitta telefondan faqat bitta akk ochish mumkin.' }));
-        setTouched(prev => ({ ...prev, phone: true }));
-        return;
-      }
-      const tgId = String(window.Telegram?.WebApp?.initDataUnsafe?.user?.id || '');
-      const d = { name, surname, phone, exp, image, bio, id: Date.now(), telegramId: tgId };
-      localStorage.setItem("chefProfile", JSON.stringify(d));
-      Object.keys(localStorage)
-        .filter(k => k.startsWith('saved_chef_') && !k.endsWith(`_${phone}`))
-        .forEach(k => localStorage.removeItem(k));
-      Store.setSession("chef", d);
-      Store.startHeartbeat("chef", phone);
-      await Store.addChef(d);
-      // Backend ga ham saqlash — kutmasdan, fon rejimida
-      const AUTH_BASE = import.meta.env?.VITE_API_URL || '';
-      fetch(`${AUTH_BASE}/chefs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, surname, phone, exp, image, bio, telegramId: tgId }),
-      }).catch(() => {});
-      navigate("/chef-home");
+    if (Object.keys(e).length) return;
+
+    const check = Store.isPhoneRegistered(phone);
+    if (check.registered && check.role === 'customer') {
+      setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsCustomer') || 'Bu telefon raqami mijoz sifatida ro\'yxatdan o\'tgan.' }));
+      setTouched(prev => ({ ...prev, phone: true }));
+      return;
     }
+
+    const tgId = String(getTelegramUserId() || '');
+    const d = { name, surname, phone, exp, image, bio, id: Date.now(), telegramId: tgId };
+    localStorage.setItem("chefProfile", JSON.stringify(d));
+    Object.keys(localStorage)
+      .filter(k => k.startsWith('saved_chef_') && !k.endsWith(`_${phone}`))
+      .forEach(k => localStorage.removeItem(k));
+    Store.setSession("chef", d);
+    Store.startHeartbeat("chef", phone);
+    await Store.addChef(d);
+    fetch(`${API_BASE}/chefs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, surname, phone, exp, image, bio, telegramId: tgId }),
+    }).catch(() => {});
+    navigate("/chef-home");
   };
 
   const hasErr = k => errors[k] && touched[k];
 
-  // renderField — icon parametri null bo'lsa ko'rsatilmaydi
   const renderField = (key, label, icon, value, setter, isNum, maxLen, prefix, placeholder) => (
     <Box key={key} mb="14px">
       <Text fontWeight="600" color={hasErr(key) ? "#E53E3E" : "#9B614B"} mb="6px" style={{ fontSize: "12px" }}>{label}</Text>
@@ -95,6 +119,14 @@ const Chef = () => {
       {hasErr(key) && <Text color="#E53E3E" mt="4px" style={{ fontSize: "12px" }}>⚠ {errors[key]}</Text>}
     </Box>
   );
+
+  if (loadingPhone) {
+    return (
+      <Box minH="100dvh" bgColor="#FFF5F0" display="flex" alignItems="center" justifyContent="center">
+        <Text color="#9B614B" style={{ fontSize: "15px" }}>Yuklanmoqda...</Text>
+      </Box>
+    );
+  }
 
   return (
     <Box minH="100dvh" bgColor="#FFF5F0">
@@ -142,7 +174,20 @@ const Chef = () => {
           </Text>
           {renderField("name", t("chef.firstName"), null, name, setName)}
           {renderField("surname", t("chef.lastName"), null, surname, setSurname)}
-          {renderField("phone", t("chef.phoneNumber"), null, phone, setPhone, true, 9, "+998")}
+
+          {/* Telefon — faqat botdan kelmagan bo'lsa ko'rsatamiz */}
+          {phoneFromBot ? (
+            <Box bgColor="#F0FFF4" borderRadius="14px" px="14px" py="12px" mb="4px"
+              border="1.5px solid #86EFAC" display="flex" alignItems="center" gap="10px">
+              <FaPhoneAlt style={{ color: "#16A34A", fontSize: "14px", flexShrink: 0 }} />
+              <Box>
+                <Text color="#15803D" fontWeight="700" style={{ fontSize: "13px" }}>✅ Telefon tasdiqlangan</Text>
+                <Text color="#16A34A" style={{ fontSize: "14px", fontWeight: "600" }}>+998{phone}</Text>
+              </Box>
+            </Box>
+          ) : (
+            renderField("phone", t("chef.phoneNumber"), null, phone, setPhone, true, 9, "+998")
+          )}
         </Box>
 
         {/* Tajriba */}
