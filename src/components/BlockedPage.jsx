@@ -1,4 +1,5 @@
 import { Box, Text, Textarea, Button, VStack } from '@chakra-ui/react';
+import { FaTelegram } from 'react-icons/fa';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -96,6 +97,24 @@ const BlockedPage = () => {
             <Text color="#B0A8A4" mb="28px" style={{ fontSize: '12px' }}>
                 Admin blokdan chiqarsa sahifa avtomatik ochiladi
             </Text>
+
+            {/* Admin Telegram link */}
+            <a href="https://t.me/Abduvahobov__pg" target="_blank" rel="noreferrer"
+                style={{ textDecoration: 'none', width: '100%', maxWidth: '360px', marginBottom: '16px' }}>
+                <Box bgColor="white" borderRadius="18px" px="20px" py="14px"
+                    boxShadow="0 4px 16px rgba(0,0,0,0.08)"
+                    border="1.5px solid #E0F2FE"
+                    display="flex" alignItems="center" gap="12px">
+                    <Box bgColor="#229ED9" borderRadius="12px" w="44px" h="44px" flexShrink={0}
+                        display="flex" alignItems="center" justifyContent="center">
+                        <FaTelegram style={{ fontSize: '22px', color: 'white' }} />
+                    </Box>
+                    <Box textAlign="left">
+                        <Text color="#9B8E8A" style={{ fontSize: '11px' }}>Admin bilan to'g'ridan-to'g'ri bog'lanish</Text>
+                        <Text fontWeight="700" color="#229ED9" style={{ fontSize: '15px' }}>@Abduvahobov__pg</Text>
+                    </Box>
+                </Box>
+            </a>
 
             {/* Message form */}
             <Box w="100%" maxW="360px" bgColor="white" borderRadius="20px"
