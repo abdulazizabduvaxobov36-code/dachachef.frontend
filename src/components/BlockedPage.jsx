@@ -120,7 +120,7 @@ const BlockedPage = () => {
             <Box w="100%" maxW="360px" bgColor="white" borderRadius="20px"
                 p="20px" boxShadow="0 4px 16px rgba(0,0,0,0.08)" mb="20px">
                 <Text fontWeight="700" color="#1C110D" mb="12px" style={{ fontSize: '15px' }}>
-                    Adminга xabar yozing
+                    Adminga xabar yozing
                 </Text>
                 <Textarea
                     value={msgText}
