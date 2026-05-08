@@ -11,19 +11,57 @@ const Entrance = () => {
     const [saved, setSaved] = useState([]);
 
     useEffect(() => {
-        const s = Store.getSession();
-        if (s?.role === "customer") { navigate("/glabal", { replace: true }); return; }
-        if (s?.role === "chef") { navigate("/chef-home", { replace: true }); return; }
-        
-        // Faqat session yo'q bo'lganda eski cardlarni tozalash
-        const allChefs = JSON.parse(localStorage.getItem('registeredChefs') || '[]');
-        if (allChefs.length > 0) {
-            const validChefs = allChefs.filter(c => c.phone && c.name);
-            localStorage.setItem('registeredChefs', JSON.stringify(validChefs));
-            window.dispatchEvent(new Event('chefs-updated'));
-        }
-        
-        setSaved(Store.getSavedAccounts());
+        const init = async () => {
+            const API = import.meta.env?.VITE_API_URL || '';
+            const tgId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+
+            if (tgId) {
+                // Telegram ID orqali tekshir — faqat shu foydalanuvchining akkauntiga kir
+                try {
+                    const pr = await fetch(`${API}/auth/phone-by-telegram/${tgId}`);
+                    const { phone } = await pr.json();
+                    if (phone) {
+                        const [chefRes, custRes] = await Promise.all([
+                            fetch(`${API}/chefs/${phone}`).then(r => r.json()).catch(() => null),
+                            fetch(`${API}/customers/${phone}`).then(r => r.json()).catch(() => null),
+                        ]);
+                        if (chefRes?._id) {
+                            if (chefRes.isBlocked) { navigate('/blocked', { replace: true }); return; }
+                            localStorage.setItem('chefProfile', JSON.stringify(chefRes));
+                            Store.setSession('chef', chefRes);
+                            Store.startHeartbeat('chef', phone);
+                            navigate('/chef-home', { replace: true }); return;
+                        }
+                        if (custRes?._id) {
+                            if (custRes.isBlocked) { navigate('/blocked', { replace: true }); return; }
+                            localStorage.setItem('customerData', JSON.stringify(custRes));
+                            Store.setSession('customer', custRes);
+                            Store.startHeartbeat('customer', phone);
+                            navigate('/glabal', { replace: true }); return;
+                        }
+                        // Telefon bor lekin akk yo'q → ro'yxatdan o'tish
+                    }
+                } catch { }
+                // Telegram'dan kirilgan bo'lsa localStorage sessiyasiga ishonma
+                setSaved([]);
+                return;
+            }
+
+            // Telegram yo'q (brauzerdan) — eski localStorage sessiyasini ishlatish
+            const s = Store.getSession();
+            if (s?.role === "customer") { navigate("/glabal", { replace: true }); return; }
+            if (s?.role === "chef") { navigate("/chef-home", { replace: true }); return; }
+
+            const allChefs = JSON.parse(localStorage.getItem('registeredChefs') || '[]');
+            if (allChefs.length > 0) {
+                const validChefs = allChefs.filter(c => c.phone && c.name);
+                localStorage.setItem('registeredChefs', JSON.stringify(validChefs));
+                window.dispatchEvent(new Event('chefs-updated'));
+            }
+            setSaved(Store.getSavedAccounts());
+        };
+
+        init();
     }, []);
 
     const login = (acc) => {
