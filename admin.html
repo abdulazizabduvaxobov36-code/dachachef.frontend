@@ -541,6 +541,19 @@
                   </div>
                 </div>
                 <div style="margin-top:10px;font-size:14px;color:#1C110D;line-height:1.5">${f.message}</div>
+                ${f.reply ? `
+                  <div style="margin-top:10px;background:#F0FFF4;border-radius:10px;padding:10px;border-left:3px solid #22C55E">
+                    <div style="font-size:11px;color:#16A34A;font-weight:700;margin-bottom:3px">Admin javobi:</div>
+                    <div style="font-size:13px;color:#1C110D">${f.reply}</div>
+                  </div>` : ''}
+                <div style="margin-top:10px;display:flex;gap:6px" id="reply-row-${f._id}">
+                  <input id="reply-input-${f._id}" type="text" placeholder="Javob yozing..."
+                    style="flex:1;padding:8px 12px;border-radius:10px;border:1.5px solid #F0E6E0;font-size:13px;outline:none" />
+                  <button onclick="sendReply('${f._id}','${role}')"
+                    style="padding:8px 14px;border-radius:10px;border:none;background:#1C110D;color:#fff;font-size:13px;cursor:pointer;font-weight:600">
+                    Yuborish
+                  </button>
+                </div>
               </div>`).join('');
         }
 
@@ -572,6 +585,25 @@
             await fetch(`${BASE}/feedback/admin/${id}/read`, { method: 'PATCH' });
             if (role === 'customer-feedback') loadCustomerFeedbacks();
             else loadChefFeedbacks();
+        }
+
+        async function sendReply(id, role) {
+            const input = document.getElementById(`reply-input-${id}`);
+            const reply = input?.value?.trim();
+            if (!reply) return;
+            input.disabled = true;
+            try {
+                await fetch(`${BASE}/feedback/admin/${id}/reply`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ reply }),
+                });
+                if (role === 'customer-feedback') loadCustomerFeedbacks();
+                else loadChefFeedbacks();
+            } catch (e) {
+                showError('Javob yuborib bo\'lmadi: ' + e.message);
+                input.disabled = false;
+            }
         }
 
         async function deleteFb(id, role) {
