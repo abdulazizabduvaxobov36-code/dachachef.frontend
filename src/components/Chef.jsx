@@ -77,6 +77,7 @@ const Chef = () => {
       return;
     }
 
+    localStorage.removeItem('tg_logout');
     const tgId = String(getTelegramUserId() || '');
     const d = { name, surname, phone, exp, image, bio, id: Date.now(), telegramId: tgId };
     localStorage.setItem("chefProfile", JSON.stringify(d));

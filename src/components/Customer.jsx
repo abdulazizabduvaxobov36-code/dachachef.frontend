@@ -92,6 +92,7 @@ const Customer = () => {
   };
 
   const registerCustomer = async (ph, fn, ln) => {
+    localStorage.removeItem('tg_logout');
     const d = { firstName: fn, lastName: ln, phone: ph };
     localStorage.setItem("customerData", JSON.stringify(d));
     Store.setSession("customer", { phone: ph, firstName: fn, lastName: ln });

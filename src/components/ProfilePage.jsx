@@ -39,7 +39,9 @@ const ProfilePage = () => {
         }
         localStorage.removeItem("customerData");
         Store.clearSession();
-        sessionStorage.setItem('tg_logout', '1');
+        const tgId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+        if (tgId) localStorage.setItem('tg_logout', String(tgId));
+        else localStorage.setItem('tg_logout', 'manual');
         navigate("/");
     };
 
