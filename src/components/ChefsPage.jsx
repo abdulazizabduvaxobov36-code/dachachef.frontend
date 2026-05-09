@@ -179,11 +179,6 @@ const ChefsPage = () => {
                 </Box>
               </Box>
 
-              {chef.bio && (
-                <Box px="14px" pb="12px">
-                  <Text color="#9B8E8A" style={{ fontSize: '12px' }} noOfLines={2}>{chef.bio}</Text>
-                </Box>
-              )}
             </Box>
           );
         })}
