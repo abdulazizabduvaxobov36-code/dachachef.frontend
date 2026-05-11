@@ -286,6 +286,7 @@
             <button class="tab active" onclick="showTab('commissions')">💰 Komissiyalar</button>
             <button class="tab" onclick="showTab('pairs')">👥 Mijoz-Oshpaz Juftliklari</button>
             <button class="tab" onclick="showTab('orders')">📋 Buyurtmalar</button>
+            <button class="tab" onclick="showTab('reviews')">⭐ Izohlar</button>
             <button class="tab" onclick="showTab('customer-feedback')">💬 Mijoz xabarlari <span id="customer-fb-badge" class="badge" style="display:none"></span></button>
             <button class="tab" onclick="showTab('chef-feedback')">👨‍🍳 Oshpaz xabarlari <span id="chef-fb-badge" class="badge" style="display:none"></span></button>
             <button class="refresh-btn" onclick="loadAll()">🔄 Yangilash</button>
@@ -327,6 +328,12 @@
             </div>
         </div>
 
+        <!-- IZOHLAR -->
+        <div id="tab-reviews" style="display:none">
+            <div class="section-title">Barcha izohlar</div>
+            <div id="reviews-box"><div class="loading">Yuklanmoqda...</div></div>
+        </div>
+
         <!-- MIJOZ XABARLARI -->
         <div id="tab-customer-feedback" style="display:none">
             <div class="section-title">Mijozlardan xabarlar</div>
@@ -344,7 +351,7 @@
         const BASE = 'http://localhost:5000';
 
         function showTab(name) {
-            const allTabs = ['commissions', 'pairs', 'orders', 'customer-feedback', 'chef-feedback'];
+            const allTabs = ['commissions', 'pairs', 'orders', 'reviews', 'customer-feedback', 'chef-feedback'];
             allTabs.forEach(t => document.getElementById('tab-' + t).style.display = t === name ? '' : 'none');
             document.querySelectorAll('.tab').forEach((t, i) => {
                 t.classList.toggle('active', allTabs[i] === name);
@@ -352,6 +359,7 @@
             if (name === 'commissions') loadCommissions();
             if (name === 'pairs') loadPairs();
             if (name === 'orders') loadOrders();
+            if (name === 'reviews') loadReviews();
             if (name === 'customer-feedback') loadCustomerFeedbacks();
             if (name === 'chef-feedback') loadChefFeedbacks();
         }
@@ -610,6 +618,46 @@
             await fetch(`${BASE}/feedback/admin/${id}`, { method: 'DELETE' });
             if (role === 'customer-feedback') loadCustomerFeedbacks();
             else loadChefFeedbacks();
+        }
+
+        async function loadReviews() {
+            const box = document.getElementById('reviews-box');
+            box.innerHTML = '<div class="loading">Yuklanmoqda...</div>';
+            try {
+                const reviews = await fetch(`${BASE}/reviews/admin/all`).then(r => r.json());
+                if (!reviews.length) {
+                    box.innerHTML = '<div class="loading">Hali izoh yo\'q</div>';
+                    return;
+                }
+                box.innerHTML = reviews.map(r => `
+                  <div class="chef-card" id="review-${r._id}" style="border-left:4px solid #F5C5B0">
+                    <div class="chef-header">
+                      <div>
+                        <div class="chef-name">${r.chefName || r.chefPhone} <span style="font-size:11px;color:#9B614B">· +998${r.chefPhone}</span></div>
+                        <div style="font-size:12px;color:#9B614B;margin-top:2px">
+                          Mijoz: ${r.customerName || ''} +998${r.customerPhone} · ${new Date(r.createdAt).toLocaleDateString('uz-UZ')}
+                        </div>
+                      </div>
+                      <div style="display:flex;align-items:center;gap:10px">
+                        <div style="font-size:20px;font-weight:800;color:#C03F0C">${'★'.repeat(r.rating)}${'☆'.repeat(5 - r.rating)}</div>
+                        <button onclick="deleteReview('${r._id}')"
+                          style="padding:4px 10px;border-radius:8px;border:none;background:#FFF0EC;color:#C03F0C;font-size:12px;cursor:pointer;font-weight:600">
+                          O'chirish
+                        </button>
+                      </div>
+                    </div>
+                    ${r.comment ? `<div style="margin-top:8px;font-size:14px;color:#1C110D;line-height:1.5">"${r.comment}"</div>` : ''}
+                  </div>`).join('');
+            } catch (e) { showError('Izohlarni yuklab bo\'lmadi: ' + e.message); }
+        }
+
+        async function deleteReview(id) {
+            if (!confirm('Bu izohni o\'chirishni tasdiqlaysizmi?')) return;
+            try {
+                await fetch(`${BASE}/reviews/${id}`, { method: 'DELETE' });
+                const card = document.getElementById('review-' + id);
+                if (card) card.remove();
+            } catch (e) { showError('O\'chirib bo\'lmadi: ' + e.message); }
         }
 
         function loadAll() { loadCommissions(); loadCustomerFeedbacks(); loadChefFeedbacks(); }
