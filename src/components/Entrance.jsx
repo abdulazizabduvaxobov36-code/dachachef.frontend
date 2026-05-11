@@ -18,8 +18,8 @@ const Entrance = () => {
             if (tgId) {
                 // Telegram orqali kirilgan — FAQAT TG yo'l, localStorage sessiyasiga hech qachon ishonmaymiz
                 if (localStorage.getItem('tg_logout') === String(tgId)) {
-                    // Foydalanuvchi o'zi chiqib ketgan — kirish sahifasida qolsin
-                    setSaved([]);
+                    // Foydalanuvchi o'zi chiqib ketgan — eski akklar ko'rinsin
+                    setSaved(Store.getSavedAccounts());
                     return;
                 }
                 // Telegram ID orqali tekshir — faqat shu foydalanuvchining akkauntiga kir
@@ -70,7 +70,7 @@ const Entrance = () => {
     }, []);
 
     const login = (acc) => {
-        // Oldingi sessiyani tozalash
+        localStorage.removeItem('tg_logout');
         Store.clearSession();
         localStorage.removeItem("customerData");
         localStorage.removeItem("chefProfile");
