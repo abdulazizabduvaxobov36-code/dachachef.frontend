@@ -149,6 +149,8 @@ const GlabalPage = () => {
   };
 
   const totalUnread = notifs.reduce((s, n) => s + n.unread, 0);
+  const WEEK = 7 * 24 * 60 * 60 * 1000;
+  const newChefs = chefs.filter(c => c.registeredAt && Date.now() - c.registeredAt < WEEK);
   const filtered = chefs.filter(c => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
@@ -266,6 +268,43 @@ const GlabalPage = () => {
             {search && <Box cursor="pointer" color="#9B8E8A" onClick={() => setSearch('')} style={{ fontSize: '20px', lineHeight: 1 }}>×</Box>}
           </Box>
         </Box>
+
+        {/* So'ngi yangiliklar */}
+        {!search.trim() && newChefs.length > 0 && (
+          <Box mx="16px" mb="4px">
+            <Text fontWeight="800" color="#1C110D" mb="10px" style={{ fontSize: '15px' }}>
+              {t('glabal.latestNews')}
+            </Text>
+            <Box display="flex" gap="10px" overflowX="auto" pb="4px"
+              style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+              {newChefs.map((chef, idx) => {
+                const realIdx = chefs.indexOf(chef);
+                return (
+                  <Box key={chef.phone} flexShrink={0} w="90px" cursor="pointer"
+                    onClick={() => navigate(`/chef-view/${realIdx}`)}>
+                    <Box position="relative" mb="6px">
+                      {chef.image
+                        ? <img src={chef.image} alt=""
+                            style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #C03F0C', display: 'block', margin: '0 auto' }} />
+                        : <Box w="72px" h="72px" borderRadius="full" bgColor="#F0E6E0" mx="auto"
+                            display="flex" alignItems="center" justifyContent="center"
+                            border="3px solid #C03F0C">
+                            <Text fontWeight="800" color="#C03F0C" style={{ fontSize: '24px' }}>{chef.name?.charAt(0)}</Text>
+                          </Box>
+                      }
+                      <Box position="absolute" top="-4px" right="4px"
+                        bgColor="#C03F0C" borderRadius="8px" px="5px" py="1px">
+                        <Text color="white" fontWeight="800" style={{ fontSize: '9px' }}>{t('glabal.newChefBadge')}</Text>
+                      </Box>
+                    </Box>
+                    <Text color="#1C110D" fontWeight="700" noOfLines={1} textAlign="center"
+                      style={{ fontSize: '12px' }}>{chef.name}</Text>
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        )}
 
         {/* Section */}
         <Box px="16px" pt="4px" pb="8px" display="flex" justifyContent="space-between" alignItems="center">

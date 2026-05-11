@@ -57,7 +57,9 @@ const uz = {
         newMsg: "yangi",
         noNotif: "Yangi xabar yo'q",
         notifTitle: "Xabarlar",
-        replyBtn: "Javob berish"
+        replyBtn: "Javob berish",
+        latestNews: "So'ngi yangiliklar",
+        newChefBadge: "Yangi!"
     },
     footer: { home: "ASOSIY", orders: "BUYURTMALAR", like: "LIKE", profile: "PROFIL" },
     orders: {
@@ -293,7 +295,9 @@ const ru = {
         newMsg: "новых",
         noNotif: "Нет новых сообщений",
         notifTitle: "Сообщения",
-        replyBtn: "Ответить"
+        replyBtn: "Ответить",
+        latestNews: "Последние новости",
+        newChefBadge: "Новый!"
     },
     footer: { home: "ГЛАВНАЯ", orders: "ЗАКАЗЫ", like: "LIKE", profile: "ПРОФИЛЬ" },
     orders: {
