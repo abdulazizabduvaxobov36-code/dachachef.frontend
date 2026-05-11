@@ -346,7 +346,12 @@ const ChefHomePage = () => {
         fetch(`${API_BASE}/chefs/${myPhone}`)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
-                if (!data) return;
+                if (!data || !data._id) {
+                    localStorage.removeItem('chefProfile');
+                    Store.clearSession();
+                    navigate('/', { replace: true });
+                    return;
+                }
                 if (data.isBlocked) {
                     localStorage.setItem(cacheKey, JSON.stringify({ blocked: true, at: Date.now() }));
                     navigate('/blocked', { replace: true });

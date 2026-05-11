@@ -94,7 +94,12 @@ const GlabalPage = () => {
     fetch(`${API_BASE}/customers/${phone}`)
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (!data) return;
+        if (!data || !data._id) {
+          localStorage.removeItem('customerData');
+          Store.clearSession();
+          navigate('/', { replace: true });
+          return;
+        }
         if (data.isBlocked) {
           localStorage.setItem(cacheKey, JSON.stringify({ blocked: true, at: Date.now() }));
           navigate('/blocked', { replace: true });
