@@ -15,7 +15,13 @@ const Entrance = () => {
             const API = import.meta.env?.VITE_API_URL || '';
             const tgId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
 
-            if (tgId && localStorage.getItem('tg_logout') !== String(tgId)) {
+            if (tgId) {
+                // Telegram orqali kirilgan — FAQAT TG yo'l, localStorage sessiyasiga hech qachon ishonmaymiz
+                if (localStorage.getItem('tg_logout') === String(tgId)) {
+                    // Foydalanuvchi o'zi chiqib ketgan — kirish sahifasida qolsin
+                    setSaved([]);
+                    return;
+                }
                 // Telegram ID orqali tekshir — faqat shu foydalanuvchining akkauntiga kir
                 try {
                     const pr = await fetch(`${API}/auth/phone-by-telegram/${tgId}`);
@@ -39,10 +45,9 @@ const Entrance = () => {
                             Store.startHeartbeat('customer', phone);
                             navigate('/glabal', { replace: true }); return;
                         }
-                        // Telefon bor lekin akk yo'q → ro'yxatdan o'tish
                     }
                 } catch { }
-                // Telegram'dan kirilgan bo'lsa localStorage sessiyasiga ishonma
+                // Telegram orqali kirildi lekin akk yo'q — ro'yxatdan o'tish
                 setSaved([]);
                 return;
             }
