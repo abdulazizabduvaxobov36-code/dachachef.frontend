@@ -31,12 +31,12 @@ const Customer = () => {
   const [otpError, setOtpError] = useState('');
   const [needBot, setNeedBot] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
-  const [loadingPhone, setLoadingPhone] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(!!getTelegramUserId());
 
   // Bot orqali saqlangan telefon raqamini olish
   useEffect(() => {
     const tgId = getTelegramUserId();
-    if (!tgId) { setLoadingPhone(false); return; }
+    if (!tgId) { setCheckingPhone(false); return; }
     fetch(`${API_BASE}/auth/phone-by-telegram/${tgId}`)
       .then(r => r.json())
       .then(data => {
@@ -45,8 +45,8 @@ const Customer = () => {
           setPhoneFromBot(true);
         }
       })
-      .catch(() => {});
-    setLoadingPhone(false);
+      .catch(() => {})
+      .finally(() => setCheckingPhone(false));
   }, []);
 
   const onlyLetters = v => /^[A-Za-zА-Яа-яЁёʻʼ\s]*$/.test(v);
@@ -112,15 +112,15 @@ const Customer = () => {
     setTouched({ firstName: true, lastName: true, phone: true });
     if (Object.keys(e).length) return;
 
-    const check = Store.isPhoneRegistered(phone);
-    if (check.registered && check.role === 'chef') {
-      setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsChef') || 'Bu raqam oshpaz sifatida ro\'yxatdan o\'tgan.' }));
+    // Bot orqali telefon tasdiqlangan — to'g'ri ro'yxatdan o'tish
+    if (phoneFromBot) {
+      await registerCustomer(phone, firstName, lastName);
       return;
     }
 
-    // Bot orqali telefon tasdiqlangan — OTP kerak emas
-    if (phoneFromBot) {
-      await registerCustomer(phone, firstName, lastName);
+    const check = Store.isPhoneRegistered(phone);
+    if (check.registered && check.role === 'chef') {
+      setErrors(prev => ({ ...prev, phone: t('errors.phoneRegisteredAsChef') || 'Bu raqam oshpaz sifatida ro\'yxatdan o\'tgan.' }));
       return;
     }
 
@@ -198,8 +198,14 @@ const Customer = () => {
               {renderField("firstName", t("customer.firstName"), <FaUser size={14} />, firstName, setFirstName)}
               {renderField("lastName", t("customer.lastName"), <FaUser size={14} />, lastName, setLastName)}
 
-              {/* Telefon — faqat botdan kelmagan bo'lsa ko'rsatamiz */}
-              {phoneFromBot ? (
+              {/* Telefon */}
+              {checkingPhone ? (
+                <Box bgColor="#F5F5F5" borderRadius="14px" px="14px" py="12px" mb="4px"
+                  border="1.5px solid #E8E8E8" display="flex" alignItems="center" gap="10px">
+                  <FaPhoneAlt style={{ color: "#C0C0C0", fontSize: "14px", flexShrink: 0 }} />
+                  <Text color="#C0C0C0" style={{ fontSize: "13px" }}>Telefon tekshirilmoqda...</Text>
+                </Box>
+              ) : phoneFromBot ? (
                 <Box bgColor="#F0FFF4" borderRadius="14px" px="14px" py="12px" mb="4px"
                   border="1.5px solid #86EFAC" display="flex" alignItems="center" gap="10px">
                   <FaPhoneAlt style={{ color: "#16A34A", fontSize: "14px", flexShrink: 0 }} />

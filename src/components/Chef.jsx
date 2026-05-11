@@ -26,12 +26,12 @@ const Chef = () => {
   const [image, setImage] = useState(null);
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
-  const [loadingPhone, setLoadingPhone] = useState(false);
+  const [checkingPhone, setCheckingPhone] = useState(!!getTelegramUserId());
 
   // Bot orqali saqlangan telefon raqamini olish
   useEffect(() => {
     const tgId = getTelegramUserId();
-    if (!tgId) { setLoadingPhone(false); return; }
+    if (!tgId) { setCheckingPhone(false); return; }
     fetch(`${API_BASE}/auth/phone-by-telegram/${tgId}`)
       .then(r => r.json())
       .then(data => {
@@ -40,8 +40,8 @@ const Chef = () => {
           setPhoneFromBot(true);
         }
       })
-      .catch(() => {});
-    setLoadingPhone(false);
+      .catch(() => {})
+      .finally(() => setCheckingPhone(false));
   }, []);
 
   const onlyLetters = v => /^[A-Za-zА-Яа-яЁёʻʼ\s]*$/.test(v);
@@ -168,8 +168,14 @@ const Chef = () => {
           {renderField("name", t("chef.firstName"), null, name, setName)}
           {renderField("surname", t("chef.lastName"), null, surname, setSurname)}
 
-          {/* Telefon — faqat botdan kelmagan bo'lsa ko'rsatamiz */}
-          {phoneFromBot ? (
+          {/* Telefon */}
+          {checkingPhone ? (
+            <Box bgColor="#F5F5F5" borderRadius="14px" px="14px" py="12px" mb="4px"
+              border="1.5px solid #E8E8E8" display="flex" alignItems="center" gap="10px">
+              <FaPhoneAlt style={{ color: "#C0C0C0", fontSize: "14px", flexShrink: 0 }} />
+              <Text color="#C0C0C0" style={{ fontSize: "13px" }}>Telefon tekshirilmoqda...</Text>
+            </Box>
+          ) : phoneFromBot ? (
             <Box bgColor="#F0FFF4" borderRadius="14px" px="14px" py="12px" mb="4px"
               border="1.5px solid #86EFAC" display="flex" alignItems="center" gap="10px">
               <FaPhoneAlt style={{ color: "#16A34A", fontSize: "14px", flexShrink: 0 }} />
