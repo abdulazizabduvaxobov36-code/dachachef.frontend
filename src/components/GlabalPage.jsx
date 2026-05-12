@@ -1,10 +1,30 @@
 import { Box, Text } from '@chakra-ui/react';
 import { FiSearch } from 'react-icons/fi';
-import { FaStar, FaHeart, FaClipboardList, FaHome, FaUser, FaBell } from 'react-icons/fa';
+import { FaStar, FaHeart, FaClipboardList, FaHome, FaUser, FaBell, FaMapMarkerAlt, FaTimes, FaChevronDown } from 'react-icons/fa';
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Store from '../store';
+
+const ANDIJON_DISTRICTS = [
+  { id: 'andijon_shahar', name: 'Andijon shahri' },
+  { id: 'asaka',          name: 'Asaka tumani' },
+  { id: 'oltinkol',       name: "Oltinko'l tumani" },
+  { id: 'baliqchi',       name: 'Baliqchi tumani' },
+  { id: 'boston',         name: "Bo'ston tumani" },
+  { id: 'buloqboshi',     name: 'Buloqboshi tumani' },
+  { id: 'izboskan',       name: 'Izboskan tumani' },
+  { id: 'jalolquduq',     name: 'Jalolquduq tumani' },
+  { id: 'xojaobod',       name: "Xo'jaobod tumani" },
+  { id: 'marhamat',       name: 'Marhamat tumani' },
+  { id: 'mashrabov',      name: 'Mashrabov tumani' },
+  { id: 'paxtaobod',      name: 'Paxtaobod tumani' },
+  { id: 'qurgontepa',     name: "Qo'rg'ontepa tumani" },
+  { id: 'shahrixon',      name: 'Shahrixon tumani' },
+  { id: 'ulugmor',        name: "Ulug'nor tumani" },
+  { id: 'xonobod',        name: 'Xonobod shahri' },
+  { id: 'imomota',        name: 'Imom Ota' },
+];
 
 const GlabalPage = () => {
   const { t } = useTranslation();
@@ -29,6 +49,24 @@ const GlabalPage = () => {
   const [animIdx, setAnimIdx] = useState(null);
   const [showNotif, setShowNotif] = useState(false);
   const [notifs, setNotifs] = useState([]);
+
+  // Dacha tumani filtri
+  const [selectedDistrict, setSelectedDistrict] = useState(
+    () => localStorage.getItem('customer_dacha_district') || ''
+  );
+  const [showDistrictPicker, setShowDistrictPicker] = useState(false);
+  const districtRef = useRef(null);
+
+  const saveDistrict = (id) => {
+    setSelectedDistrict(id);
+    localStorage.setItem('customer_dacha_district', id);
+    setShowDistrictPicker(false);
+  };
+
+  const clearDistrict = () => {
+    setSelectedDistrict('');
+    localStorage.removeItem('customer_dacha_district');
+  };
 
   const refreshAll = () => {
     const latest = Store.getChefs();
@@ -140,7 +178,14 @@ const GlabalPage = () => {
     };
   }, []);
 
-  useEffect(() => { document.addEventListener('mousedown', e => { if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false); }); }, []);
+  useEffect(() => {
+    const handler = e => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotif(false);
+      if (districtRef.current && !districtRef.current.contains(e.target)) setShowDistrictPicker(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
   useEffect(() => { localStorage.setItem('likedChefs', JSON.stringify(liked)); }, [liked]);
 
   const toggleLike = (phone, idx) => {
@@ -149,16 +194,25 @@ const GlabalPage = () => {
   };
 
   const totalUnread = notifs.reduce((s, n) => s + n.unread, 0);
-  const WEEK = 7 * 24 * 60 * 60 * 1000;
-  const newChefs = chefs.filter(c => c.registeredAt && Date.now() - c.registeredAt < WEEK);
-  const filtered = chefs.filter(c => {
+  const HOME_LIMIT = 4; // GlabalPage da ko'rsatiladigan oshpazlar soni
+  // Tuman bo'yicha filter: oshpazning prefs.canGo da selectedDistrict bor bo'lsa ko'rsatiladi
+  const districtFiltered = chefs.filter(c => {
+    if (!selectedDistrict) return true; // tuman tanlanmagan — hammasini ko'rsat
+    const prefs = Store.getChefDachaPrefs(c.phone);
+    // Agar oshpaz hali belgilamagan bo'lsa ham ko'rsatamiz (yangi oshpazlar uchun)
+    if (!prefs.canGo.length && !prefs.cannotGo.length) return true;
+    return prefs.canGo.includes(selectedDistrict);
+  });
+
+  const filtered = districtFiltered.filter(c => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return (c.name || '').toLowerCase().startsWith(q) || (c.surname || '').toLowerCase().startsWith(q) || `${c.name || ''} ${c.surname || ''}`.toLowerCase().startsWith(q);
   });
+  const sortedChefs = [...filtered].sort((a, b) => (b.registeredAt || 0) - (a.registeredAt || 0));
   const displayChefs = search.trim()
     ? filtered
-    : [...filtered].sort((a, b) => (b.registeredAt || 0) - (a.registeredAt || 0));
+    : sortedChefs.slice(0, HOME_LIMIT); // faqat 6 ta, qolgani ChefsPage da
 
   const NavBar = () => (
     <Box className="fixed-bottom" borderTop="1px solid #EBEBEB"
@@ -254,7 +308,7 @@ const GlabalPage = () => {
           </Box>
         </Box>
 
-        {/* Search — alohida box, headerdan ajratilgan */}
+        {/* Search + Dacha tumani filtri */}
         <Box mx="16px" my="12px" bgColor="white" borderRadius="18px" p="14px"
           boxShadow="0 4px 10px rgba(0,0,0,0.05)">
           <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '14px' }}>{t('glabal.findChef')}</Text>
@@ -267,44 +321,69 @@ const GlabalPage = () => {
               style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: '15px', color: '#1C110D' }} />
             {search && <Box cursor="pointer" color="#9B8E8A" onClick={() => setSearch('')} style={{ fontSize: '20px', lineHeight: 1 }}>×</Box>}
           </Box>
+
+          {/* Dacha tumani tanlash */}
+          <Box mt="10px" position="relative" ref={districtRef}>
+            <Box
+              display="flex" alignItems="center" gap="8px" borderRadius="12px" px="12px"
+              bgColor={selectedDistrict ? "#FFF0EC" : "#F7F7F7"}
+              border={selectedDistrict ? "1.5px solid #C03F0C" : "1.5px solid #E8E8E8"}
+              cursor="pointer" style={{ height: '46px' }}
+              onClick={() => setShowDistrictPicker(v => !v)}>
+              <FaMapMarkerAlt color={selectedDistrict ? "#C03F0C" : "#9B8E8A"} size={14} style={{ flexShrink: 0 }} />
+              <Text flex="1" fontSize="14px" fontWeight={selectedDistrict ? "700" : "400"}
+                color={selectedDistrict ? "#C03F0C" : "#9B8E8A"}>
+                {selectedDistrict
+                  ? ANDIJON_DISTRICTS.find(d => d.id === selectedDistrict)?.name || 'Tuman'
+                  : 'Dacham qaysi tumanda? (ixtiyoriy)'}
+              </Text>
+              {selectedDistrict
+                ? <Box onClick={e => { e.stopPropagation(); clearDistrict(); }} p="4px">
+                    <FaTimes color="#C03F0C" size={12} />
+                  </Box>
+                : <FaChevronDown color="#9B8E8A" size={12} />
+              }
+            </Box>
+
+            {/* Dropdown */}
+            {showDistrictPicker && (
+              <Box position="absolute" top="50px" left="0" right="0" bgColor="white"
+                borderRadius="16px" boxShadow="0 8px 24px rgba(0,0,0,0.14)"
+                border="1px solid #F0E6E0" zIndex={300} maxH="280px" overflowY="auto">
+                <Box px="14px" py="10px" borderBottom="1px solid #F5F5F5">
+                  <Text fontWeight="700" fontSize="13px" color="#1C110D">Andijon viloyati tumanlari</Text>
+                </Box>
+                {ANDIJON_DISTRICTS.map(d => (
+                  <Box key={d.id} px="14px" py="11px" cursor="pointer"
+                    bgColor={selectedDistrict === d.id ? "#FFF0EC" : "white"}
+                    borderBottom="1px solid #FAFAFA"
+                    display="flex" alignItems="center" gap="8px"
+                    onClick={() => saveDistrict(d.id)}>
+                    <FaMapMarkerAlt size={11} color={selectedDistrict === d.id ? "#C03F0C" : "#C8B8B0"} />
+                    <Text fontSize="14px" fontWeight={selectedDistrict === d.id ? "700" : "400"}
+                      color={selectedDistrict === d.id ? "#C03F0C" : "#1C110D"}>
+                      {d.name}
+                    </Text>
+                    {selectedDistrict === d.id && <Text ml="auto" fontSize="12px" color="#C03F0C">✓</Text>}
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
+
+          {/* Filter natijasi xabari */}
+          {selectedDistrict && (
+            <Box mt="8px" bgColor="#FFF0EC" borderRadius="10px" px="12px" py="7px"
+              display="flex" alignItems="center" gap="6px">
+              <FaMapMarkerAlt color="#C03F0C" size={11} />
+              <Text fontSize="12px" color="#C03F0C" fontWeight="600">
+                {ANDIJON_DISTRICTS.find(d => d.id === selectedDistrict)?.name} ga bora oladigan oshpazlar ko'rsatilmoqda
+              </Text>
+            </Box>
+          )}
         </Box>
 
-        {/* So'ngi yangiliklar */}
-        {!search.trim() && newChefs.length > 0 && (
-          <Box mx="16px" mb="4px">
-            <Text fontWeight="800" color="#1C110D" mb="10px" style={{ fontSize: '15px' }}>
-              {t('glabal.latestNews')}
-            </Text>
-            <Box display="flex" gap="10px" overflowX="auto" pb="4px"
-              style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-              {newChefs.map((chef, idx) => {
-                const realIdx = chefs.indexOf(chef);
-                return (
-                  <Box key={chef.phone} flexShrink={0} w="90px" cursor="pointer"
-                    onClick={() => navigate(`/chef-view/${realIdx}`)}>
-                    <Box position="relative" mb="6px">
-                      {chef.image
-                        ? <img src={chef.image} alt=""
-                            style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: '3px solid #C03F0C', display: 'block', margin: '0 auto' }} />
-                        : <Box w="72px" h="72px" borderRadius="full" bgColor="#F0E6E0" mx="auto"
-                            display="flex" alignItems="center" justifyContent="center"
-                            border="3px solid #C03F0C">
-                            <Text fontWeight="800" color="#C03F0C" style={{ fontSize: '24px' }}>{chef.name?.charAt(0)}</Text>
-                          </Box>
-                      }
-                      <Box position="absolute" top="-4px" right="4px"
-                        bgColor="#C03F0C" borderRadius="8px" px="5px" py="1px">
-                        <Text color="white" fontWeight="800" style={{ fontSize: '9px' }}>{t('glabal.newChefBadge')}</Text>
-                      </Box>
-                    </Box>
-                    <Text color="#1C110D" fontWeight="700" noOfLines={1} textAlign="center"
-                      style={{ fontSize: '12px' }}>{chef.name}</Text>
-                  </Box>
-                );
-              })}
-            </Box>
-          </Box>
-        )}
+
 
         {/* Section */}
         <Box px="16px" pt="4px" pb="8px" display="flex" justifyContent="space-between" alignItems="center">

@@ -25,6 +25,9 @@ import AdminOrdersPage from "./components/AdminOrdersPage";
 import AdminRevenuePage from "./components/AdminRevenuePage";
 import AdminChefDetailPage from "./components/AdminChefDetailPage";
 import BlockedPage from "./components/BlockedPage";
+import ChefTeamPage from "./components/ChefTeamPage";
+import ChefDachaPrefsPage from "./components/ChefDachaPrefsPage";
+import AdminDachasPage from "./components/AdminDachasPage";
 
 const App = () => {
   // App birinchi ochilganda eski offline cheflarni tozalash
@@ -59,6 +62,9 @@ const App = () => {
       <Route path="/admin/orders" element={<AdminOrdersPage />} />
       <Route path="/admin/revenue" element={<AdminRevenuePage />} />
       <Route path="/blocked" element={<BlockedPage />} />
+      <Route path="/chef-team" element={<ChefTeamPage />} />
+      <Route path="/chef-dacha-prefs" element={<ChefDachaPrefsPage />} />
+      <Route path="/admin/dachas" element={<AdminDachasPage />} />
     </Routes>
   );
 };

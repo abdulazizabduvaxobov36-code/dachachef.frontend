@@ -305,6 +305,7 @@ const Dashboard = ({ onLogout }) => {
         { icon: '👤', label: 'Mijozlar', desc: `${stats.blockedCustomers} ta bloklangan`, value: stats.customers, valueColor: '#3B82F6', valueBg: '#EFF6FF', border: '#BFDBFE', route: '/admin/customers' },
         { icon: '📋', label: 'Buyurtmalar', desc: 'Barcha buyurtmalar', value: stats.orders, valueColor: '#7C3AED', valueBg: '#F5F3FF', border: '#DDD6FE', route: '/admin/orders' },
         { icon: '💰', label: 'Daromad', desc: 'Komissiya hisob-kitob', value: fmt(stats.commission), valueColor: '#22C55E', valueBg: '#F0FFF4', border: '#BBF7D0', route: '/admin/revenue' },
+        { icon: '🏡', label: 'Dachalar', desc: 'Dacha ro\'yxatini boshqarish', value: (JSON.parse(localStorage.getItem('dachaList') || '[]')).length, valueColor: '#D97706', valueBg: '#FFFBEB', border: '#FDE68A', route: '/admin/dachas' },
     ];
 
     return (

@@ -18,7 +18,7 @@ const ChefProfilePage = () => {
     const { t } = useTranslation();
     const { id } = useParams();
     const chefIndex = Number(id);
-    
+
     // Modal state
     const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
     const [orderAmount, setOrderAmount] = useState('');
@@ -27,7 +27,7 @@ const ChefProfilePage = () => {
 
     const chefNames = [
         "Javlon Karimov",
-        "Sardor Aliyev", 
+        "Sardor Aliyev",
         "Bekzod Tursunov",
         "Akmal Xasanov",
         "Dilshod Ergashev",
@@ -44,7 +44,7 @@ const ChefProfilePage = () => {
     const chefName = realChef
         ? `${realChef.name} ${realChef.surname}`
         : (chefNames[chefIndex] || t("common.defaultChef"));
-    
+
     // Oshpazning o'zi profilini ko'rayotganini tekshirish
     const session = Store.getSession();
     const isOwnProfile = session?.role === 'chef' && session?.data?.phone === realChef?.phone;
@@ -53,14 +53,14 @@ const ChefProfilePage = () => {
     const sess = Store.getSession();
     const customerDataLS = JSON.parse(localStorage.getItem('customerData') || 'null');
     const myPhone = customerDataLS?.phone || (sess?.role === 'customer' ? sess?.data?.phone : null) || 'guest';
-    
+
     // Mijoz ma'lumotlarini session dan ham olish
     const customerFirstName = customerDataLS?.firstName || sess?.data?.firstName || '';
     const customerLastName = customerDataLS?.lastName || sess?.data?.lastName || '';
 
     // Mijoz login qilganmi?
     const isCustomerLoggedIn = sess?.role === 'customer' || customerDataLS?.phone;
-    
+
     // Bu oshpaz bilan chat mavjudmi?
     const hasChatWithChef = realChef && isCustomerLoggedIn
         ? Store.getMessages(Store.makeChatId(myPhone, realChef.phone)).length > 0
@@ -76,7 +76,7 @@ const ChefProfilePage = () => {
         }
 
         setIsSubmitting(true);
-        
+
         try {
             const session = Store.getSession();
             if (!session || session.role !== 'customer') {
@@ -100,7 +100,7 @@ const ChefProfilePage = () => {
 
             // Backend ga yuboramiz
             const result = await Store.createOrder(customerId, chefId, Number(orderAmount), 'customer');
-            
+
             if (result && result.ok) {
                 setOrderSubmitted(true);
                 setOrderAmount('');
@@ -187,6 +187,77 @@ const ChefProfilePage = () => {
                         {realChef?.about || t("chefProfile.aboutText")}
                     </Text>
                 </Box>
+
+                {/* Komanda bo'limi */}
+                {realChef?.phone && (() => {
+                    const team = Store.getChefTeam(realChef.phone);
+                    if (!team.length) return null;
+                    const roleLabel = (r) => ({ idish_yuvadi: '🍽 Idish yuvadi', ovqat_qiladi: '👨‍🍳 Ovqat qilishga yordam', podacha: '🍱 Podacha qiladi', boshqa: '⚙️ Boshqa' }[r] || r);
+                    return (
+                        <Box mt="20px" px={{ base: 3, sm: 5 }}>
+                            <Text fontSize={{ base: '16px', sm: '18px' }} fontWeight="bold" color="#1C110D" mb="10px">
+                                👥 Komanda ({team.length} ta yordamchi)
+                            </Text>
+                            {team.map((m, i) => (
+                                <Box key={i} display="flex" alignItems="center" gap="10px"
+                                    bgColor="#FFF5F0" borderRadius="12px" px="14px" py="10px" mb="8px">
+                                    <Box bgColor="#C03F0C" borderRadius="full" w="28px" h="28px"
+                                        display="flex" alignItems="center" justifyContent="center" flexShrink={0}>
+                                        <Text color="white" fontWeight="800" fontSize="12px">{i + 1}</Text>
+                                    </Box>
+                                    <Box>
+                                        <Text fontWeight="700" color="#1C110D" fontSize="14px">{m.name}</Text>
+                                        <Text fontSize="12px" color="#9B614B">{roleLabel(m.role)}</Text>
+                                        {m.note && <Text fontSize="11px" color="#9B8E8A">{m.note}</Text>}
+                                    </Box>
+                                </Box>
+                            ))}
+                        </Box>
+                    );
+                })()}
+
+                {/* Dacha imkoniyatlari bo'limi */}
+                {realChef?.phone && (() => {
+                    const prefs = Store.getChefDachaPrefs(realChef.phone);
+                    const dachas = Store.getDachas();
+                    const canGoDachas = dachas.filter(d => prefs.canGo.includes(d.id));
+                    const cannotGoDachas = dachas.filter(d => prefs.cannotGo.includes(d.id));
+                    if (!dachas.length) return null;
+                    return (
+                        <Box mt="20px" px={{ base: 3, sm: 5 }}>
+                            <Text fontSize={{ base: '16px', sm: '18px' }} fontWeight="bold" color="#1C110D" mb="10px">
+                                🏡 Dacha imkoniyatlari
+                            </Text>
+                            {canGoDachas.length > 0 && (
+                                <Box mb="10px">
+                                    <Text fontSize="13px" fontWeight="700" color="#276749" mb="6px">✓ Bora oladi:</Text>
+                                    {canGoDachas.map(d => (
+                                        <Box key={d.id} bgColor="#F0FFF4" borderRadius="10px" px="12px" py="8px" mb="6px"
+                                            border="1px solid #C6F6D5" display="flex" alignItems="center" gap="8px">
+                                            <Text fontSize="13px" color="#1C110D" fontWeight="600">📍 {d.name}</Text>
+                                            {d.district && <Text fontSize="11px" color="#276749">{d.district}</Text>}
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+                            {cannotGoDachas.length > 0 && (
+                                <Box>
+                                    <Text fontSize="13px" fontWeight="700" color="#C53030" mb="6px">✗ Bora olmaydi:</Text>
+                                    {cannotGoDachas.map(d => (
+                                        <Box key={d.id} bgColor="#FFF5F5" borderRadius="10px" px="12px" py="8px" mb="6px"
+                                            border="1px solid #FECDCA" display="flex" alignItems="center" gap="8px">
+                                            <Text fontSize="13px" color="#1C110D" fontWeight="600">📍 {d.name}</Text>
+                                            {d.district && <Text fontSize="11px" color="#C53030">{d.district}</Text>}
+                                        </Box>
+                                    ))}
+                                </Box>
+                            )}
+                            {!canGoDachas.length && !cannotGoDachas.length && (
+                                <Text fontSize="13px" color="#9B8E8A">Oshpaz hali dacha sozlamalarini belgilamagan</Text>
+                            )}
+                        </Box>
+                    );
+                })()}
 
                 <Box mx={{ base: 3, sm: 4 }} mt='30px'>
                     <Box display='flex' justifyContent='space-between' alignItems='center'>
@@ -303,18 +374,18 @@ const ChefProfilePage = () => {
                                             _hover={{ borderColor: "#D97706" }}
                                         />
                                     </Box>
-                                    
+
                                     <Box mb={4} p={4} bgColor="#FEF3C7" borderRadius="12px" border="1px solid #FCD34D">
                                         <Text color="#92400E" fontSize="14px" fontWeight="600" mb={2} display="flex" alignItems="center" gap="6px">
                                             <span>⚠️</span> Diqqat:
                                         </Text>
                                         <Text color="#92400E" fontSize="13px" lineHeight="1.5">
-                                            • Bu oshpazning aldab kam pul tashlashini oldini oladi<br/>
-                                            • Kelishilgan summani aniq kiriting<br/>
+                                            • Bu oshpazning aldab kam pul tashlashini oldini oladi<br />
+                                            • Kelishilgan summani aniq kiriting<br />
                                             • Noto'g'ri ma'lumot berilganda javobgarlik qo'llaniladi
                                         </Text>
                                     </Box>
-                                    
+
                                     {orderAmount && Number(orderAmount) > 0 && (
                                         <Box p={3} bgColor="#D1FAE5" borderRadius="8px">
                                             <Text color="#065F46" fontSize="14px" fontWeight="600">
@@ -341,9 +412,9 @@ const ChefProfilePage = () => {
                                         Bekor qilish
                                     </Button>
                                 )}
-                                <Button 
-                                    bgColor="#F59E0B" 
-                                    color="white" 
+                                <Button
+                                    bgColor="#F59E0B"
+                                    color="white"
                                     _hover={{ bgColor: "#D97706" }}
                                     onClick={orderSubmitted ? () => setIsOrderModalOpen(false) : handleOrderSubmit}
                                     isLoading={isSubmitting}

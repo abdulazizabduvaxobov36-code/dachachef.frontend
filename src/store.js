@@ -609,3 +609,48 @@ Store.authLogin = async ({ email, password }) => {
 Store.getAuthToken = () => localStorage.getItem('authToken') || null;
 Store.getAuthUser = () => { try { return JSON.parse(localStorage.getItem('authUser')); } catch { return null; } };
 Store.authLogout = () => { localStorage.removeItem('authToken'); localStorage.removeItem('authUser'); };
+// ─── DACHALAR ────────────────────────────────────────────────
+Store.getDachas = () => {
+  return local.get('dachaList') || [];
+};
+
+Store.addDacha = (dacha) => {
+  const all = Store.getDachas();
+  const newDacha = { ...dacha, id: dacha.id || Date.now().toString(), createdAt: Date.now() };
+  all.push(newDacha);
+  local.set('dachaList', all);
+  window.dispatchEvent(new Event('dachas-updated'));
+  return newDacha;
+};
+
+Store.updateDacha = (id, updates) => {
+  const all = Store.getDachas();
+  const i = all.findIndex(d => d.id === id);
+  if (i >= 0) { all[i] = { ...all[i], ...updates }; local.set('dachaList', all); }
+  window.dispatchEvent(new Event('dachas-updated'));
+};
+
+Store.removeDacha = (id) => {
+  local.set('dachaList', Store.getDachas().filter(d => d.id !== id));
+  window.dispatchEvent(new Event('dachas-updated'));
+};
+
+// ─── OSHPAZ DACHA SOZLAMALARI ────────────────────────────────
+// Oshpaz qaysi dachalarga bora olishi
+Store.getChefDachaPrefs = (chefPhone) => {
+  return local.get(`chef_dacha_prefs_${chefPhone}`) || { canGo: [], cannotGo: [] };
+};
+
+Store.setChefDachaPrefs = (chefPhone, prefs) => {
+  local.set(`chef_dacha_prefs_${chefPhone}`, prefs);
+};
+
+// ─── OSHPAZ YORDAMCHILARI (KOMANDA) ─────────────────────────
+Store.getChefTeam = (chefPhone) => {
+  return local.get(`chef_team_${chefPhone}`) || [];
+};
+
+Store.setChefTeam = (chefPhone, team) => {
+  local.set(`chef_team_${chefPhone}`, team);
+  window.dispatchEvent(new Event('chefs-updated'));
+};

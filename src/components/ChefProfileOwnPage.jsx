@@ -34,7 +34,7 @@ const ChefProfileOwnPage = () => {
             .then(bp => {
                 if (!Array.isArray(bp)) return;
                 setPosts(bp.map(p => ({ ...p, id: p._id || p.id })));
-            }).catch(() => {});
+            }).catch(() => { });
     };
 
     useEffect(() => {
@@ -137,7 +137,7 @@ const ChefProfileOwnPage = () => {
     const handleDeletePost = (post) => {
         setPosts(prev => prev.filter(x => (x.id || x._id) !== (post.id || post._id)));
         const API = import.meta.env?.VITE_API_URL || '';
-        fetch(`${API}/posts/${post.id || post._id}`, { method: 'DELETE' }).catch(() => {});
+        fetch(`${API}/posts/${post.id || post._id}`, { method: 'DELETE' }).catch(() => { });
     };
 
     const fullName = chefProfile.name ? `${chefProfile.name || ""} ${chefProfile.surname || ""}`.trim() : t("chefProfileOwn.defaultName");
@@ -196,6 +196,22 @@ const ChefProfileOwnPage = () => {
                     onClick={() => navigate("/chef-edit-profile")}>
                     {t("chefProfileOwn.editBtn")}
                 </Button>
+
+                {/* Yangi tugmalar */}
+                <Box display="flex" gap="8px" mt="10px">
+                    <Button flex="1" h="38px" borderRadius="20px" bgColor="#FFF0EC"
+                        color="#C03F0C" fontWeight="700" fontSize="12px" border="1.5px solid #F5C5B0"
+                        _hover={{ bgColor: "#FFE8E0" }}
+                        onClick={() => navigate("/chef-team")}>
+                        👥 Komanda
+                    </Button>
+                    <Button flex="1" h="38px" borderRadius="20px" bgColor="#FFFBEB"
+                        color="#D97706" fontWeight="700" fontSize="12px" border="1.5px solid #FDE68A"
+                        _hover={{ bgColor: "#FEF3C7" }}
+                        onClick={() => navigate("/chef-dacha-prefs")}>
+                        🏡 Dachalar
+                    </Button>
+                </Box>
             </Box>
 
             {/* Content */}
