@@ -236,6 +236,35 @@ const uz = {
         defaultChef: "Oshpaz",
         years: "yil",
         moreMsg: "ta xabar..."
+    },
+    chefTeam: {
+        title: "Mening komandaim",
+        info: "Siz bilan nechta odam kelishini va ularning vazifasini belgilang. Mijoz zakazdan oldin buni ko'radi.",
+        total: "ta yordamchi siz bilan keladi",
+        summary: "Komanda xulosasi",
+        grandTotal: "Jami (siz bilan)",
+        save: "Saqlash",
+        saving: "Saqlanmoqda...",
+        saved: "Komanda saqlandi!",
+        role_ovqat: "Ovqat pishirishga yordam beradi",
+        role_idish: "Idish yuvadi",
+        role_podacha: "Ovqatni podacha qiladi",
+        role_boshqa: "Boshqa vazifa"
+    },
+    chefDachaPrefs: {
+        title: "Hudud imkoniyatlari",
+        subtitle: "Andijon viloyati tumanlari",
+        info: "Qaysi tuman/shahardagi dachalarga borishingiz mumkinligini belgilang. Mijoz shu ma'lumotni ko'rib zakaz beradi.",
+        canGo: "Boraman",
+        cannotGo: "Bormayman",
+        selectAll: "Hammasiga boraman",
+        clear: "Tozalash",
+        save: "Saqlash",
+        saving: "Saqlanmoqda...",
+        saved: "Sozlamalar saqlandi!",
+        canGoLabel: "ta boraman",
+        cannotGoLabel: "ta bormayman",
+        neutralLabel: "ta belgilanmagan"
     }
 };
 
@@ -473,6 +502,35 @@ const ru = {
         defaultChef: "Повар",
         years: "лет",
         moreMsg: "сообщений..."
+    },
+    chefTeam: {
+        title: "Моя команда",
+        info: "Укажите, сколько человек придёт с вами и их обязанности. Клиент увидит это перед заказом.",
+        total: "помощников придут с вами",
+        summary: "Итог по команде",
+        grandTotal: "Всего (с вами)",
+        save: "Сохранить",
+        saving: "Сохранение...",
+        saved: "Команда сохранена!",
+        role_ovqat: "Помогает готовить еду",
+        role_idish: "Моет посуду",
+        role_podacha: "Подаёт блюда",
+        role_boshqa: "Другая роль"
+    },
+    chefDachaPrefs: {
+        title: "Возможности по районам",
+        subtitle: "Районы Андижанской области",
+        info: "Укажите, в какие районы/города вы можете ехать. Клиент увидит это перед заказом.",
+        canGo: "Поеду",
+        cannotGo: "Не поеду",
+        selectAll: "Поеду везде",
+        clear: "Очистить",
+        save: "Сохранить",
+        saving: "Сохранение...",
+        saved: "Настройки сохранены!",
+        canGoLabel: "поеду",
+        cannotGoLabel: "не поеду",
+        neutralLabel: "не указано"
     }
 };
 

@@ -329,7 +329,7 @@ const ChefHomePage = () => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ telegramId: String(tgId) }),
-        }).catch(() => {});
+        }).catch(() => { });
     }, [myPhone]);
 
     // Bloklangan oshpazni darhol chiqarish (cache + backend)
@@ -368,7 +368,7 @@ const ChefHomePage = () => {
         fetch(`${API_BASE}/posts/chef/${myPhone}`)
             .then(r => r.ok ? r.json() : null)
             .then(bp => { if (Array.isArray(bp)) setPosts(bp.map(p => ({ ...p, id: p._id || p.id }))); })
-            .catch(() => {});
+            .catch(() => { });
     };
 
     useEffect(() => {
@@ -390,7 +390,7 @@ const ChefHomePage = () => {
             let reviewPollCount = 0;
             const API_BASE = import.meta.env?.VITE_API_URL || '';
             // Darhol onlayn signali yuborish
-            fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
+            fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => { });
             const pollOrders = setInterval(() => {
                 const newNotifs = Store.getChefNotifications(myPhone);
                 const newNKey = JSON.stringify(newNotifs.map(n => n.chatId + n.unread));
@@ -405,11 +405,11 @@ const ChefHomePage = () => {
                                 setBackendMsgUnread(chats.reduce((s, c) => s + (c.unread || 0), 0));
                                 setBackendMsgChats(chats.filter(c => (c.unread || 0) > 0));
                             }
-                        }).catch(() => {});
+                        }).catch(() => { });
                 }
                 // Har 20s backendga onlayn signal
                 if (reviewPollCount % 20 === 0) {
-                    fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => {});
+                    fetch(`${API_BASE}/chefs/${myPhone}/online`, { method: 'PATCH' }).catch(() => { });
                 }
                 if (reviewPollCount % 5 === 0) { fetchReviewNotifs(); fetchChefTotalEarned(); }
                 if (reviewPollCount % 3 === 0) { fetchPendingRequests(); }
@@ -635,6 +635,51 @@ const ChefHomePage = () => {
             </Box>
 
             <Box flex="1" pb="80px">
+                {/* Profil to'ldirish bannerlari */}
+                {(() => {
+                    const team = Store.getChefTeam(myPhone);
+                    const prefs = Store.getChefDachaPrefs(myPhone);
+                    const teamEmpty = !team || (Array.isArray(team) ? team.length === 0 : Object.values(team).every(v => !v));
+                    const prefsEmpty = !prefs.canGo.length && !prefs.cannotGo.length;
+                    if (!teamEmpty && !prefsEmpty) return null;
+                    return (
+                        <Box px="16px" pt="12px" display="flex" flexDir="column" gap="8px">
+                            {teamEmpty && (
+                                <Box bgColor="white" borderRadius="14px" px="14px" py="11px"
+                                    border="1.5px dashed #C03F0C" display="flex" alignItems="center"
+                                    gap="10px" cursor="pointer" onClick={() => navigate('/chef-team')}>
+                                    <Text fontSize="22px">👥</Text>
+                                    <Box flex="1">
+                                        <Text fontWeight="700" color="#1C110D" fontSize="13px">
+                                            Komandangizni qo'shing
+                                        </Text>
+                                        <Text fontSize="11px" color="#9B614B">
+                                            Nechta yordamchi bilan kelishingizni belgilang
+                                        </Text>
+                                    </Box>
+                                    <Text fontSize="18px" color="#C03F0C">›</Text>
+                                </Box>
+                            )}
+                            {prefsEmpty && (
+                                <Box bgColor="white" borderRadius="14px" px="14px" py="11px"
+                                    border="1.5px dashed #D97706" display="flex" alignItems="center"
+                                    gap="10px" cursor="pointer" onClick={() => navigate('/chef-dacha-prefs')}>
+                                    <Text fontSize="22px">🏡</Text>
+                                    <Box flex="1">
+                                        <Text fontWeight="700" color="#1C110D" fontSize="13px">
+                                            Dacha sozlamalarini kiriting
+                                        </Text>
+                                        <Text fontSize="11px" color="#9B614B">
+                                            Qaysi tumanlarga bora olishingizni belgilang
+                                        </Text>
+                                    </Box>
+                                    <Text fontSize="18px" color="#D97706">›</Text>
+                                </Box>
+                            )}
+                        </Box>
+                    );
+                })()}
+
                 {/* Tabs */}
                 <Box display="flex" alignItems="center" pt="14px" pb="10px" gap="0">
                     <Box display="flex" gap="8px" pl="16px" pr="8px"
@@ -856,7 +901,7 @@ const ChefHomePage = () => {
                                         cursor="pointer" onClick={() => {
                                             setPosts(prev => prev.filter(x => (x.id || x._id) !== (p.id || p._id)));
                                             const API_BASE = import.meta.env?.VITE_API_URL || '';
-                                            fetch(`${API_BASE}/posts/${p.id || p._id}`, { method: 'DELETE' }).catch(() => {});
+                                            fetch(`${API_BASE}/posts/${p.id || p._id}`, { method: 'DELETE' }).catch(() => { });
                                         }}>
                                         <FaTimes style={{ fontSize: "8px", color: "white" }} />
                                     </Box>

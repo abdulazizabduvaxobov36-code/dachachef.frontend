@@ -1,18 +1,13 @@
 import { Box, Button, Text } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FaArrowLeft, FaUsers, FaMinus, FaPlus } from 'react-icons/fa';
 import Store from '../store';
 
-const ROLES = [
-    { key: 'ovqat', emoji: '👨‍🍳', label: 'Ovqat pishirishga yordam beradi' },
-    { key: 'idish', emoji: '🍽', label: 'Idish yuvadi' },
-    { key: 'podacha', emoji: '🍱', label: 'Ovqatni podacha qiladi' },
-    { key: 'boshqa', emoji: '⚙️', label: 'Boshqa vazifa' },
-];
-
 const ChefTeamPage = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
 
     const stored = (() => {
         const s = JSON.parse(localStorage.getItem('chefProfile') || 'null');
@@ -22,6 +17,13 @@ const ChefTeamPage = () => {
         return {};
     })();
     const chefPhone = stored.phone || '';
+
+    const ROLES = [
+        { key: 'ovqat', emoji: '👨‍🍳', label: t('chefTeam.role_ovqat') },
+        { key: 'idish', emoji: '🍽', label: t('chefTeam.role_idish') },
+        { key: 'podacha', emoji: '🍱', label: t('chefTeam.role_podacha') },
+        { key: 'boshqa', emoji: '⚙️', label: t('chefTeam.role_boshqa') },
+    ];
 
     const [counts, setCounts] = useState({ ovqat: 0, idish: 0, podacha: 0, boshqa: 0 });
     const [saving, setSaving] = useState(false);
@@ -67,27 +69,24 @@ const ChefTeamPage = () => {
                     <FaArrowLeft style={{ fontSize: 'clamp(12px,3vw,14px)', color: '#1C110D' }} />
                 </Box>
                 <Text fontWeight="bold" color="#1C110D" style={{ fontSize: 'clamp(15px,4.2vw,18px)' }}>
-                    Mening komandaim
+                    {t('chefTeam.title')}
                 </Text>
             </Box>
 
             <Box pb="120px" px={{ base: '14px', sm: '16px' }}>
-
                 {/* Info */}
                 <Box mt="16px" bgColor="white" borderRadius="18px" p="16px"
                     boxShadow="0 2px 8px rgba(0,0,0,0.06)" border="1px solid #FFF0EC">
                     <Box display="flex" alignItems="center" gap="10px" mb="8px">
                         <FaUsers color="#C03F0C" size={18} />
-                        <Text fontWeight="700" color="#1C110D" fontSize="15px">Komanda</Text>
+                        <Text fontWeight="700" color="#1C110D" fontSize="15px">{t('chefTeam.title')}</Text>
                     </Box>
-                    <Text color="#9B614B" fontSize="13px" lineHeight="1.7">
-                        Siz bilan nechta odam kelishini va ularning vazifasini belgilang. Mijoz zakazdan oldin buni ko'radi.
-                    </Text>
+                    <Text color="#9B614B" fontSize="13px" lineHeight="1.7">{t('chefTeam.info')}</Text>
                     {total > 0 && (
                         <Box mt="12px" bgColor="#FFF5F0" borderRadius="12px" px="14px" py="10px"
                             display="flex" alignItems="center" gap="10px">
                             <Text fontSize="28px" fontWeight="800" color="#C03F0C">{total}</Text>
-                            <Text fontSize="14px" color="#1C110D" fontWeight="600">ta yordamchi siz bilan keladi</Text>
+                            <Text fontSize="14px" color="#1C110D" fontWeight="600">{t('chefTeam.total')}</Text>
                         </Box>
                     )}
                 </Box>
@@ -102,7 +101,6 @@ const ChefTeamPage = () => {
                                 <Text fontSize="24px">{role.emoji}</Text>
                                 <Text fontWeight="600" color="#1C110D" fontSize="14px" lineHeight="1.4">{role.label}</Text>
                             </Box>
-                            {/* Counter */}
                             <Box display="flex" alignItems="center">
                                 <Box w="36px" h="36px" borderRadius="10px 0 0 10px"
                                     bgColor={counts[role.key] > 0 ? '#FFF0EC' : '#F7F7F7'}
@@ -130,7 +128,7 @@ const ChefTeamPage = () => {
                         {counts[role.key] > 0 && (
                             <Box mt="10px" bgColor="#FFF5F0" borderRadius="10px" px="12px" py="7px">
                                 <Text fontSize="13px" color="#C03F0C" fontWeight="600">
-                                    {counts[role.key]} ta kishi — {role.label.toLowerCase()}
+                                    {counts[role.key]} ta — {role.label.toLowerCase()}
                                 </Text>
                             </Box>
                         )}
@@ -141,7 +139,9 @@ const ChefTeamPage = () => {
                 {total > 0 && (
                     <Box mt="14px" bgColor="white" borderRadius="18px" p="16px"
                         boxShadow="0 2px 8px rgba(0,0,0,0.06)" border="1px solid #F0EBE6">
-                        <Text fontWeight="700" color="#1C110D" fontSize="14px" mb="10px">📋 Komanda xulosasi</Text>
+                        <Text fontWeight="700" color="#1C110D" fontSize="14px" mb="10px">
+                            📋 {t('chefTeam.summary')}
+                        </Text>
                         {ROLES.filter(r => counts[r.key] > 0).map(r => (
                             <Box key={r.key} display="flex" alignItems="center" gap="8px" mb="6px">
                                 <Text fontSize="16px">{r.emoji}</Text>
@@ -153,8 +153,8 @@ const ChefTeamPage = () => {
                         ))}
                         <Box mt="10px" pt="10px" borderTop="1px solid #F0EBE6"
                             display="flex" justifyContent="space-between" alignItems="center">
-                            <Text fontSize="13px" color="#9B614B">Jami (siz bilan)</Text>
-                            <Text fontSize="16px" fontWeight="800" color="#C03F0C">{total + 1} ta odam</Text>
+                            <Text fontSize="13px" color="#9B614B">{t('chefTeam.grandTotal')}</Text>
+                            <Text fontSize="16px" fontWeight="800" color="#C03F0C">{total + 1} ta</Text>
                         </Box>
                     </Box>
                 )}
@@ -166,14 +166,14 @@ const ChefTeamPage = () => {
                 bgColor="white" borderTop="1px solid #F0F0F0" zIndex={10}>
                 {saved && (
                     <Text textAlign="center" color="#22C55E" fontWeight="700" fontSize="14px" mb="8px">
-                        ✓ Komanda saqlandi!
+                        ✓ {t('chefTeam.saved')}
                     </Text>
                 )}
                 <Button w="100%" bgColor="#C03F0C" color="white" fontWeight="bold"
                     style={{ height: 'clamp(46px,13vw,54px)', borderRadius: '18px', fontSize: 'clamp(14px,3.8vw,15px)' }}
                     _hover={{ bgColor: '#a0300a' }} isLoading={saving}
-                    loadingText="Saqlanmoqda..." onClick={handleSave}>
-                    💾 Saqlash
+                    loadingText={t('chefTeam.saving')} onClick={handleSave}>
+                    💾 {t('chefTeam.save')}
                 </Button>
             </Box>
         </Box>

@@ -1,6 +1,7 @@
 import { Box, Text } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Store from '../store';
 import { FaArrowLeft, FaLock, FaUnlock, FaTrash, FaBell, FaStar, FaPhone } from 'react-icons/fa';
 
 const API = import.meta.env.VITE_API_URL || '';
@@ -206,6 +207,76 @@ const AdminChefDetailPage = () => {
                         Ro'yxatdan o'tgan: {dateStr(chef.registeredAt || chef.createdAt)}
                     </Text>
                 </Box>
+
+                {/* Komanda va dacha ma'lumotlari */}
+                {(() => {
+                    const team = Store.getChefTeam(chef.phone);
+                    const prefs = Store.getChefDachaPrefs(chef.phone);
+                    const ROLE_LABELS = {
+                        ovqat: '👨‍🍳 Ovqat pishirishga yordam',
+                        idish: '🍽 Idish yuvadi',
+                        podacha: '🍱 Podacha qiladi',
+                        boshqa: '⚙️ Boshqa'
+                    };
+                    const DISTRICTS = {
+                        andijon_shahar: 'Andijon shahri', asaka: 'Asaka', oltinkol: "Oltinko'l",
+                        baliqchi: 'Baliqchi', boston: "Bo'ston", buloqboshi: 'Buloqboshi',
+                        izboskan: 'Izboskan', jalolquduq: 'Jalolquduq', xojaobod: "Xo'jaobod",
+                        marhamat: 'Marhamat', mashrabov: 'Mashrabov', paxtaobod: 'Paxtaobod',
+                        qurgontepa: "Qo'rg'ontepa", shahrixon: 'Shahrixon', ulugmor: "Ulug'nor",
+                        xonobod: 'Xonobod', imomota: 'Imom Ota'
+                    };
+                    const totalTeam = team && !Array.isArray(team)
+                        ? Object.values(team).reduce((a, b) => a + (b || 0), 0)
+                        : 0;
+                    const hasTeam = totalTeam > 0;
+                    const hasPrefs = prefs.canGo.length > 0 || prefs.cannotGo.length > 0;
+                    if (!hasTeam && !hasPrefs) return null;
+                    return (
+                        <Box bgColor="white" borderRadius="18px" p="14px" boxShadow="0 2px 10px rgba(0,0,0,0.06)">
+                            {hasTeam && (
+                                <Box mb={hasPrefs ? "14px" : "0"}>
+                                    <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '13px' }}>
+                                        👥 Komanda ({totalTeam + 1} ta odam)
+                                    </Text>
+                                    {team && Object.entries(team).map(([key, count]) =>
+                                        count > 0 ? (
+                                            <Box key={key} display="flex" alignItems="center" gap="6px" mb="4px">
+                                                <Text fontSize="12px" color="#1C110D">{ROLE_LABELS[key] || key}</Text>
+                                                <Box ml="auto" bgColor="#FFF0EC" borderRadius="full" px="8px" py="1px">
+                                                    <Text fontSize="11px" fontWeight="700" color="#C03F0C">{count} ta</Text>
+                                                </Box>
+                                            </Box>
+                                        ) : null
+                                    )}
+                                </Box>
+                            )}
+                            {hasPrefs && (
+                                <Box>
+                                    <Text fontWeight="700" color="#1C110D" mb="8px" style={{ fontSize: '13px' }}>
+                                        🏡 Dacha imkoniyatlari
+                                    </Text>
+                                    {prefs.canGo.length > 0 && (
+                                        <Box mb="6px">
+                                            <Text fontSize="12px" fontWeight="600" color="#276749" mb="4px">✓ Boradi:</Text>
+                                            <Text fontSize="12px" color="#1C110D">
+                                                {prefs.canGo.map(id => DISTRICTS[id] || id).join(', ')}
+                                            </Text>
+                                        </Box>
+                                    )}
+                                    {prefs.cannotGo.length > 0 && (
+                                        <Box>
+                                            <Text fontSize="12px" fontWeight="600" color="#C53030" mb="4px">✗ Bormaydi:</Text>
+                                            <Text fontSize="12px" color="#1C110D">
+                                                {prefs.cannotGo.map(id => DISTRICTS[id] || id).join(', ')}
+                                            </Text>
+                                        </Box>
+                                    )}
+                                </Box>
+                            )}
+                        </Box>
+                    );
+                })()}
 
                 {/* Action buttons */}
                 <Box bgColor="white" borderRadius="18px" p="14px" boxShadow="0 2px 10px rgba(0,0,0,0.06)">

@@ -89,7 +89,7 @@ const ChefEditProfilePage = () => {
         }).catch(() => { });
 
         setSaving(false);
-        navigate('/chef-profile');
+        setTimeout(() => navigate('/chef-profile'), 100);
     };
     const hasErr = (key) => errors[key] && touched[key];
     const renderInput = (key, label, icon, value, setter, isNum, maxLen, prefix, placeholder) => (
