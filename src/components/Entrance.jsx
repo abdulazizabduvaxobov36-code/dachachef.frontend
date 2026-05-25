@@ -24,7 +24,10 @@ const Entrance = () => {
                 }
                 // Telegram ID orqali tekshir — faqat shu foydalanuvchining akkauntiga kir
                 try {
-                    const pr = await fetch(`${API}/auth/phone-by-telegram/${tgId}`);
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 5000);
+                    const pr = await fetch(`${API}/auth/phone-by-telegram/${tgId}`, { signal: controller.signal });
+                    clearTimeout(timeout);
                     const { phone } = await pr.json();
                     if (phone) {
                         const [chefRes, custRes] = await Promise.all([

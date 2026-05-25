@@ -191,27 +191,33 @@ const ChefProfilePage = () => {
                 {/* Komanda bo'limi */}
                 {realChef?.phone && (() => {
                     const team = Store.getChefTeam(realChef.phone);
-                    if (!team.length) return null;
-                    const roleLabel = (r) => ({ idish_yuvadi: '🍽 Idish yuvadi', ovqat_qiladi: '👨‍🍳 Ovqat qilishga yordam', podacha: '🍱 Podacha qiladi', boshqa: '⚙️ Boshqa' }[r] || r);
+                    const ROLE_LABELS = {
+                        ovqat: '👨‍🍳 Ovqat pishirishga yordam',
+                        idish: '🍽 Idish yuvadi',
+                        podacha: '🍱 Podacha qiladi',
+                        boshqa: '⚙️ Boshqa'
+                    };
+                    // Yangi format: object {ovqat:2, idish:1 ...}
+                    const isObj = team && !Array.isArray(team) && typeof team === 'object';
+                    const total = isObj ? Object.values(team).reduce((a, b) => a + (b || 0), 0) : 0;
+                    if (!isObj || total === 0) return null;
                     return (
                         <Box mt="20px" px={{ base: 3, sm: 5 }}>
                             <Text fontSize={{ base: '16px', sm: '18px' }} fontWeight="bold" color="#1C110D" mb="10px">
-                                👥 Komanda ({team.length} ta yordamchi)
+                                👥 Komanda ({total} ta yordamchi)
                             </Text>
-                            {team.map((m, i) => (
-                                <Box key={i} display="flex" alignItems="center" gap="10px"
+                            {Object.entries(team).map(([key, count]) => count > 0 ? (
+                                <Box key={key} display="flex" alignItems="center" gap="10px"
                                     bgColor="#FFF5F0" borderRadius="12px" px="14px" py="10px" mb="8px">
                                     <Box bgColor="#C03F0C" borderRadius="full" w="28px" h="28px"
                                         display="flex" alignItems="center" justifyContent="center" flexShrink={0}>
-                                        <Text color="white" fontWeight="800" fontSize="12px">{i + 1}</Text>
+                                        <Text color="white" fontWeight="800" fontSize="13px">{count}</Text>
                                     </Box>
-                                    <Box>
-                                        <Text fontWeight="700" color="#1C110D" fontSize="14px">{m.name}</Text>
-                                        <Text fontSize="12px" color="#9B614B">{roleLabel(m.role)}</Text>
-                                        {m.note && <Text fontSize="11px" color="#9B8E8A">{m.note}</Text>}
-                                    </Box>
+                                    <Text fontWeight="600" color="#1C110D" fontSize="14px">
+                                        {ROLE_LABELS[key] || key}
+                                    </Text>
                                 </Box>
-                            ))}
+                            ) : null)}
                         </Box>
                     );
                 })()}

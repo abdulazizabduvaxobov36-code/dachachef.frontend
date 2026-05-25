@@ -1,6 +1,6 @@
 import { Box, Button, Text } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FaArrowLeft, FaCheck, FaTimes, FaMapMarkerAlt } from 'react-icons/fa';
 import Store from '../store';
@@ -27,7 +27,9 @@ const ANDIJON_DISTRICTS = [
 
 const ChefDachaPrefsPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { t } = useTranslation();
+    const fromProfile = location.state?.from === 'profile';
 
     const stored = (() => {
         const s = JSON.parse(localStorage.getItem('chefProfile') || 'null');
@@ -76,7 +78,11 @@ const ChefDachaPrefsPage = () => {
     const handleSave = () => {
         setSaving(true);
         Store.setChefDachaPrefs(chefPhone, prefs);
-        setTimeout(() => { setSaving(false); setSaved(true); }, 400);
+        setTimeout(() => {
+            setSaving(false);
+            setSaved(true);
+            setTimeout(() => navigate(fromProfile ? '/chef-profile' : '/chef-home'), 600);
+        }, 400);
     };
 
     const canCount = prefs.canGo.length;

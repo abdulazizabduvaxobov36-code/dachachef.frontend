@@ -1,12 +1,32 @@
 import { Box, Text } from '@chakra-ui/react';
-import { FaArrowLeft, FaHeart, FaStar } from 'react-icons/fa';
+import { FaArrowLeft, FaHeart, FaStar, FaMapMarkerAlt, FaTimes, FaChevronDown } from 'react-icons/fa';
 import { FiSearch } from 'react-icons/fi';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import Store from '../store';
 
 const API_BASE = import.meta.env?.VITE_API_URL || '';
+
+const ANDIJON_DISTRICTS = [
+  { id: 'andijon_shahar', name: 'Andijon shahri' },
+  { id: 'asaka', name: 'Asaka tumani' },
+  { id: 'oltinkol', name: "Oltinko'l tumani" },
+  { id: 'baliqchi', name: 'Baliqchi tumani' },
+  { id: 'boston', name: "Bo'ston tumani" },
+  { id: 'buloqboshi', name: 'Buloqboshi tumani' },
+  { id: 'izboskan', name: 'Izboskan tumani' },
+  { id: 'jalolquduq', name: 'Jalolquduq tumani' },
+  { id: 'xojaobod', name: "Xo'jaobod tumani" },
+  { id: 'marhamat', name: 'Marhamat tumani' },
+  { id: 'mashrabov', name: 'Mashrabov tumani' },
+  { id: 'paxtaobod', name: 'Paxtaobod tumani' },
+  { id: 'qurgontepa', name: "Qo'rg'ontepa tumani" },
+  { id: 'shahrixon', name: 'Shahrixon tumani' },
+  { id: 'ulugmor', name: "Ulug'nor tumani" },
+  { id: 'xonobod', name: 'Xonobod shahri' },
+  { id: 'imomota', name: 'Imom Ota' },
+];
 
 const ChefsPage = () => {
   const navigate = useNavigate();
@@ -16,6 +36,21 @@ const ChefsPage = () => {
   const [liked, setLiked] = useState(() => JSON.parse(localStorage.getItem('likedChefs') || '[]'));
   const [search, setSearch] = useState('');
   const [animKey, setAnimKey] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState(
+    () => localStorage.getItem('customer_dacha_district') || ''
+  );
+  const [showDistrictPicker, setShowDistrictPicker] = useState(false);
+  const districtRef = useRef(null);
+
+  const saveDistrict = (id) => {
+    setSelectedDistrict(id);
+    localStorage.setItem('customer_dacha_district', id);
+    setShowDistrictPicker(false);
+  };
+  const clearDistrict = () => {
+    setSelectedDistrict('');
+    localStorage.removeItem('customer_dacha_district');
+  };
 
   const refresh = () => setChefs([...Store.getChefs()]);
 
@@ -37,7 +72,7 @@ const ChefsPage = () => {
         localStorage.setItem('registeredChefs', JSON.stringify(synced));
         setChefs(synced.filter(c => c.phone && c.name));
       })
-      .catch(() => {});
+      .catch(() => { });
 
     const unsub = Store.listenChefs(latest => setChefs([...latest]));
     const onStorage = e => { if (e.key === 'registeredChefs') refresh(); };
@@ -52,6 +87,14 @@ const ChefsPage = () => {
 
   // Baholari
   useEffect(() => {
+    const handler = e => {
+      if (districtRef.current && !districtRef.current.contains(e.target)) setShowDistrictPicker(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  useEffect(() => {
     if (chefs.length === 0) return;
     Promise.allSettled(
       chefs.map(c =>
@@ -63,7 +106,7 @@ const ChefsPage = () => {
       const map = {};
       results.forEach(r => { if (r.status === 'fulfilled' && r.value) map[r.value.phone] = r.value.avg; });
       setRatings(map);
-    }).catch(() => {});
+    }).catch(() => { });
   }, [chefs.length]);
 
   const toggleLike = (phone, e) => {
@@ -73,7 +116,14 @@ const ChefsPage = () => {
     setLiked(upd); setAnimKey(phone); setTimeout(() => setAnimKey(null), 300);
   };
 
-  const filtered = chefs.filter(c => {
+  const districtFiltered = chefs.filter(c => {
+    if (!selectedDistrict) return true;
+    const prefs = Store.getChefDachaPrefs(c.phone);
+    if (!prefs.canGo.length && !prefs.cannotGo.length) return true;
+    return prefs.canGo.includes(selectedDistrict);
+  });
+
+  const filtered = districtFiltered.filter(c => {
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return c.name?.toLowerCase().startsWith(q) || c.surname?.toLowerCase().startsWith(q);
@@ -95,7 +145,7 @@ const ChefsPage = () => {
         </Box>
       </Box>
 
-      {/* Search */}
+      {/* Search + Tuman filtri */}
       <Box mx="16px" mt="-10px" mb="12px" bgColor="white" borderRadius="18px" p="14px"
         boxShadow="0 4px 16px rgba(192,63,12,0.12)">
         <Box display="flex" alignItems="center" gap="10px" borderRadius="12px"
@@ -107,6 +157,63 @@ const ChefsPage = () => {
             style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: '15px', color: '#1C110D' }} />
           {search && <Box cursor="pointer" color="#9B8E8A" onClick={() => setSearch('')} style={{ fontSize: '20px', lineHeight: 1 }}>×</Box>}
         </Box>
+
+        {/* Tuman filtri */}
+        <Box mt="10px" position="relative" ref={districtRef}>
+          <Box display="flex" alignItems="center" gap="8px" borderRadius="12px" px="12px"
+            bgColor={selectedDistrict ? "#FFF0EC" : "#F7F7F7"}
+            border={selectedDistrict ? "1.5px solid #C03F0C" : "1.5px solid #E8E8E8"}
+            cursor="pointer" style={{ height: '46px' }}
+            onClick={() => setShowDistrictPicker(v => !v)}>
+            <FaMapMarkerAlt color={selectedDistrict ? "#C03F0C" : "#9B8E8A"} size={14} style={{ flexShrink: 0 }} />
+            <Text flex="1" fontSize="14px" fontWeight={selectedDistrict ? "700" : "400"}
+              color={selectedDistrict ? "#C03F0C" : "#9B8E8A"}>
+              {selectedDistrict
+                ? ANDIJON_DISTRICTS.find(d => d.id === selectedDistrict)?.name
+                : 'Tuman bo\'yicha filter (ixtiyoriy)'}
+            </Text>
+            {selectedDistrict
+              ? <Box onClick={e => { e.stopPropagation(); clearDistrict(); }} p="4px">
+                <FaTimes color="#C03F0C" size={12} />
+              </Box>
+              : <FaChevronDown color="#9B8E8A" size={12} />
+            }
+          </Box>
+
+          {showDistrictPicker && (
+            <Box position="absolute" top="50px" left="0" right="0" bgColor="white"
+              borderRadius="16px" boxShadow="0 8px 24px rgba(0,0,0,0.14)"
+              border="1px solid #F0E6E0" zIndex={300} maxH="260px" overflowY="auto">
+              <Box px="14px" py="10px" borderBottom="1px solid #F5F5F5">
+                <Text fontWeight="700" fontSize="13px" color="#1C110D">Andijon viloyati tumanlari</Text>
+              </Box>
+              {ANDIJON_DISTRICTS.map(d => (
+                <Box key={d.id} px="14px" py="11px" cursor="pointer"
+                  bgColor={selectedDistrict === d.id ? "#FFF0EC" : "white"}
+                  borderBottom="1px solid #FAFAFA"
+                  display="flex" alignItems="center" gap="8px"
+                  onClick={() => saveDistrict(d.id)}>
+                  <FaMapMarkerAlt size={11} color={selectedDistrict === d.id ? "#C03F0C" : "#C8B8B0"} />
+                  <Text fontSize="14px" fontWeight={selectedDistrict === d.id ? "700" : "400"}
+                    color={selectedDistrict === d.id ? "#C03F0C" : "#1C110D"}>
+                    {d.name}
+                  </Text>
+                  {selectedDistrict === d.id && <Text ml="auto" fontSize="12px" color="#C03F0C">✓</Text>}
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+
+        {selectedDistrict && (
+          <Box mt="8px" bgColor="#FFF0EC" borderRadius="10px" px="12px" py="7px"
+            display="flex" alignItems="center" gap="6px">
+            <FaMapMarkerAlt color="#C03F0C" size={11} />
+            <Text fontSize="12px" color="#C03F0C" fontWeight="600">
+              {ANDIJON_DISTRICTS.find(d => d.id === selectedDistrict)?.name} ga bora oladigan oshpazlar
+            </Text>
+          </Box>
+        )}
       </Box>
 
       {/* List */}

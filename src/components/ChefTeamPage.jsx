@@ -1,6 +1,6 @@
 import { Box, Button, Text } from '@chakra-ui/react';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FaArrowLeft, FaUsers, FaMinus, FaPlus } from 'react-icons/fa';
 import Store from '../store';
@@ -55,7 +55,11 @@ const ChefTeamPage = () => {
     const handleSave = () => {
         setSaving(true);
         Store.setChefTeam(chefPhone, counts);
-        setTimeout(() => { setSaving(false); setSaved(true); }, 400);
+        setTimeout(() => {
+            setSaving(false);
+            setSaved(true);
+            setTimeout(() => navigate(fromProfile ? '/chef-profile' : '/chef-home'), 600);
+        }, 400);
     };
 
     return (

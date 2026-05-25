@@ -202,13 +202,13 @@ const ChefProfileOwnPage = () => {
                     <Button flex="1" h="38px" borderRadius="20px" bgColor="#FFF0EC"
                         color="#C03F0C" fontWeight="700" fontSize="12px" border="1.5px solid #F5C5B0"
                         _hover={{ bgColor: "#FFE8E0" }}
-                        onClick={() => navigate("/chef-team")}>
+                        onClick={() => navigate("/chef-team", { state: { from: 'profile' } })}>
                         👥 Komanda
                     </Button>
                     <Button flex="1" h="38px" borderRadius="20px" bgColor="#FFFBEB"
                         color="#D97706" fontWeight="700" fontSize="12px" border="1.5px solid #FDE68A"
                         _hover={{ bgColor: "#FEF3C7" }}
-                        onClick={() => navigate("/chef-dacha-prefs")}>
+                        onClick={() => navigate("/chef-dacha-prefs", { state: { from: 'profile' } })}>
                         🏡 Dachalar
                     </Button>
                 </Box>
