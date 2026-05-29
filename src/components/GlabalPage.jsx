@@ -1,6 +1,7 @@
 import { Box, Text } from '@chakra-ui/react';
 import { FiSearch } from 'react-icons/fi';
 import { FaStar, FaHeart, FaClipboardList, FaHome, FaUser, FaBell, FaMapMarkerAlt, FaTimes, FaChevronDown } from 'react-icons/fa';
+import { MdHolidayVillage } from 'react-icons/md';
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,22 +9,22 @@ import Store from '../store';
 
 const ANDIJON_DISTRICTS = [
   { id: 'andijon_shahar', name: 'Andijon shahri' },
-  { id: 'asaka',          name: 'Asaka tumani' },
-  { id: 'oltinkol',       name: "Oltinko'l tumani" },
-  { id: 'baliqchi',       name: 'Baliqchi tumani' },
-  { id: 'boston',         name: "Bo'ston tumani" },
-  { id: 'buloqboshi',     name: 'Buloqboshi tumani' },
-  { id: 'izboskan',       name: 'Izboskan tumani' },
-  { id: 'jalolquduq',     name: 'Jalolquduq tumani' },
-  { id: 'xojaobod',       name: "Xo'jaobod tumani" },
-  { id: 'marhamat',       name: 'Marhamat tumani' },
-  { id: 'mashrabov',      name: 'Mashrabov tumani' },
-  { id: 'paxtaobod',      name: 'Paxtaobod tumani' },
-  { id: 'qurgontepa',     name: "Qo'rg'ontepa tumani" },
-  { id: 'shahrixon',      name: 'Shahrixon tumani' },
-  { id: 'ulugmor',        name: "Ulug'nor tumani" },
-  { id: 'xonobod',        name: 'Xonobod shahri' },
-  { id: 'imomota',        name: 'Imom Ota' },
+  { id: 'asaka', name: 'Asaka tumani' },
+  { id: 'oltinkol', name: "Oltinko'l tumani" },
+  { id: 'baliqchi', name: 'Baliqchi tumani' },
+  { id: 'boston', name: "Bo'ston tumani" },
+  { id: 'buloqboshi', name: 'Buloqboshi tumani' },
+  { id: 'izboskan', name: 'Izboskan tumani' },
+  { id: 'jalolquduq', name: 'Jalolquduq tumani' },
+  { id: 'xojaobod', name: "Xo'jaobod tumani" },
+  { id: 'marhamat', name: 'Marhamat tumani' },
+  { id: 'mashrabov', name: 'Mashrabov tumani' },
+  { id: 'paxtaobod', name: 'Paxtaobod tumani' },
+  { id: 'qurgontepa', name: "Qo'rg'ontepa tumani" },
+  { id: 'shahrixon', name: 'Shahrixon tumani' },
+  { id: 'ulugmor', name: "Ulug'nor tumani" },
+  { id: 'xonobod', name: 'Xonobod shahri' },
+  { id: 'imomota', name: 'Imom Ota' },
 ];
 
 const GlabalPage = () => {
@@ -99,7 +100,7 @@ const GlabalPage = () => {
         localStorage.setItem('registeredChefs', JSON.stringify(synced));
         setChefs(synced.filter(c => c.phone && c.name));
       })
-      .catch(() => {}); // tarmoq xatosi — localdan foydalaniladi
+      .catch(() => { }); // tarmoq xatosi — localdan foydalaniladi
   }, []);
 
   // Oshpazlar baholari
@@ -116,7 +117,7 @@ const GlabalPage = () => {
       const map = {};
       results.forEach(r => { if (r.status === 'fulfilled' && r.value) map[r.value.phone] = r.value.avg; });
       setRatings(map);
-    }).catch(() => {});
+    }).catch(() => { });
   }, [chefs.length]);
 
   // Bloklangan mijozni darhol chiqarish (cache + backend)
@@ -220,6 +221,7 @@ const GlabalPage = () => {
       {[
         { icon: FaHome, route: '/glabal', label: t('footer.home'), badge: 0 },
         { icon: FaClipboardList, route: '/orderspage', label: t('footer.orders'), badge: notifs.reduce((s, n) => s + n.unread, 0) },
+        { icon: MdHolidayVillage, route: '/dachas', label: 'Dachalar', badge: 0 },
         { icon: FaHeart, route: '/like', label: t('footer.like'), badge: 0 },
         { icon: FaUser, route: '/profile', label: t('footer.profile'), badge: 0 },
       ].map(tab => (
@@ -339,8 +341,8 @@ const GlabalPage = () => {
               </Text>
               {selectedDistrict
                 ? <Box onClick={e => { e.stopPropagation(); clearDistrict(); }} p="4px">
-                    <FaTimes color="#C03F0C" size={12} />
-                  </Box>
+                  <FaTimes color="#C03F0C" size={12} />
+                </Box>
                 : <FaChevronDown color="#9B8E8A" size={12} />
               }
             </Box>
