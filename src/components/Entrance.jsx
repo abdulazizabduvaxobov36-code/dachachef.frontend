@@ -34,6 +34,14 @@ const Entrance = () => {
                             fetch(`${API}/chefs/${phone}`).then(r => r.json()).catch(() => null),
                             fetch(`${API}/customers/${phone}`).then(r => r.json()).catch(() => null),
                         ]);
+                        // Ikkalasi ham topilsa — tanlash ekrani
+                        if (chefRes?._id && custRes?._id) {
+                            setSaved([
+                                { key: `saved_chef_${phone}`, role: 'chef', data: chefRes },
+                                { key: `saved_customer_${phone}`, role: 'customer', data: custRes },
+                            ]);
+                            return;
+                        }
                         if (chefRes?._id) {
                             if (chefRes.isBlocked) { navigate('/blocked', { replace: true }); return; }
                             localStorage.setItem('chefProfile', JSON.stringify(chefRes));

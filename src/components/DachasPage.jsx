@@ -2,6 +2,7 @@ import { Box, Text } from '@chakra-ui/react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaArrowLeft, FaMapMarkerAlt, FaPhone, FaTimes, FaChevronDown, FaHome, FaClipboardList, FaHeart, FaUser } from 'react-icons/fa';
+import { MdHolidayVillage } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import Store from '../store';
 
@@ -32,6 +33,7 @@ const DachasPage = () => {
     const [dachas, setDachas] = useState([]);
     const [selectedDistrict, setSelectedDistrict] = useState('');
     const [showPicker, setShowPicker] = useState(false);
+    const [expanded, setExpanded] = useState({});
     const pickerRef = useRef(null);
 
     useEffect(() => {
@@ -50,12 +52,16 @@ const DachasPage = () => {
     }, []);
 
     const filtered = selectedDistrict
-        ? dachas.filter(d => d.district === ANDIJON_DISTRICTS.find(x => x.id === selectedDistrict)?.name || d.districtId === selectedDistrict)
+        ? dachas.filter(d => {
+            const distName = ANDIJON_DISTRICTS.find(x => x.id === selectedDistrict)?.name;
+            return d.district === distName;
+        })
         : dachas;
 
     const navTabs = [
         { icon: FaHome, route: '/glabal', label: t('footer.home') },
         { icon: FaClipboardList, route: '/orderspage', label: t('footer.orders') },
+        { icon: MdHolidayVillage, route: '/dachas', label: 'Dachalar' },
         { icon: FaHeart, route: '/like', label: t('footer.like') },
         { icon: FaUser, route: '/profile', label: t('footer.profile') },
     ];
@@ -72,16 +78,17 @@ const DachasPage = () => {
                 </Box>
                 <Box>
                     <Text fontWeight="bold" color="#1C110D" style={{ fontSize: 'clamp(15px,4.2vw,18px)' }}>
-                        Dachalar
+                        🏡 Dachalar
                     </Text>
-                    <Text fontSize="12px" color="#9B614B">{dachas.length} ta dacha</Text>
+                    <Text fontSize="12px" color="#9B614B">
+                        {selectedDistrict ? `${filtered.length} ta topildi` : `${dachas.length} ta dacha`}
+                    </Text>
                 </Box>
             </Box>
 
-            {/* Search + Filter */}
+            {/* Filter */}
             <Box mx="14px" mt="12px" bgColor="white" borderRadius="18px" p="14px"
                 boxShadow="0 2px 8px rgba(0,0,0,0.06)">
-                {/* Tuman filtri */}
                 <Box position="relative" ref={pickerRef}>
                     <Box display="flex" alignItems="center" gap="8px" borderRadius="12px" px="12px"
                         bgColor={selectedDistrict ? '#FFF0EC' : '#F7F7F7'}
@@ -93,7 +100,7 @@ const DachasPage = () => {
                             color={selectedDistrict ? '#C03F0C' : '#9B8E8A'}>
                             {selectedDistrict
                                 ? ANDIJON_DISTRICTS.find(d => d.id === selectedDistrict)?.name
-                                : 'Tuman bo\'yicha filter'}
+                                : 'Tuman bo\'yicha qidirish'}
                         </Text>
                         {selectedDistrict
                             ? <Box onClick={e => { e.stopPropagation(); setSelectedDistrict(''); }} p="4px">
@@ -102,7 +109,6 @@ const DachasPage = () => {
                             : <FaChevronDown color="#9B8E8A" size={12} />
                         }
                     </Box>
-
                     {showPicker && (
                         <Box position="absolute" top="50px" left="0" right="0" bgColor="white"
                             borderRadius="16px" boxShadow="0 8px 24px rgba(0,0,0,0.14)"
@@ -127,27 +133,15 @@ const DachasPage = () => {
                         </Box>
                     )}
                 </Box>
-
-                {selectedDistrict && (
-                    <Box mt="8px" bgColor="#FFF0EC" borderRadius="10px" px="12px" py="7px"
-                        display="flex" alignItems="center" gap="6px">
-                        <FaMapMarkerAlt color="#C03F0C" size={11} />
-                        <Text fontSize="12px" color="#C03F0C" fontWeight="600">
-                            {filtered.length} ta dacha topildi
-                        </Text>
-                    </Box>
-                )}
             </Box>
 
-            {/* Dacha list */}
+            {/* List */}
             <Box pb="90px" px="14px" mt="12px">
                 {dachas.length === 0 ? (
                     <Box mt="60px" textAlign="center">
                         <Text fontSize="50px" mb="12px">🏡</Text>
                         <Text fontWeight="700" color="#1C110D" fontSize="16px">Hali dacha qo'shilmagan</Text>
-                        <Text color="#9B8E8A" fontSize="13px" mt="6px">
-                            Admin dachalarni qo'shgach bu yerda ko'rinadi
-                        </Text>
+                        <Text color="#9B8E8A" fontSize="13px" mt="6px">Admin dachalarni qo'shgach bu yerda ko'rinadi</Text>
                     </Box>
                 ) : filtered.length === 0 ? (
                     <Box mt="60px" textAlign="center">
@@ -156,69 +150,122 @@ const DachasPage = () => {
                         <Text color="#9B8E8A" fontSize="13px" mt="6px">Boshqa tumanni tanlang</Text>
                     </Box>
                 ) : (
-                    filtered.map(dacha => (
-                        <Box key={dacha.id} bgColor="white" borderRadius="18px" mb="12px"
-                            overflow="hidden" border="1px solid #F0EBE6"
-                            boxShadow="0 2px 8px rgba(0,0,0,0.05)">
-                            {/* Rasm */}
-                            {dacha.image ? (
-                                <img src={dacha.image} alt={dacha.name}
-                                    style={{ width: '100%', height: '160px', objectFit: 'cover' }} />
-                            ) : (
-                                <Box w="100%" h="140px" bgColor="#F0E6E0" display="flex"
-                                    alignItems="center" justifyContent="center" fontSize="50px">
-                                    🏡
-                                </Box>
-                            )}
+                    filtered.map(dacha => {
+                        const isExpanded = expanded[dacha.id];
+                        const desc = dacha.description || '';
+                        const shortDesc = desc.length > 120 ? desc.slice(0, 120) + '...' : desc;
 
-                            <Box p="14px">
-                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb="6px">
-                                    <Text fontWeight="700" color="#1C110D" fontSize="15px" flex="1">{dacha.name}</Text>
-                                    {dacha.price && (
-                                        <Box bgColor="#C03F0C" borderRadius="20px" px="10px" py="3px" ml="8px">
-                                            <Text color="white" fontSize="11px" fontWeight="700">{dacha.price}</Text>
+                        return (
+                            <Box key={dacha.id} bgColor="white" borderRadius="18px" mb="14px"
+                                overflow="hidden" border="1px solid #F0EBE6"
+                                boxShadow="0 2px 10px rgba(0,0,0,0.06)">
+
+                                {/* Rasm */}
+                                {dacha.image
+                                    ? <img src={dacha.image} alt={dacha.name}
+                                        style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+                                    : <Box w="100%" h="120px" bgColor="#F0E6E0"
+                                        display="flex" alignItems="center" justifyContent="center" fontSize="50px">
+                                        🏡
+                                    </Box>
+                                }
+
+                                <Box p="14px">
+                                    {/* Nomi + narx */}
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb="6px">
+                                        <Text fontWeight="800" color="#1C110D" fontSize="16px" flex="1" lineHeight="1.3">
+                                            {dacha.name}
+                                        </Text>
+                                        {dacha.price && (
+                                            <Box bgColor="#C03F0C" borderRadius="20px" px="10px" py="4px" ml="8px" flexShrink={0}>
+                                                <Text color="white" fontSize="11px" fontWeight="700">{dacha.price}</Text>
+                                            </Box>
+                                        )}
+                                    </Box>
+
+                                    {/* Joylashuv */}
+                                    <Box display="flex" alignItems="center" gap="4px" mb="10px">
+                                        <FaMapMarkerAlt color="#C03F0C" size={11} />
+                                        <Text fontSize="12px" color="#9B614B" fontWeight="600">{dacha.district}</Text>
+                                        {dacha.address && <Text fontSize="12px" color="#9B8E8A">· {dacha.address}</Text>}
+                                    </Box>
+
+                                    {/* Sig'im */}
+                                    {dacha.capacity && (
+                                        <Box display="flex" alignItems="center" gap="6px" mb="10px">
+                                            <Text fontSize="13px" color="#1C110D">👥 {dacha.capacity} kishigacha</Text>
                                         </Box>
                                     )}
-                                </Box>
 
-                                <Box display="flex" alignItems="center" gap="4px" mb="10px">
-                                    <FaMapMarkerAlt color="#C03F0C" size={11} />
-                                    <Text fontSize="12px" color="#9B614B">{dacha.district}</Text>
-                                    {dacha.address && (
-                                        <Text fontSize="12px" color="#9B8E8A">· {dacha.address}</Text>
+                                    {/* Qulayliklar */}
+                                    {dacha.amenities?.length > 0 && (
+                                        <Box display="flex" flexWrap="wrap" gap="6px" mb="12px">
+                                            {dacha.amenities.map(key => {
+                                                const AMENITY_LABELS = {
+                                                    pool: '🏊 Basseyn', kids_pool: '👶 Bolalar basseyn',
+                                                    billiard: '🎱 Bilyard', tennis: '🏓 Stol tennis',
+                                                    ps: '🎮 PlayStation', wifi: '🌐 Wi-Fi',
+                                                    bbq: '🔥 Mangal/BBQ', tv: '📺 Smart TV',
+                                                    ac: '🌀 Konditsioner', tapshan: '🛋 Tapshan',
+                                                    kitchen: '🍽 Oshxona', parking: '🚗 Avtoturargoh',
+                                                    karaoke: '🎤 Karaoke', gazebo: '🌿 So\'ri',
+                                                    speaker: '🔊 Kolonka', beds: '🛏 Yotoqxona'
+                                                };
+                                                return (
+                                                    <Box key={key} bgColor="#FFF5F0" borderRadius="10px" px="10px" py="5px"
+                                                        border="1px solid #F0E6E0">
+                                                        <Text fontSize="12px" color="#C03F0C" fontWeight="600">
+                                                            {AMENITY_LABELS[key] || key}
+                                                        </Text>
+                                                    </Box>
+                                                );
+                                            })}
+                                        </Box>
                                     )}
-                                </Box>
 
-                                {dacha.description && (
-                                    <Text fontSize="13px" color="#525252" mb="10px" lineHeight="1.5">
-                                        {dacha.description}
-                                    </Text>
-                                )}
+                                    {/* Tavsif */}
+                                    {desc && (
+                                        <Box mb="12px">
+                                            <Text fontSize="13px" color="#525252" lineHeight="1.6">
+                                                {isExpanded ? desc : shortDesc}
+                                            </Text>
+                                            {desc.length > 120 && (
+                                                <Text fontSize="12px" color="#C03F0C" fontWeight="700" mt="4px" cursor="pointer"
+                                                    onClick={() => setExpanded(p => ({ ...p, [dacha.id]: !p[dacha.id] }))}>
+                                                    {isExpanded ? 'Kamroq ko\'rsatish ▲' : 'Ko\'proq ko\'rsatish ▼'}
+                                                </Text>
+                                            )}
+                                        </Box>
+                                    )}
 
-                                {dacha.capacity && (
-                                    <Text fontSize="12px" color="#9B8E8A" mb="10px">👥 {dacha.capacity} kishigacha</Text>
-                                )}
-
-                                <Box display="flex" gap="8px" mt="4px">
-                                    {dacha.phone && (
+                                    {/* Tugmalar */}
+                                    <Box display="flex" gap="8px">
+                                        {dacha.phone && (
+                                            <Box flex="1" display="flex" alignItems="center" justifyContent="center"
+                                                gap="6px" py="11px" borderRadius="14px" cursor="pointer"
+                                                bgColor="#FFF0EC" border="1.5px solid #F5C5B0"
+                                                onClick={() => window.open(`tel:${dacha.phone}`)}>
+                                                <FaPhone size={13} color="#C03F0C" />
+                                                <Text fontSize="13px" fontWeight="700" color="#C03F0C">Qo'ng'iroq</Text>
+                                            </Box>
+                                        )}
                                         <Box flex="1" display="flex" alignItems="center" justifyContent="center"
-                                            gap="6px" py="10px" borderRadius="12px" cursor="pointer"
-                                            bgColor="#FFF0EC" border="1.5px solid #F5C5B0"
-                                            onClick={() => window.open(`tel:${dacha.phone}`)}>
-                                            <FaPhone size={12} color="#C03F0C" />
-                                            <Text fontSize="13px" fontWeight="700" color="#C03F0C">Qo'ng'iroq</Text>
+                                            gap="6px" py="11px" borderRadius="14px" cursor="pointer"
+                                            bgColor="#C03F0C" border="1.5px solid #C03F0C"
+                                            onClick={() => {
+                                                const distId = ANDIJON_DISTRICTS.find(d => d.name === dacha.district)?.id;
+                                                if (distId) {
+                                                    localStorage.setItem('customer_dacha_district', distId);
+                                                }
+                                                navigate('/chefs');
+                                            }}>
+                                            <Text fontSize="13px" fontWeight="700" color="white">👨‍🍳 Oshpaz top</Text>
                                         </Box>
-                                    )}
-                                    <Box flex="1" display="flex" alignItems="center" justifyContent="center"
-                                        gap="6px" py="10px" borderRadius="12px" cursor="pointer"
-                                        bgColor="#C03F0C" border="1.5px solid #C03F0C"
-                                        onClick={() => navigate('/chefs', { state: { districtId: dacha.districtId || dacha.district } })}>
-                                        <Text fontSize="13px" fontWeight="700" color="white">👨‍🍳 Oshpaz top</Text>
                                     </Box>
                                 </Box>
                             </Box>
-                        </Box>
-                    ))
+                        );
+                    })
                 )}
             </Box>
 
@@ -227,9 +274,11 @@ const DachasPage = () => {
                 display="flex" justifyContent="space-around" alignItems="center" py="10px" bgColor="white">
                 {navTabs.map(tab => (
                     <Box key={tab.route} display="flex" flexDir="column" alignItems="center" gap="3px"
-                        cursor="pointer" px="14px" onClick={() => navigate(tab.route)}>
-                        <tab.icon style={{ fontSize: '22px', color: '#B0A8A4' }} />
-                        <Text fontWeight="700" style={{ fontSize: '10px', color: '#B0A8A4' }}>{tab.label}</Text>
+                        cursor="pointer" px="10px" onClick={() => navigate(tab.route)}>
+                        <tab.icon style={{ fontSize: '22px', color: location.pathname === tab.route ? '#C03F0C' : '#B0A8A4' }} />
+                        <Text fontWeight="700" style={{ fontSize: '10px', color: location.pathname === tab.route ? '#C03F0C' : '#B0A8A4' }}>
+                            {tab.label}
+                        </Text>
                     </Box>
                 ))}
             </Box>
