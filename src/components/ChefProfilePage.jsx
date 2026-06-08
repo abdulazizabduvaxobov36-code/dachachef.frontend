@@ -49,6 +49,10 @@ const ChefProfilePage = () => {
     const session = Store.getSession();
     const isOwnProfile = session?.role === 'chef' && session?.data?.phone === realChef?.phone;
 
+    useEffect(() => {
+        if (realChef?.phone) Store.fetchChefPrefs(realChef.phone);
+    }, [realChef?.phone]);
+
     // Mijoz ma'lumotlari
     const sess = Store.getSession();
     const customerDataLS = JSON.parse(localStorage.getItem('customerData') || 'null');

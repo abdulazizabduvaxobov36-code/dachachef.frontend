@@ -614,43 +614,104 @@ Store.getDachas = () => {
   return local.get('dachaList') || [];
 };
 
-Store.addDacha = (dacha) => {
-  const all = Store.getDachas();
-  const newDacha = { ...dacha, id: dacha.id || Date.now().toString(), createdAt: Date.now() };
-  all.push(newDacha);
-  local.set('dachaList', all);
-  window.dispatchEvent(new Event('dachas-updated'));
-  return newDacha;
+Store.fetchDachas = async () => {
+  try {
+    const r = await fetch(`${BASE}/dachas`);
+    if (!r.ok) return;
+    const data = await r.json();
+    // _id ni id ga o'tkazamiz
+    const mapped = data.map(d => ({ ...d, id: d._id || d.id }));
+    local.set('dachaList', mapped);
+    window.dispatchEvent(new Event('dachas-updated'));
+  } catch { }
 };
 
-Store.updateDacha = (id, updates) => {
+Store.addDacha = async (dacha) => {
+  try {
+    const r = await fetch(`${BASE}/dachas`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dacha)
+    });
+    const saved = await r.json();
+    const newDacha = { ...saved, id: saved._id || saved.id };
+    const all = Store.getDachas();
+    all.unshift(newDacha);
+    local.set('dachaList', all);
+    window.dispatchEvent(new Event('dachas-updated'));
+    return newDacha;
+  } catch {
+    // Offline fallback
+    const newDacha = { ...dacha, id: dacha.id || Date.now().toString(), createdAt: Date.now() };
+    const all = Store.getDachas();
+    all.unshift(newDacha);
+    local.set('dachaList', all);
+    window.dispatchEvent(new Event('dachas-updated'));
+    return newDacha;
+  }
+};
+
+Store.updateDacha = async (id, updates) => {
+  try {
+    await fetch(`${BASE}/dachas/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+  } catch { }
   const all = Store.getDachas();
-  const i = all.findIndex(d => d.id === id);
+  const i = all.findIndex(d => d.id === id || d._id === id);
   if (i >= 0) { all[i] = { ...all[i], ...updates }; local.set('dachaList', all); }
   window.dispatchEvent(new Event('dachas-updated'));
 };
 
-Store.removeDacha = (id) => {
-  local.set('dachaList', Store.getDachas().filter(d => d.id !== id));
+Store.removeDacha = async (id) => {
+  try {
+    await fetch(`${BASE}/dachas/${id}`, { method: 'DELETE' });
+  } catch { }
+  local.set('dachaList', Store.getDachas().filter(d => d.id !== id && d._id !== id));
   window.dispatchEvent(new Event('dachas-updated'));
 };
 
 // ─── OSHPAZ DACHA SOZLAMALARI ────────────────────────────────
-// Oshpaz qaysi dachalarga bora olishi
 Store.getChefDachaPrefs = (chefPhone) => {
   return local.get(`chef_dacha_prefs_${chefPhone}`) || { canGo: [], cannotGo: [] };
 };
 
-Store.setChefDachaPrefs = (chefPhone, prefs) => {
+Store.setChefDachaPrefs = async (chefPhone, prefs) => {
   local.set(`chef_dacha_prefs_${chefPhone}`, prefs);
+  try {
+    await fetch(`${BASE}/chef-team/${chefPhone}/prefs`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefs })
+    });
+  } catch { }
+};
+
+Store.fetchChefPrefs = async (chefPhone) => {
+  try {
+    const r = await fetch(`${BASE}/chef-team/${chefPhone}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    if (data.prefs) local.set(`chef_dacha_prefs_${chefPhone}`, data.prefs);
+    if (data.counts) local.set(`chef_team_${chefPhone}`, data.counts);
+  } catch { }
 };
 
 // ─── OSHPAZ YORDAMCHILARI (KOMANDA) ─────────────────────────
 Store.getChefTeam = (chefPhone) => {
-  return local.get(`chef_team_${chefPhone}`) || [];
+  return local.get(`chef_team_${chefPhone}`) || {};
 };
 
-Store.setChefTeam = (chefPhone, team) => {
+Store.setChefTeam = async (chefPhone, team) => {
   local.set(`chef_team_${chefPhone}`, team);
   window.dispatchEvent(new Event('chefs-updated'));
+  try {
+    await fetch(`${BASE}/chef-team/${chefPhone}/team`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ counts: team })
+    });
+  } catch { }
 };

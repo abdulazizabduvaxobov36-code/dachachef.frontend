@@ -37,6 +37,7 @@ const DachasPage = () => {
     const pickerRef = useRef(null);
 
     useEffect(() => {
+        Store.fetchDachas().then(() => setDachas(Store.getDachas()));
         setDachas(Store.getDachas());
         const handler = () => setDachas(Store.getDachas());
         window.addEventListener('dachas-updated', handler);

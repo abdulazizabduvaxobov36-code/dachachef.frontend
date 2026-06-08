@@ -50,6 +50,7 @@ const AdminDachasPage = () => {
     const reload = () => setDachas(Store.getDachas());
 
     useEffect(() => {
+        Store.fetchDachas().then(reload);
         reload();
         window.addEventListener('dachas-updated', reload);
         return () => window.removeEventListener('dachas-updated', reload);
@@ -65,17 +66,17 @@ const AdminDachasPage = () => {
         return e;
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         const e = validate();
         if (Object.keys(e).length) { setErrors(e); return; }
-        if (editing) Store.updateDacha(editing, { ...form });
-        else Store.addDacha({ ...form, id: Date.now().toString() });
+        if (editing) await Store.updateDacha(editing, { ...form });
+        else await Store.addDacha({ ...form });
         setShowForm(false);
         setEditing(null);
         reload();
     };
 
-    const handleDelete = (id) => { Store.removeDacha(id); setDeleteConfirm(null); reload(); };
+    const handleDelete = async (id) => { await Store.removeDacha(id); setDeleteConfirm(null); reload(); };
     const upd = (f, v) => { setForm(p => ({ ...p, [f]: v })); if (errors[f]) setErrors(p => { const e = { ...p }; delete e[f]; return e; }); };
 
     const toggleAmenity = (key) => {
