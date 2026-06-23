@@ -34,6 +34,7 @@ const DachasPage = () => {
     const [selectedDistrict, setSelectedDistrict] = useState('');
     const [showPicker, setShowPicker] = useState(false);
     const [expanded, setExpanded] = useState({});
+    const [imgModal, setImgModal] = useState(null);
     const pickerRef = useRef(null);
 
     useEffect(() => {
@@ -163,8 +164,9 @@ const DachasPage = () => {
 
                                 {/* Rasm */}
                                 {dacha.image
-                                    ? <img src={dacha.image} alt={dacha.name}
-                                        style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
+                                    ? <img src={dacha.image} alt={dacha.name} cursor="pointer"
+                                        onClick={() => setImgModal(dacha.image)}
+                                        style={{ width: '100%', height: '180px', objectFit: 'cover', cursor: 'pointer' }} />
                                     : <Box w="100%" h="120px" bgColor="#F0E6E0"
                                         display="flex" alignItems="center" justifyContent="center" fontSize="50px">
                                         🏡
@@ -255,10 +257,8 @@ const DachasPage = () => {
                                             bgColor="#C03F0C" border="1.5px solid #C03F0C"
                                             onClick={() => {
                                                 const distId = ANDIJON_DISTRICTS.find(d => d.name === dacha.district)?.id;
-                                                if (distId) {
-                                                    localStorage.setItem('customer_dacha_district', distId);
-                                                }
-                                                navigate('/chefs');
+                                                if (distId) localStorage.setItem('customer_dacha_district', distId);
+                                                navigate('/glabal');
                                             }}>
                                             <Text fontSize="13px" fontWeight="700" color="white">👨‍🍳 Oshpaz top</Text>
                                         </Box>
@@ -269,6 +269,22 @@ const DachasPage = () => {
                     })
                 )}
             </Box>
+
+            {/* Rasm modali */}
+            {imgModal && (
+                <Box position="fixed" top="0" left="0" right="0" bottom="0"
+                    bgColor="rgba(0,0,0,0.92)" zIndex={500}
+                    display="flex" alignItems="center" justifyContent="center"
+                    onClick={() => setImgModal(null)}>
+                    <img src={imgModal} alt=""
+                        style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', borderRadius: '12px' }} />
+                    <Box position="absolute" top="16px" right="16px" bgColor="rgba(255,255,255,0.15)"
+                        borderRadius="full" w="36px" h="36px" display="flex" alignItems="center"
+                        justifyContent="center" cursor="pointer" fontSize="18px" color="white">
+                        ✕
+                    </Box>
+                </Box>
+            )}
 
             {/* Bottom nav */}
             <Box className="fixed-bottom" borderTop="1px solid #EBEBEB"
