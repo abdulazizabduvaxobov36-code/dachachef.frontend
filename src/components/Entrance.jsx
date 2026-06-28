@@ -16,13 +16,13 @@ const Entrance = () => {
             const tgId = window?.Telegram?.WebApp?.initDataUnsafe?.user?.id;
 
             if (tgId) {
-                // Telegram orqali kirilgan — FAQAT TG yo'l, localStorage sessiyasiga hech qachon ishonmaymiz
+                // Telegram orqali kirilgan
                 if (localStorage.getItem('tg_logout') === String(tgId)) {
                     // Foydalanuvchi o'zi chiqib ketgan — eski akklar ko'rinsin
                     setSaved(Store.getSavedAccounts());
                     return;
                 }
-                // Telegram ID orqali tekshir — faqat shu foydalanuvchining akkauntiga kir
+                // Telegram ID orqali tekshir
                 try {
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), 5000);
@@ -34,12 +34,9 @@ const Entrance = () => {
                             fetch(`${API}/chefs/${phone}`).then(r => r.json()).catch(() => null),
                             fetch(`${API}/customers/${phone}`).then(r => r.json()).catch(() => null),
                         ]);
-                        // Ikkalasi ham topilsa — tanlash ekrani
+                        // Ikkalasi ham bor — tanlash ekrani
                         if (chefRes?._id && custRes?._id) {
-                            setSaved([
-                                { key: `saved_chef_${phone}`, role: 'chef', data: chefRes },
-                                { key: `saved_customer_${phone}`, role: 'customer', data: custRes },
-                            ]);
+                            setSaved(Store.getSavedAccounts());
                             return;
                         }
                         if (chefRes?._id) {
@@ -58,7 +55,7 @@ const Entrance = () => {
                         }
                     }
                 } catch { }
-                // Telegram orqali kirildi lekin akk yo'q — ro'yxatdan o'tish
+                // Akk yo'q — ro'yxatdan o'tish
                 setSaved([]);
                 return;
             }

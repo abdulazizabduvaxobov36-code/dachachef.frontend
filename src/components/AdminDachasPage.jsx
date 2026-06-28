@@ -5,11 +5,21 @@ import { FaArrowLeft, FaPlus, FaTrash, FaEdit, FaMapMarkerAlt, FaCamera } from '
 import Store from '../store';
 
 const DISTRICTS = [
-    "Andijon shahri", "Oltinko'l tumani", "Asaka tumani", "Baliqchi tumani",
-    "Bo'ston tumani", "Buloqboshi tumani", "Izboskan tumani", "Jalolquduq tumani",
-    "Xo'jaobod tumani", "Marhamat tumani", "Mashrabov tumani", "Paxtaobod tumani",
-    "Qo'rg'ontepa tumani", "Shahrixon tumani", "Ulug'nor tumani",
-    "Xonobod shahri", "Imom Ota"
+    "Bo'stonliq tumani (Chimgan/Charvak)",
+    "Zangiota tumani",
+    "Qibray tumani",
+    "Parkent tumani",
+    "Ohangaron tumani",
+    "Yangiyul tumani",
+    "Toshkent tumani",
+    "O'rtachirchiq tumani",
+    "Yuqorichirchiq tumani",
+    "Piskent tumani",
+    "Bekobod tumani",
+    "Keles tumani",
+    "Chinoz tumani",
+    "Quyichirchiq tumani",
+    "Toshkent shahri"
 ];
 
 const AMENITIES = [
@@ -32,7 +42,7 @@ const AMENITIES = [
 ];
 
 const emptyDacha = () => ({
-    id: '', name: '', district: "Andijon shahri", address: '',
+    id: '', name: '', district: "Bo'stonliq tumani (Chimgan/Charvak)", address: '',
     capacity: '', description: '', phone: '', price: '', image: '',
     amenities: []
 });
@@ -124,7 +134,7 @@ const AdminDachasPage = () => {
                         <Text fontSize="50px" mb="12px">🏡</Text>
                         <Text color="#9B8E8A" fontWeight="700" fontSize="16px">Hali dacha qo'shilmagan</Text>
                         <Text color="#9B8E8A" fontSize="13px" mt="6px" mb="20px">
-                            Andijondagi dachalarni qo'shing
+                            Toshkentdagi dachalarni qo'shing
                         </Text>
                         <Button bgColor="#C03F0C" color="white" borderRadius="16px"
                             fontWeight="700" onClick={openAdd} _hover={{ bgColor: "#a0300a" }}
@@ -260,11 +270,11 @@ const AdminDachasPage = () => {
 
                             {/* Narx */}
                             <Box mb="12px">
-                                <Text mb="5px" fontWeight="600" fontSize="12px" color="#9B614B">Narx (ixtiyoriy)</Text>
+                                <Text mb="5px" fontWeight="600" fontSize="12px" color="#9B614B">Narx — "Kelishilgan holda" yoki aniq summa</Text>
                                 <Box bgColor="#FFF5F0" borderRadius="12px" px="14px"
                                     border="1.5px solid #F0E6E0" style={{ height: "46px", display: "flex", alignItems: "center" }}>
                                     <input value={form.price} onChange={e => upd('price', e.target.value)}
-                                        placeholder="Masalan: Kelishilgan holda yoki 150,000 so'm/kun"
+                                        placeholder="Masalan: Kelishilgan holda yoki 500,000 so'm/kun"
                                         style={{ width: "100%", border: "none", outline: "none", fontSize: "15px", color: "#1C110D", background: "transparent" }} />
                                 </Box>
                             </Box>

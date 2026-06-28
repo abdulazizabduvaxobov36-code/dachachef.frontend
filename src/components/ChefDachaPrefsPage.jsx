@@ -6,23 +6,21 @@ import { FaArrowLeft, FaCheck, FaTimes, FaMapMarkerAlt } from 'react-icons/fa';
 import Store from '../store';
 
 const ANDIJON_DISTRICTS = [
-    { id: 'andijon_shahar', name: 'Andijon shahri' },
-    { id: 'asaka', name: 'Asaka tumani' },
-    { id: 'oltinkol', name: "Oltinko'l tumani" },
-    { id: 'baliqchi', name: 'Baliqchi tumani' },
-    { id: 'boston', name: "Bo'ston tumani" },
-    { id: 'buloqboshi', name: 'Buloqboshi tumani' },
-    { id: 'izboskan', name: 'Izboskan tumani' },
-    { id: 'jalolquduq', name: 'Jalolquduq tumani' },
-    { id: 'xojaobod', name: "Xo'jaobod tumani" },
-    { id: 'marhamat', name: 'Marhamat tumani' },
-    { id: 'mashrabov', name: 'Mashrabov tumani' },
-    { id: 'paxtaobod', name: 'Paxtaobod tumani' },
-    { id: 'qurgontepa', name: "Qo'rg'ontepa tumani" },
-    { id: 'shahrixon', name: 'Shahrixon tumani' },
-    { id: 'ulugmor', name: "Ulug'nor tumani" },
-    { id: 'xonobod', name: 'Xonobod shahri' },
-    { id: 'imomota', name: 'Imom Ota' },
+    { id: 'bostonliq', name: "Bo'stonliq tumani (Chimgan/Charvak)" },
+    { id: 'zangiota', name: 'Zangiota tumani' },
+    { id: 'qibray', name: 'Qibray tumani' },
+    { id: 'parkent', name: 'Parkent tumani' },
+    { id: 'ohangaron', name: 'Ohangaron tumani' },
+    { id: 'yangiyul', name: 'Yangiyul tumani' },
+    { id: 'toshkent_t', name: 'Toshkent tumani' },
+    { id: 'urtachirchiq', name: "O'rtachirchiq tumani" },
+    { id: 'yuqorichirchiq', name: 'Yuqorichirchiq tumani' },
+    { id: 'piskent', name: 'Piskent tumani' },
+    { id: 'bekobod', name: 'Bekobod tumani' },
+    { id: 'keles', name: 'Keles tumani' },
+    { id: 'chinoz', name: 'Chinoz tumani' },
+    { id: 'quyichirchiq', name: 'Quyichirchiq tumani' },
+    { id: 'toshkent_sh', name: 'Toshkent shahri' },
 ];
 
 const ChefDachaPrefsPage = () => {

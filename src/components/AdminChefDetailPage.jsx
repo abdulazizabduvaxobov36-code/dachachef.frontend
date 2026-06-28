@@ -219,12 +219,12 @@ const AdminChefDetailPage = () => {
                         boshqa: '⚙️ Boshqa'
                     };
                     const DISTRICTS = {
-                        andijon_shahar: 'Andijon shahri', asaka: 'Asaka', oltinkol: "Oltinko'l",
-                        baliqchi: 'Baliqchi', boston: "Bo'ston", buloqboshi: 'Buloqboshi',
-                        izboskan: 'Izboskan', jalolquduq: 'Jalolquduq', xojaobod: "Xo'jaobod",
-                        marhamat: 'Marhamat', mashrabov: 'Mashrabov', paxtaobod: 'Paxtaobod',
-                        qurgontepa: "Qo'rg'ontepa", shahrixon: 'Shahrixon', ulugmor: "Ulug'nor",
-                        xonobod: 'Xonobod', imomota: 'Imom Ota'
+                        bostonliq: "Bo'stonliq (Chimgan/Charvak)", zangiota: 'Zangiota',
+                        qibray: 'Qibray', parkent: 'Parkent', ohangaron: 'Ohangaron',
+                        yangiyul: 'Yangiyul', toshkent_t: 'Toshkent tumani',
+                        urtachirchiq: "O'rtachirchiq", yuqorichirchiq: 'Yuqorichirchiq',
+                        piskent: 'Piskent', bekobod: 'Bekobod', keles: 'Keles',
+                        chinoz: 'Chinoz', quyichirchiq: 'Quyichirchiq', toshkent_sh: 'Toshkent shahri'
                     };
                     const totalTeam = team && !Array.isArray(team)
                         ? Object.values(team).reduce((a, b) => a + (b || 0), 0)

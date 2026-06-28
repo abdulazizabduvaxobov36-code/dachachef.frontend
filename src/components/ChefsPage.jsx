@@ -9,23 +9,21 @@ import Store from '../store';
 const API_BASE = import.meta.env?.VITE_API_URL || '';
 
 const ANDIJON_DISTRICTS = [
-  { id: 'andijon_shahar', name: 'Andijon shahri' },
-  { id: 'asaka', name: 'Asaka tumani' },
-  { id: 'oltinkol', name: "Oltinko'l tumani" },
-  { id: 'baliqchi', name: 'Baliqchi tumani' },
-  { id: 'boston', name: "Bo'ston tumani" },
-  { id: 'buloqboshi', name: 'Buloqboshi tumani' },
-  { id: 'izboskan', name: 'Izboskan tumani' },
-  { id: 'jalolquduq', name: 'Jalolquduq tumani' },
-  { id: 'xojaobod', name: "Xo'jaobod tumani" },
-  { id: 'marhamat', name: 'Marhamat tumani' },
-  { id: 'mashrabov', name: 'Mashrabov tumani' },
-  { id: 'paxtaobod', name: 'Paxtaobod tumani' },
-  { id: 'qurgontepa', name: "Qo'rg'ontepa tumani" },
-  { id: 'shahrixon', name: 'Shahrixon tumani' },
-  { id: 'ulugmor', name: "Ulug'nor tumani" },
-  { id: 'xonobod', name: 'Xonobod shahri' },
-  { id: 'imomota', name: 'Imom Ota' },
+  { id: 'bostonliq', name: "Bo'stonliq tumani (Chimgan/Charvak)" },
+  { id: 'zangiota', name: 'Zangiota tumani' },
+  { id: 'qibray', name: 'Qibray tumani' },
+  { id: 'parkent', name: 'Parkent tumani' },
+  { id: 'ohangaron', name: 'Ohangaron tumani' },
+  { id: 'yangiyul', name: 'Yangiyul tumani' },
+  { id: 'toshkent_t', name: 'Toshkent tumani' },
+  { id: 'urtachirchiq', name: "O'rtachirchiq tumani" },
+  { id: 'yuqorichirchiq', name: 'Yuqorichirchiq tumani' },
+  { id: 'piskent', name: 'Piskent tumani' },
+  { id: 'bekobod', name: 'Bekobod tumani' },
+  { id: 'keles', name: 'Keles tumani' },
+  { id: 'chinoz', name: 'Chinoz tumani' },
+  { id: 'quyichirchiq', name: 'Quyichirchiq tumani' },
+  { id: 'toshkent_sh', name: 'Toshkent shahri' },
 ];
 
 const ChefsPage = () => {
@@ -185,7 +183,7 @@ const ChefsPage = () => {
               borderRadius="16px" boxShadow="0 8px 24px rgba(0,0,0,0.14)"
               border="1px solid #F0E6E0" zIndex={300} maxH="260px" overflowY="auto">
               <Box px="14px" py="10px" borderBottom="1px solid #F5F5F5">
-                <Text fontWeight="700" fontSize="13px" color="#1C110D">Andijon viloyati tumanlari</Text>
+                <Text fontWeight="700" fontSize="13px" color="#1C110D">Toshkent viloyati tumanlari</Text>
               </Box>
               {ANDIJON_DISTRICTS.map(d => (
                 <Box key={d.id} px="14px" py="11px" cursor="pointer"

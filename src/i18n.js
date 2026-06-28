@@ -253,7 +253,7 @@ const uz = {
     },
     chefDachaPrefs: {
         title: "Hudud imkoniyatlari",
-        subtitle: "Andijon viloyati tumanlari",
+        subtitle: "Toshkent viloyati tumanlari",
         info: "Qaysi tuman/shahardagi dachalarga borishingiz mumkinligini belgilang. Mijoz shu ma'lumotni ko'rib zakaz beradi.",
         canGo: "Boraman",
         cannotGo: "Bormayman",
