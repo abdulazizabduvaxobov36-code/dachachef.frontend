@@ -61,7 +61,6 @@ const DachasPage = () => {
     const navTabs = [
         { icon: FaHome, route: '/glabal', label: t('footer.home') },
         { icon: FaClipboardList, route: '/orderspage', label: t('footer.orders') },
-        { icon: MdHolidayVillage, route: '/dachas', label: 'Dachalar' },
         { icon: FaHeart, route: '/like', label: t('footer.like') },
         { icon: FaUser, route: '/profile', label: t('footer.profile') },
     ];

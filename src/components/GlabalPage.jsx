@@ -251,57 +251,67 @@ const GlabalPage = () => {
                 {t('glabal.logo')}
               </Text>
             </Box>
-            {/* Bell */}
-            <Box position="relative" ref={notifRef}>
-              <Box cursor="pointer" onClick={() => setShowNotif(v => !v)}
-                w="38px" h="38px" borderRadius="full" bgColor={totalUnread > 0 ? "#FFF0EC" : "#FFF0EC"}
-                display="flex" alignItems="center" justifyContent="center">
-                <FaBell style={{ fontSize: '18px', color: totalUnread > 0 ? '#C03F0C' : '#888' }} />
-                {totalUnread > 0 && (
-                  <Box position="absolute" top="0" right="0" minW="17px" h="17px" px="3px"
-                    bgColor="#C03F0C" borderRadius="full" display="flex" alignItems="center"
-                    justifyContent="center" color="white" fontWeight="800" style={{ fontSize: '9px' }}>
-                    {totalUnread > 9 ? '9+' : totalUnread}
+            <Box display="flex" alignItems="center" gap="8px">
+              {/* Dachalar tugmasi */}
+              <Box cursor="pointer" onClick={() => navigate('/dachas')}
+                display="flex" alignItems="center" gap="5px"
+                bgColor="#FFF0EC" borderRadius="20px" px="12px" py="6px"
+                border="1.5px solid #F5C5B0">
+                <Text fontSize="14px">🏡</Text>
+                <Text fontSize="12px" fontWeight="700" color="#C03F0C">Dachalar</Text>
+              </Box>
+              {/* Bell */}
+              <Box position="relative" ref={notifRef}>
+                <Box cursor="pointer" onClick={() => setShowNotif(v => !v)}
+                  w="38px" h="38px" borderRadius="full" bgColor={totalUnread > 0 ? "#FFF0EC" : "#FFF0EC"}
+                  display="flex" alignItems="center" justifyContent="center">
+                  <FaBell style={{ fontSize: '18px', color: totalUnread > 0 ? '#C03F0C' : '#888' }} />
+                  {totalUnread > 0 && (
+                    <Box position="absolute" top="0" right="0" minW="17px" h="17px" px="3px"
+                      bgColor="#C03F0C" borderRadius="full" display="flex" alignItems="center"
+                      justifyContent="center" color="white" fontWeight="800" style={{ fontSize: '9px' }}>
+                      {totalUnread > 9 ? '9+' : totalUnread}
+                    </Box>
+                  )}
+                </Box>
+                {showNotif && (
+                  <Box position="absolute" top="46px" right="0" w="290px"
+                    bgColor="white" borderRadius="18px" boxShadow="0 8px 32px rgba(0,0,0,0.14)"
+                    overflow="hidden" zIndex={200} border="1px solid #F0F0F0">
+                    <Box px="14px" py="11px" borderBottom="1px solid #F5F5F5"
+                      display="flex" justifyContent="space-between" alignItems="center">
+                      <Text fontWeight="700" color="#1C110D" style={{ fontSize: '14px' }}>{t('glabal.notifTitle')}</Text>
+                      {totalUnread > 0 && <Box bgColor="#FFF0EC" color="#C03F0C" borderRadius="10px" px="8px" py="2px"
+                        style={{ fontSize: '11px', fontWeight: '700' }}>{totalUnread} {t('glabal.newMsg')}</Box>}
+                    </Box>
+                    {notifs.length === 0
+                      ? <Box py="24px" textAlign="center"><Text color="#B0A8A4" style={{ fontSize: '13px' }}>{t('glabal.noNotif')}</Text></Box>
+                      : notifs.map((n, i) => (
+                        <Box key={i} display="flex" alignItems="center" gap="10px" px="14px" py="11px"
+                          cursor="pointer" borderBottom={i < notifs.length - 1 ? '1px solid #F8F8F8' : 'none'}
+                          _hover={{ bgColor: '#FFF9F7' }}
+                          onClick={() => { setShowNotif(false); Store.clearUnread(n.chatId, myPhone); navigate('/orderspage', { state: { chefPhone: n.chefPhone, chefName: n.chefName } }); }}>
+                          {n.chefImage
+                            ? <img src={n.chefImage} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                            : <Box w="40px" h="40px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
+                              display="flex" alignItems="center" justifyContent="center" color="white" fontWeight="700" style={{ fontSize: '16px' }}>
+                              {n.chefName?.charAt(0)}
+                            </Box>
+                          }
+                          <Box flex="1" minW={0}>
+                            <Text fontWeight="700" color="#1C110D" noOfLines={1} style={{ fontSize: '13px' }}>{n.chefName}</Text>
+                            <Text color="#9B8E8A" noOfLines={1} style={{ fontSize: '12px' }}>{n.lastMsg}</Text>
+                          </Box>
+                          <Box bgColor="#C03F0C" color="white" borderRadius="full" fontWeight="700"
+                            minW="20px" h="20px" display="flex" alignItems="center" justifyContent="center" px="4px" style={{ fontSize: '10px' }}>
+                            {n.unread > 9 ? '9+' : n.unread}
+                          </Box>
+                        </Box>
+                      ))
+                    }
                   </Box>
                 )}
               </Box>
-              {showNotif && (
-                <Box position="absolute" top="46px" right="0" w="290px"
-                  bgColor="white" borderRadius="18px" boxShadow="0 8px 32px rgba(0,0,0,0.14)"
-                  overflow="hidden" zIndex={200} border="1px solid #F0F0F0">
-                  <Box px="14px" py="11px" borderBottom="1px solid #F5F5F5"
-                    display="flex" justifyContent="space-between" alignItems="center">
-                    <Text fontWeight="700" color="#1C110D" style={{ fontSize: '14px' }}>{t('glabal.notifTitle')}</Text>
-                    {totalUnread > 0 && <Box bgColor="#FFF0EC" color="#C03F0C" borderRadius="10px" px="8px" py="2px"
-                      style={{ fontSize: '11px', fontWeight: '700' }}>{totalUnread} {t('glabal.newMsg')}</Box>}
-                  </Box>
-                  {notifs.length === 0
-                    ? <Box py="24px" textAlign="center"><Text color="#B0A8A4" style={{ fontSize: '13px' }}>{t('glabal.noNotif')}</Text></Box>
-                    : notifs.map((n, i) => (
-                      <Box key={i} display="flex" alignItems="center" gap="10px" px="14px" py="11px"
-                        cursor="pointer" borderBottom={i < notifs.length - 1 ? '1px solid #F8F8F8' : 'none'}
-                        _hover={{ bgColor: '#FFF9F7' }}
-                        onClick={() => { setShowNotif(false); Store.clearUnread(n.chatId, myPhone); navigate('/orderspage', { state: { chefPhone: n.chefPhone, chefName: n.chefName } }); }}>
-                        {n.chefImage
-                          ? <img src={n.chefImage} alt="" style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-                          : <Box w="40px" h="40px" borderRadius="full" bgColor="#C03F0C" flexShrink={0}
-                            display="flex" alignItems="center" justifyContent="center" color="white" fontWeight="700" style={{ fontSize: '16px' }}>
-                            {n.chefName?.charAt(0)}
-                          </Box>
-                        }
-                        <Box flex="1" minW={0}>
-                          <Text fontWeight="700" color="#1C110D" noOfLines={1} style={{ fontSize: '13px' }}>{n.chefName}</Text>
-                          <Text color="#9B8E8A" noOfLines={1} style={{ fontSize: '12px' }}>{n.lastMsg}</Text>
-                        </Box>
-                        <Box bgColor="#C03F0C" color="white" borderRadius="full" fontWeight="700"
-                          minW="20px" h="20px" display="flex" alignItems="center" justifyContent="center" px="4px" style={{ fontSize: '10px' }}>
-                          {n.unread > 9 ? '9+' : n.unread}
-                        </Box>
-                      </Box>
-                    ))
-                  }
-                </Box>
-              )}
             </Box>
           </Box>
         </Box>
